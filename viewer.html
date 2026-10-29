@@ -1,0 +1,508 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Artificial Mind Replay</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a recording bench. Two maps side by side (the world as it is / the world as the mind
+   believes it is), the mind's inner state beside them, one long electrophysiology-style trace
+   under all three, then the stream of consciousness and the ablation evidence. */
+:root {
+  --bg: #eef1f0; --panel: #f8faf9; --ink: #16201d; --muted: #5b6b66; --line: #cbd5d1;
+  --accent: #4b3fd1; --accent-soft: #e4e2fb; --warn: #b9650f; --warn-soft: #f7e6d2;
+  --good: #2c8556; --bad: #c2412a; --bad-soft: #f6dcd6; --good-soft: #d9efe2;
+  --c-empty: #e2e8e6; --c-wall: #36413e; --c-water: #3878bd; --c-food: #5f9128; --c-hazard: #cf452c;
+  --c-unknown: #d0d8d5; --c-hatch: #bfc9c5;
+  --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1514; --panel: #161e1d; --ink: #e3ebe8; --muted: #8fa19b; --line: #2a3533;
+    --accent: #958dff; --accent-soft: #26244a; --warn: #f0a24a; --warn-soft: #3a2a17;
+    --good: #5cc28b; --bad: #ff7a61; --bad-soft: #3d1f1a; --good-soft: #17322a;
+    --c-empty: #1f2927; --c-wall: #5a6965; --c-water: #4a90dd; --c-food: #86b84a; --c-hazard: #ef5a3f;
+    --c-unknown: #121918; --c-hatch: #1d2624; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1514; --panel: #161e1d; --ink: #e3ebe8; --muted: #8fa19b; --line: #2a3533;
+  --accent: #958dff; --accent-soft: #26244a; --warn: #f0a24a; --warn-soft: #3a2a17;
+  --good: #5cc28b; --bad: #ff7a61; --bad-soft: #3d1f1a; --good-soft: #17322a;
+  --c-empty: #1f2927; --c-wall: #5a6965; --c-water: #4a90dd; --c-food: #86b84a; --c-hazard: #ef5a3f;
+  --c-unknown: #121918; --c-hatch: #1d2624; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font: 14px/1.5 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 16px; }
+header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; }
+h1 { font: 700 clamp(26px, 4vw, 38px)/1.05 var(--f-display); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.sub { color: var(--muted); max-width: 62ch; margin: 6px 0 0; }
+.runs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip-btn {
+  font: 500 13px var(--f-body); border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  padding: 6px 12px; border-radius: 999px; cursor: pointer;
+}
+.chip-btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip-btn:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.label { font: 500 11px var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+.bench { display: grid; gap: 16px; grid-template-columns: 1fr 1fr 1.05fr; }
+@media (max-width: 960px) { .bench { grid-template-columns: 1fr 1fr; } .inside { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .bench { grid-template-columns: 1fr; } }
+.map-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 8px; }
+.map-head h2, .panel h2 { font: 600 15px var(--f-display); margin: 0; }
+canvas.grid { width: 100%; aspect-ratio: 1; display: block; border-radius: 6px; max-width: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; color: var(--muted); font-size: 12px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.inside { display: grid; gap: 14px; align-content: start; }
+.ws { border-radius: 8px; padding: 12px; background: var(--accent-soft); transition: box-shadow .2s; }
+.ws.flash { box-shadow: 0 0 0 3px var(--accent); }
+.ws .content { font: 600 20px/1.2 var(--f-display); margin-top: 2px; overflow-wrap: anywhere; }
+.ws .speech { margin-top: 6px; font-style: italic; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-items: baseline; }
+.facts dt { color: var(--muted); font-size: 12px; }
+.facts dd { margin: 0; font: 500 13px var(--f-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font: 500 12px var(--f-mono); }
+.pill.self { background: var(--good-soft); color: var(--good); }
+.pill.external { background: var(--warn-soft); color: var(--warn); }
+.pill.sleep { background: var(--accent-soft); color: var(--accent); }
+.pill.reborn { background: var(--bad-soft); color: var(--bad); }
+.bars { display: grid; gap: 7px; }
+.bar { display: grid; grid-template-columns: 74px 1fr 40px; gap: 8px; align-items: center; font-size: 12px; }
+.bar .track { height: 8px; background: var(--c-empty); border-radius: 4px; overflow: hidden; }
+.bar .fill { height: 100%; border-radius: 4px; transition: width .1s linear; }
+.bar span:last-child { font: 500 12px var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.trace { display: grid; gap: 10px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.controls button {
+  font: 500 13px var(--f-body); border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  border-radius: 6px; padding: 5px 10px; cursor: pointer; min-width: 36px;
+}
+.controls button.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); min-width: 72px; }
+.controls .t { font: 500 13px var(--f-mono); margin-left: auto; font-variant-numeric: tabular-nums; }
+#timeline { width: 100%; height: 150px; display: block; cursor: crosshair; touch-action: none; }
+.keyrow { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+.keyrow i { display: inline-block; width: 14px; height: 3px; margin-right: 5px; vertical-align: 3px; border-radius: 2px; }
+.lower { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); }
+@media (max-width: 960px) { .lower { grid-template-columns: 1fr; } }
+.stream { list-style: none; margin: 8px 0 0; padding: 0; max-height: 420px; overflow-y: auto; display: grid; gap: 2px; }
+.stream li button {
+  all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 52px 1fr; gap: 10px;
+  padding: 6px 8px; border-radius: 6px; cursor: pointer;
+}
+.stream li button:hover { background: var(--bg); }
+.stream li button:focus-visible { outline: 2px solid var(--accent); }
+.stream li.now button { background: var(--accent-soft); }
+.stream .tt { font: 500 12px var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.stream .kind { font: 500 11px var(--f-mono); letter-spacing: .04em; }
+.k-need { color: var(--good); } .k-percept, .k-recall { color: var(--c-water); } .k-threat { color: var(--bad); }
+.k-surprise { color: var(--warn); } .k-curiosity { color: var(--accent); }
+.table-scroll { overflow-x: auto; margin-top: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { font: 500 11px var(--f-mono); color: var(--muted); letter-spacing: .03em; vertical-align: bottom; white-space: normal; min-width: 70px; }
+td { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+td.worse { background: var(--bad-soft); color: var(--bad); }
+td.better { background: var(--good-soft); color: var(--good); }
+tr.full td { font-weight: 500; }
+.note { color: var(--muted); font-size: 12.5px; max-width: 75ch; margin: 10px 0 0; }
+.world-toggle { display: inline-flex; gap: 4px; }
+.empty { color: var(--muted); padding: 24px 0; }
+footer { color: var(--muted); font-size: 12.5px; }
+footer code { font-family: var(--f-mono); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+@media (prefers-reduced-motion: reduce) { .ws, .bar .fill { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Artificial Mind Replay</h1>
+      <p class="sub">One recorded life of the whole-brain agent. Left: the world as it is. Middle: the world as the mind believes it is, built only from its own eyes and its own sense of movement. Right: what is in its global workspace right now.</p>
+    </div>
+    <div class="runs" id="runs" role="group" aria-label="Recorded run"></div>
+  </header>
+
+  <section class="bench">
+    <div class="panel">
+      <div class="map-head"><h2>The world</h2><span class="label" id="worldLabel">truth</span></div>
+      <canvas class="grid" id="worldCanvas" width="480" height="480" aria-label="True world state"></canvas>
+      <div class="legend">
+        <span><i style="background:var(--c-water)"></i>water</span>
+        <span><i style="background:var(--c-food)"></i>food</span>
+        <span><i style="background:var(--c-hazard)"></i>hazard</span>
+        <span><i style="background:var(--ink);border-radius:50%"></i>agent</span>
+        <span><i style="border:2px solid var(--accent);border-radius:50%"></i>where it thinks it is</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="map-head"><h2>Its cognitive map</h2><span class="label" id="mapLabel">belief</span></div>
+      <canvas class="grid" id="mapCanvas" width="480" height="480" aria-label="Agent's own map"></canvas>
+      <div class="legend">
+        <span><i style="background:var(--c-unknown);border:1px solid var(--line)"></i>never seen</span>
+        <span><i style="background:var(--c-wall)"></i>wall</span>
+        <span>Snapshot every 20 ticks, in the agent's own coordinates</span>
+      </div>
+    </div>
+    <div class="panel inside">
+      <div class="ws" id="ws">
+        <div class="label">In the global workspace</div>
+        <div class="content" id="wsContent">—</div>
+        <div class="speech" id="wsSpeech"></div>
+      </div>
+      <dl class="facts">
+        <dt>Goal (PFC)</dt><dd id="fGoal">—</dd>
+        <dt>Last movement</dt><dd id="fAgency">—</dd>
+        <dt>Surprise</dt><dd id="fSurprise">—</dd>
+        <dt>Valence</dt><dd id="fValence">—</dd>
+      </dl>
+      <div>
+        <div class="label" style="margin-bottom:6px">Body (interoception)</div>
+        <div class="bars" id="bars"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel trace">
+    <div class="controls">
+      <button class="primary" id="play" type="button">Play</button>
+      <button id="back" type="button" aria-label="Step back">‹</button>
+      <button id="fwd" type="button" aria-label="Step forward">›</button>
+      <button id="speed" type="button">Speed 4×</button>
+      <span class="label">Prediction error over the whole life · click or drag to jump</span>
+      <span class="t" id="tLabel">t = 0</span>
+    </div>
+    <canvas id="timeline" height="150" aria-label="Timeline of surprise"></canvas>
+    <div class="keyrow">
+      <span><i style="background:var(--ink)"></i>actual surprise (world model)</span>
+      <span><i style="background:var(--accent)"></i>expected surprise (metacognition)</span>
+      <span><i style="background:var(--warn)"></i>pushed by the world</span>
+      <span><i style="background:var(--good)"></i>workspace ignition</span>
+      <span><i style="background:var(--accent-soft);height:10px;vertical-align:-1px"></i>asleep</span>
+    </div>
+  </section>
+
+  <section class="lower">
+    <div class="panel">
+      <h2>Stream of consciousness</h2>
+      <p class="note" style="margin-top:4px">Every moment something new ignited the workspace, and what the language cortex said about it. Nothing else is reportable. Click a line to jump there.</p>
+      <ul class="stream" id="stream"></ul>
+    </div>
+    <div class="panel">
+      <div class="map-head" style="flex-wrap:wrap">
+        <h2>What each part is for</h2>
+        <div class="world-toggle" id="worldToggle" role="group" aria-label="World"></div>
+      </div>
+      <p class="note" style="margin-top:4px" id="ablationNote">Each row removes one brain part and reruns the same worlds and seeds. Red: clearly worse than the full mind. Green: clearly better.</p>
+      <div class="table-scroll"><table id="ablation"></table></div>
+    </div>
+  </section>
+
+  <footer>
+    Record your own: <code>python run.py --world harsh --condition no_self_other</code>, then serve the folder (<code>python -m http.server 8000</code>) and open <code>viewer.html</code>, or load a file:
+    <input type="file" id="file" accept=".json" aria-label="Load a replay file">
+  </footer>
+</div>
+
+<!--EMBED-->
+<script>
+(() => {
+  const TYPES = ["empty", "wall", "food", "water", "hazard"];
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const $ = id => document.getElementById(id);
+  let runs = (window.MIND_RUNS || []).slice();
+  let results = window.MIND_RESULTS || null;
+  let run = null, t = 0, playing = false, speedIdx = 1, lastTs = 0, acc = 0, mapIdx = [];
+  const SPEEDS = [1, 4, 16, 48];
+  let resultsWorld = "harsh";
+
+  function colors() {
+    return {
+      empty: css("--c-empty"), wall: css("--c-wall"), food: css("--c-food"), water: css("--c-water"),
+      hazard: css("--c-hazard"), unknown: css("--c-unknown"), hatch: css("--c-hatch"), ink: css("--ink"),
+      accent: css("--accent"), warn: css("--warn"), good: css("--good"), muted: css("--muted"),
+      line: css("--line"), panel: css("--panel"), accentSoft: css("--accent-soft"), bad: css("--bad")
+    };
+  }
+  let C = colors();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { C = colors(); draw(); drawTimeline(); });
+  new MutationObserver(() => { C = colors(); draw(); drawTimeline(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  function fitCanvas(cv) {
+    const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+    const w = Math.max(10, Math.round(r.width * d)), h = Math.max(10, Math.round(r.height * d));
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    return [w, h, d];
+  }
+
+  // ---------------------------------------------------------------- run setup
+  function setRuns() {
+    const box = $("runs"); box.innerHTML = "";
+    runs.forEach((r, i) => {
+      const b = document.createElement("button");
+      b.className = "chip-btn"; b.type = "button"; b.textContent = r.label;
+      b.setAttribute("aria-pressed", String(run === r));
+      b.onclick = () => load(i);
+      box.appendChild(b);
+    });
+  }
+  function load(i) {
+    run = runs[i]; playing = false; $("play").textContent = "Play";
+    const fr = run.data.frames;
+    t = Math.min(400, fr.length - 1);  // open mid-life, with a map already built
+    mapIdx = new Int32Array(fr.length); let last = 0;
+    fr.forEach((f, k) => { if (f.map) last = k; mapIdx[k] = last; });
+    const m = run.data.meta;
+    $("worldLabel").textContent = `${m.world} world · seed ${m.seed}`;
+    $("mapLabel").textContent = m.condition.replace(/_/g, " ");
+    setRuns(); buildStream(); drawTimeline(); draw();
+  }
+
+  // -------------------------------------------------------------- the world
+  function drawGrid(cv, rows, cellOf, overlay) {
+    const [w, h] = fitCanvas(cv); const g = cv.getContext("2d");
+    const R = rows.length, Cn = rows[0].length, s = Math.min(w / Cn, h / R);
+    const ox = (w - s * Cn) / 2, oy = (h - s * R) / 2;
+    g.clearRect(0, 0, w, h);
+    for (let y = 0; y < R; y++) for (let x = 0; x < Cn; x++) {
+      const type = cellOf(y, x);
+      const px = ox + x * s, py = oy + y * s;
+      if (type === "unknown") {
+        g.fillStyle = C.unknown; g.fillRect(px, py, s, s);
+        g.strokeStyle = C.hatch; g.lineWidth = 1; g.beginPath();
+        g.moveTo(px, py + s); g.lineTo(px + s, py); g.stroke();
+      } else {
+        g.fillStyle = C[type]; g.fillRect(px + 0.5, py + 0.5, s - 1, s - 1);
+      }
+    }
+    overlay && overlay(g, s, ox, oy);
+  }
+  function dot(g, s, ox, oy, y, x, fill, ring) {
+    const cx = ox + (x + 0.5) * s, cy = oy + (y + 0.5) * s;
+    g.beginPath(); g.arc(cx, cy, s * (ring ? 0.42 : 0.3), 0, Math.PI * 2);
+    if (ring) { g.lineWidth = Math.max(2, s * 0.1); g.strokeStyle = fill; g.stroke(); }
+    else { g.fillStyle = fill; g.fill(); }
+  }
+  function draw() {
+    if (!run) return;
+    const D = run.data, f = D.frames[t], L = D.layout;
+    const food = new Set(f.food.map(p => p[0] * 100 + p[1]));
+    drawGrid($("worldCanvas"), L, (y, x) => food.has(y * 100 + x) ? "food" : TYPES[L[y][x]], (g, s, ox, oy) => {
+      // view window
+      g.strokeStyle = C.muted; g.setLineDash([4, 4]); g.lineWidth = 1;
+      g.strokeRect(ox + (f.pos[1] - 2) * s, oy + (f.pos[0] - 2) * s, 5 * s, 5 * s); g.setLineDash([]);
+      if (f.pushed) { g.fillStyle = C.warn; g.globalAlpha = .35; g.fillRect(ox + f.pos[1] * s, oy + f.pos[0] * s, s, s); g.globalAlpha = 1; }
+      dot(g, s, ox, oy, f.pos[0], f.pos[1], f.sleeping ? C.accent : C.ink, false);
+      if (f.belief && f.anchor) dot(g, s, ox, oy, f.belief[0] + f.anchor[0], f.belief[1] + f.anchor[1], C.accent, true);
+    });
+    const snap = D.frames[mapIdx[t]].map, [my, mx] = D.map_origin;
+    const MAPT = { ".": "unknown", "0": "empty", "1": "wall", "2": "food", "3": "water", "4": "hazard" };
+    drawGrid($("mapCanvas"), snap, (y, x) => MAPT[snap[y][x]], (g, s, ox, oy) => {
+      if (f.belief) dot(g, s, ox, oy, f.belief[0] - my, f.belief[1] - mx, C.accent, true);
+    });
+    inside(f);
+    $("tLabel").textContent = `t = ${f.t} / ${D.frames.length - 1}`;
+    markStream();
+    drawPlayhead();
+  }
+
+  // ---------------------------------------------------------- inner state
+  const BODY = [["energy", "--c-food"], ["hydration", "--c-water"], ["integrity", "--c-hazard"]];
+  $("bars").innerHTML = BODY.map(([n]) => `<div class="bar"><span>${n}</span><div class="track"><div class="fill" id="b-${n}"></div></div><span id="v-${n}"></span></div>`).join("");
+  let lastReportIdx = [];
+  function inside(f) {
+    const D = run.data;
+    $("wsContent").textContent = f.sleeping ? "asleep: no broadcast" : (f.broadcast ? f.broadcast.replace(":", " · ") : "nothing ignited");
+    $("ws").classList.toggle("flash", !!f.ignited);
+    const ri = lastReportIdx[t];
+    $("wsSpeech").textContent = ri >= 0 ? `“${D.frames[ri].report}”` : "";
+    $("fGoal").textContent = f.sleeping ? "sleep (hippocampal replay)" : (f.goal || "—");
+    const ag = f.died ? "reborn" : f.sleeping ? "sleep" : (f.external ? "external" : "self");
+    $("fAgency").innerHTML = `<span class="pill ${ag}">${ag === "self" ? "me" : ag === "external" ? "not me" : ag}</span>${f.pushed ? ' <span style="color:var(--muted);font-family:var(--f-body)">(truth: pushed)</span>' : ""}`;
+    $("fSurprise").textContent = f.surprise == null ? "—" : `${f.surprise.toFixed(2)} actual vs ${f.expected.toFixed(2)} expected`;
+    $("fValence").textContent = (f.valence >= 0 ? "+" : "") + f.valence.toFixed(3);
+    BODY.forEach(([n, c], i) => {
+      const v = f.body[i];
+      const el = $("b-" + n); el.style.width = (v * 100).toFixed(1) + "%"; el.style.background = `var(${c})`;
+      $("v-" + n).textContent = Math.round(v * 100) + "%";
+    });
+  }
+
+  // ------------------------------------------------------------- timeline
+  let tlCache = null;
+  function drawTimeline() {
+    if (!run) return;
+    const cv = $("timeline"); const [w, h, d] = fitCanvas(cv);
+    const g = cv.getContext("2d"); const fr = run.data.frames, n = fr.length;
+    g.clearRect(0, 0, w, h);
+    const top = 14 * d, bot = h - 14 * d, X = i => (i / (n - 1)) * w;
+    let ymax = 0; fr.forEach(f => { if (f.surprise != null) ymax = Math.max(ymax, f.surprise, f.expected); });
+    ymax = Math.min(ymax, 4) || 1;
+    const Y = v => bot - (Math.min(v, ymax) / ymax) * (bot - top);
+    // sleep bands
+    g.fillStyle = C.accentSoft;
+    let s0 = -1;
+    fr.forEach((f, i) => {
+      if (f.sleeping && s0 < 0) s0 = i;
+      if ((!f.sleeping || i === n - 1) && s0 >= 0) { g.fillRect(X(s0), top, X(i) - X(s0), bot - top); s0 = -1; }
+    });
+    // gridlines
+    g.strokeStyle = C.line; g.lineWidth = 1; g.font = `${10 * d}px IBM Plex Mono, monospace`; g.fillStyle = C.muted;
+    [0, ymax / 2, ymax].forEach(v => { g.beginPath(); g.moveTo(0, Y(v)); g.lineTo(w, Y(v)); g.stroke(); g.fillText(v.toFixed(1) + " nats", 4 * d, Y(v) - 3 * d); });
+    // lines
+    const line = (key, color, width) => {
+      g.strokeStyle = color; g.lineWidth = width * d; g.beginPath(); let started = false;
+      fr.forEach((f, i) => { if (f[key] == null) return; const x = X(i), y = Y(f[key]); started ? g.lineTo(x, y) : g.moveTo(x, y); started = true; });
+      g.stroke();
+    };
+    g.globalAlpha = 0.55; line("surprise", C.ink, 0.8); g.globalAlpha = 1;
+    line("expected", C.accent, 1.4);
+    // markers
+    fr.forEach((f, i) => {
+      if (f.pushed) { g.fillStyle = C.warn; g.fillRect(X(i) - d, 0, 2 * d, 9 * d); }
+      if (f.ignited) { g.fillStyle = C.good; g.fillRect(X(i) - d * 0.75, h - 9 * d, 1.5 * d, 9 * d); }
+      if (f.died) { g.fillStyle = C.bad; g.fillRect(X(i) - d, 0, 2 * d, h); }
+    });
+    tlCache = g.getImageData(0, 0, w, h);
+    drawPlayhead();
+  }
+  function drawPlayhead() {
+    if (!tlCache || !run) return;
+    const cv = $("timeline"), g = cv.getContext("2d");
+    g.putImageData(tlCache, 0, 0);
+    const n = run.data.frames.length, x = (t / (n - 1)) * cv.width, d = window.devicePixelRatio || 1;
+    g.fillStyle = C.accent; g.fillRect(x - d, 0, 2 * d, cv.height);
+  }
+  function seekFromEvent(e) {
+    const r = $("timeline").getBoundingClientRect();
+    const frac = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    t = Math.round(frac * (run.data.frames.length - 1)); draw();
+  }
+  let dragging = false;
+  $("timeline").addEventListener("pointerdown", e => { if (!run) return; dragging = true; $("timeline").setPointerCapture(e.pointerId); seekFromEvent(e); });
+  $("timeline").addEventListener("pointermove", e => { if (dragging) seekFromEvent(e); });
+  $("timeline").addEventListener("pointerup", () => { dragging = false; });
+
+  // ------------------------------------------------------------ the stream
+  let streamItems = [];
+  function buildStream() {
+    const fr = run.data.frames, ul = $("stream"); ul.innerHTML = "";
+    lastReportIdx = new Int32Array(fr.length); let last = -1;
+    streamItems = [];
+    fr.forEach((f, i) => {
+      if (f.report) last = i;
+      lastReportIdx[i] = last;
+      if (f.ignited && f.report) {
+        const kind = (f.broadcast || "").split(":")[0];
+        const li = document.createElement("li");
+        li.innerHTML = `<button type="button"><span class="tt">t ${f.t}</span><span><span class="kind k-${kind}">${f.broadcast}</span><br>${f.report}</span></button>`;
+        li.querySelector("button").onclick = () => { t = i; playing = false; $("play").textContent = "Play"; draw(); };
+        ul.appendChild(li); streamItems.push([i, li]);
+      }
+    });
+    if (!streamItems.length) ul.innerHTML = '<li class="empty">No workspace ignitions in this run.</li>';
+  }
+  let lastMarked = null;
+  function markStream() {
+    let cur = null;
+    for (const [i, li] of streamItems) { if (i <= t) cur = li; else break; }
+    if (cur === lastMarked) return;
+    lastMarked && lastMarked.classList.remove("now");
+    if (cur) {
+      cur.classList.add("now");
+      const ul = $("stream"), top = cur.offsetTop - ul.offsetTop;
+      if (top < ul.scrollTop || top > ul.scrollTop + ul.clientHeight - 40) ul.scrollTop = top - ul.clientHeight / 3;
+    }
+    lastMarked = cur;
+  }
+
+  // ----------------------------------------------------------- ablations
+  function buildAblation() {
+    const tb = $("ablation"), tog = $("worldToggle");
+    if (!results) { tb.innerHTML = '<tr><td class="empty">Run <code>python experiments.py</code> to fill this table.</td></tr>'; return; }
+    const worlds = Object.keys(results.summary);
+    if (!worlds.includes(resultsWorld)) resultsWorld = worlds[0];
+    tog.innerHTML = "";
+    worlds.forEach(w => {
+      const b = document.createElement("button"); b.className = "chip-btn"; b.type = "button"; b.textContent = w + " world";
+      b.setAttribute("aria-pressed", String(w === resultsWorld)); b.onclick = () => { resultsWorld = w; buildAblation(); };
+      tog.appendChild(b);
+    });
+    const S = results.summary[resultsWorld], M = results.metrics, full = S.full;
+    const fmt = v => v == null ? "—" : Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(Math.abs(v) < 1 ? 3 : 2);
+    let html = "<thead><tr><th>removed</th>" + M.map(m => `<th>${m[1]}</th>`).join("") + "</tr></thead><tbody>";
+    Object.keys(S).forEach(c => {
+      html += `<tr class="${c === "full" ? "full" : ""}"><td>${c === "full" ? "nothing (full mind)" : c.replace(/^no_/, "").replace(/_/g, " ")}</td>`;
+      M.forEach(([k, , dir]) => {
+        const v = S[c][k], f0 = full[k];
+        let cls = "";
+        if (c !== "full" && v && f0) {
+          const diff = v.mean - f0.mean, spread = Math.max(v.sd, f0.sd, Math.abs(f0.mean) * 0.05, 1e-3);
+          const sig = Math.abs(diff) > 1.5 * spread;
+          if (sig) cls = (dir === "lower") === (diff > 0) ? "worse" : "better";
+        }
+        html += `<td class="${cls}">${v ? fmt(v.mean) : "—"}</td>`;
+      });
+      html += "</tr>";
+    });
+    tb.innerHTML = html + "</tbody>";
+    $("ablationNote").textContent = `Each row removes one brain part and reruns the same ${results.seeds} seeds × ${results.steps} ticks. Red: clearly worse than the full mind. Green: clearly better. Means shown.`;
+  }
+
+  // ------------------------------------------------------------ playback
+  function loop(ts) {
+    if (playing && run) {
+      const dt = Math.min(200, ts - (lastTs || ts)); acc += dt * SPEEDS[speedIdx] * 10 / 1000;
+      const steps = Math.floor(acc); acc -= steps;
+      if (steps) { t = Math.min(run.data.frames.length - 1, t + steps); draw(); if (t === run.data.frames.length - 1) { playing = false; $("play").textContent = "Play"; } }
+    }
+    lastTs = ts; requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+  $("play").onclick = () => { if (!run) return; if (t >= run.data.frames.length - 1) t = 0; playing = !playing; $("play").textContent = playing ? "Pause" : "Play"; };
+  $("back").onclick = () => { if (run) { t = Math.max(0, t - 1); draw(); } };
+  $("fwd").onclick = () => { if (run) { t = Math.min(run.data.frames.length - 1, t + 1); draw(); } };
+  $("speed").onclick = () => { speedIdx = (speedIdx + 1) % SPEEDS.length; $("speed").textContent = `Speed ${SPEEDS[speedIdx]}×`; };
+  document.addEventListener("keydown", e => {
+    if (e.target.closest("input, button")) return;
+    if (e.key === " ") { e.preventDefault(); $("play").click(); }
+    if (e.key === "ArrowRight") $("fwd").click();
+    if (e.key === "ArrowLeft") $("back").click();
+  });
+  window.addEventListener("resize", () => { drawTimeline(); draw(); });
+
+  $("file").addEventListener("change", async e => {
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (data.summary) { results = data; buildAblation(); return; }
+      runs.push({ label: file.name.replace(/\.json$/, ""), data }); load(runs.length - 1);
+    } catch (err) { $("stream").innerHTML = `<li class="empty">Could not read ${file.name}: ${err.message}</li>`; }
+  });
+
+  async function boot() {
+    if (!runs.length) {
+      for (const name of ["latest", "harsh_full", "harsh_no_self_other"]) {
+        try { const r = await fetch(`runs/${name}.json`); if (r.ok) runs.push({ label: name, data: await r.json() }); } catch (_) {}
+      }
+    }
+    if (!results) { try { const r = await fetch("results/results.json"); if (r.ok) results = await r.json(); } catch (_) {} }
+    buildAblation();
+    if (runs.length) load(0);
+    else $("stream").innerHTML = '<li class="empty">No replay found. Run <code>python run.py</code>, serve this folder, and reload, or load a file below.</li>';
+  }
+  boot();
+})();
+</script>

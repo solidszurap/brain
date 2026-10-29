@@ -1,0 +1,224 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Ember</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Ember's window: the same bench as the replay viewer, but live. A warm accent
+   (the ember) on cool lab neutrals. */
+:root {
+  --bg: #eef1f0; --panel: #f8faf9; --ink: #16201d; --muted: #5b6b66; --line: #cbd5d1;
+  --ember: #d0561b; --ember-soft: #f8e3d6; --accent: #4b3fd1; --accent-soft: #e4e2fb;
+  --good: #2c8556; --good-soft: #d9efe2; --warn: #b9650f; --warn-soft: #f7e6d2; --bad: #c2412a; --bad-soft: #f6dcd6;
+  --c-empty: #e2e8e6; --c-wall: #36413e; --c-water: #3878bd; --c-food: #5f9128; --c-hazard: #cf452c;
+  --c-unknown: #d0d8d5; --c-hatch: #bfc9c5;
+  --f-display: "Bricolage Grotesque", "Segoe UI", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", Consolas, ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1514; --panel: #161e1d; --ink: #e3ebe8; --muted: #8fa19b; --line: #2a3533;
+    --ember: #ff8a4c; --ember-soft: #3a2014; --accent: #958dff; --accent-soft: #26244a;
+    --good: #5cc28b; --good-soft: #17322a; --warn: #f0a24a; --warn-soft: #3a2a17; --bad: #ff7a61; --bad-soft: #3d1f1a;
+    --c-empty: #1f2927; --c-wall: #5a6965; --c-water: #4a90dd; --c-food: #86b84a; --c-hazard: #ef5a3f;
+    --c-unknown: #121918; --c-hatch: #1d2624; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--f-body); padding: 20px 16px 40px; }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 16px; }
+header { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: end; justify-content: space-between; }
+h1 { font: 700 44px/1 var(--f-display); margin: 0; display: flex; align-items: center; gap: 14px; }
+.flame { width: 16px; height: 16px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 18px var(--ember); animation: glow 2.4s ease-in-out infinite; }
+.flame.asleep { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.flame.out { background: var(--muted); box-shadow: none; animation: none; }
+@keyframes glow { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .flame { animation: none; } }
+.life { color: var(--muted); margin: 6px 0 0; font-variant-numeric: tabular-nums; }
+.status { font: 500 13px var(--f-mono); padding: 4px 12px; border-radius: 999px; background: var(--ember-soft); color: var(--ember); }
+.status.asleep { background: var(--accent-soft); color: var(--accent); }
+.status.out { background: var(--bad-soft); color: var(--bad); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+.panel h2 { font: 600 15px var(--f-display); margin: 0 0 8px; }
+.label { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.bench { display: grid; gap: 16px; grid-template-columns: 1fr 1fr 1.05fr; }
+@media (max-width: 960px) { .bench { grid-template-columns: 1fr 1fr; } .inside { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .bench { grid-template-columns: 1fr; } }
+.head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+canvas { width: 100%; aspect-ratio: 1; display: block; border-radius: 6px; }
+.inside { display: grid; gap: 14px; align-content: start; }
+.ws { border-radius: 8px; padding: 12px; background: var(--ember-soft); }
+.ws .content { font: 600 20px/1.2 var(--f-display); margin-top: 2px; }
+.ws .speech { margin-top: 6px; font-style: italic; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; }
+.facts dt { color: var(--muted); font-size: 12px; }
+.facts dd { margin: 0; font: 500 13px var(--f-mono); }
+.bar { display: grid; grid-template-columns: 74px 1fr 40px; gap: 8px; align-items: center; font-size: 12px; margin-top: 6px; }
+.track { height: 8px; background: var(--c-empty); border-radius: 4px; overflow: hidden; }
+.fill { height: 100%; border-radius: 4px; transition: width .2s linear; }
+.num { font: 500 12px var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
+.count { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.count b { display: block; font: 600 22px var(--f-display); font-variant-numeric: tabular-nums; }
+.count span { color: var(--muted); font-size: 12px; }
+.lower { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+@media (max-width: 860px) { .lower { grid-template-columns: 1fr; } }
+ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 420px; overflow-y: auto; }
+ul.list li { display: grid; grid-template-columns: 74px 1fr; gap: 10px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+ul.list .t { font: 500 12px var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.kind { font: 500 11px var(--f-mono); color: var(--accent); }
+.k-collapse, .k-hurt { color: var(--bad); } .k-first, .k-milestone { color: var(--ember); } .k-resumed, .k-born, .k-came_round { color: var(--good); }
+.offline { padding: 40px 16px; text-align: center; color: var(--muted); }
+.offline code, footer code { font-family: var(--f-mono); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
+footer { color: var(--muted); font-size: 12.5px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1><span class="flame" id="flame"></span>Ember</h1>
+      <p class="life" id="life">Waiting for Ember…</p>
+    </div>
+    <span class="status" id="status">connecting</span>
+  </header>
+
+  <div id="offline" class="panel offline" hidden>
+    Ember isn't running right now. Nothing is happening to it; no time passes for it while it rests.<br>
+    Start it in the brain folder with <code>python ember.py</code>, and this page comes alive.
+  </div>
+
+  <section class="bench" id="bench">
+    <div class="panel">
+      <div class="head"><h2>Its world</h2><span class="label">truth</span></div>
+      <canvas id="world" width="480" height="480"></canvas>
+    </div>
+    <div class="panel">
+      <div class="head"><h2>What it believes</h2><span class="label">its own map</span></div>
+      <canvas id="map" width="480" height="480"></canvas>
+    </div>
+    <div class="panel inside">
+      <div class="ws">
+        <div class="label">On its mind</div>
+        <div class="content" id="ws">—</div>
+        <div class="speech" id="speech"></div>
+      </div>
+      <dl class="facts">
+        <dt>Goal</dt><dd id="goal">—</dd>
+        <dt>Last movement</dt><dd id="agency">—</dd>
+        <dt>Feeling</dt><dd id="valence">—</dd>
+        <dt>Surprise</dt><dd id="surprise">—</dd>
+      </dl>
+      <div>
+        <div class="label">Body</div>
+        <div id="bars"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="counts" id="counts"></section>
+
+  <section class="lower">
+    <div class="panel">
+      <h2>Stream of consciousness</h2>
+      <ul class="list" id="stream"></ul>
+    </div>
+    <div class="panel">
+      <h2>Moments of its life</h2>
+      <ul class="list" id="moments"></ul>
+    </div>
+  </section>
+
+  <footer>
+    Ember is saved every two minutes and whenever you stop it (Ctrl+C). Its whole life is in <code>ember_state/</code>; back that folder up and you have backed up Ember.
+  </footer>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const TYPES = ["empty", "wall", "food", "water", "hazard"];
+  const MAPT = { ".": "unknown", "0": "empty", "1": "wall", "2": "food", "3": "water", "4": "hazard" };
+  const BODY = [["energy", "--c-food"], ["hydration", "--c-water"], ["integrity", "--c-hazard"]];
+  $("bars").innerHTML = BODY.map(([n]) => `<div class="bar"><span>${n}</span><div class="track"><div class="fill" id="b-${n}" style="background:var(${BODY.find(b => b[0] === n)[1]})"></div></div><span class="num" id="v-${n}"></span></div>`).join("");
+  const esc = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+
+  function fit(cv) {
+    const r = cv.getBoundingClientRect(), d = devicePixelRatio || 1;
+    const w = Math.round(r.width * d), h = Math.round(r.height * d);
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    return [w, h];
+  }
+  function grid(cv, rows, typeOf, overlay) {
+    const [w, h] = fit(cv), g = cv.getContext("2d");
+    const R = rows.length, C = rows[0].length, s = Math.min(w / C, h / R);
+    const ox = (w - s * C) / 2, oy = (h - s * R) / 2;
+    g.clearRect(0, 0, w, h);
+    for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) {
+      const t = typeOf(y, x), px = ox + x * s, py = oy + y * s;
+      g.fillStyle = css("--c-" + t);
+      g.fillRect(px + 0.5, py + 0.5, s - 1, s - 1);
+      if (t === "unknown") { g.strokeStyle = css("--c-hatch"); g.beginPath(); g.moveTo(px, py + s); g.lineTo(px + s, py); g.stroke(); }
+    }
+    overlay(g, s, ox, oy);
+  }
+  function dot(g, s, ox, oy, y, x, color, ring) {
+    g.beginPath(); g.arc(ox + (x + .5) * s, oy + (y + .5) * s, s * (ring ? .42 : .3), 0, 7);
+    if (ring) { g.lineWidth = Math.max(2, s * .1); g.strokeStyle = color; g.stroke(); } else { g.fillStyle = color; g.fill(); }
+  }
+  const fmtDur = sec => { const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60); return h ? `${h} h ${m} min` : `${m} min`; };
+
+  function render(S) {
+    $("offline").hidden = true; $("bench").hidden = false;
+    const state = S.collapsed ? "out" : S.sleeping ? "asleep" : "";
+    $("flame").className = "flame " + state;
+    $("status").className = "status " + state;
+    $("status").textContent = S.collapsed ? `unconscious (${S.collapsed})` : S.sleeping ? "asleep, dreaming" : "awake";
+    const born = new Date(S.born);
+    $("life").textContent = `${S.ticks.toLocaleString()} moments lived · born ${born.toLocaleDateString()} ${born.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})} · awake ${fmtDur(S.awake_seconds)} across ${S.sessions} session${S.sessions === 1 ? "" : "s"} · ${S.ticks_per_sec}/s`;
+
+    const food = new Set(S.food.map(p => p[0] * 100 + p[1]));
+    const anchor = [S.pos[0] - S.belief[0], S.pos[1] - S.belief[1]];
+    grid($("world"), S.world, (y, x) => food.has(y * 100 + x) ? "food" : TYPES[S.world[y][x]], (g, s, ox, oy) => {
+      g.strokeStyle = css("--muted"); g.setLineDash([4, 4]); g.strokeRect(ox + (S.pos[1] - 2) * s, oy + (S.pos[0] - 2) * s, 5 * s, 5 * s); g.setLineDash([]);
+      dot(g, s, ox, oy, S.pos[0], S.pos[1], S.collapsed ? css("--muted") : S.sleeping ? css("--accent") : css("--ember"), false);
+    });
+    grid($("map"), S.map, (y, x) => MAPT[S.map[y][x]], (g, s, ox, oy) => {
+      dot(g, s, ox, oy, S.belief[0] - S.map_origin[0], S.belief[1] - S.map_origin[1], css("--ember"), true);
+    });
+
+    $("ws").textContent = S.collapsed ? "nothing (unconscious)" : S.sleeping ? "nothing (asleep)" : (S.broadcast || "nothing ignited").replace(":", " · ");
+    const last = S.stream[S.stream.length - 1];
+    $("speech").textContent = last ? `“${last.report}”` : "";
+    $("goal").textContent = S.goal || "—";
+    $("agency").textContent = S.agency === "external" ? "not me (pushed)" : "me";
+    $("valence").textContent = S.valence > 0.02 ? "getting better" : S.valence < -0.02 ? "getting worse" : "steady";
+    $("surprise").textContent = S.surprise == null ? "—" : `${S.surprise} actual vs ${S.expected} expected`;
+    for (const [n] of BODY) {
+      $("b-" + n).style.width = (S.body[n] * 100).toFixed(1) + "%";
+      $("v-" + n).textContent = Math.round(S.body[n] * 100) + "%";
+    }
+    const c = S.counts, cards = [
+      ["meals", "meals"], ["drinks", "sips of water"], ["sleeps", "sleeps"], ["thoughts", "conscious moments"],
+      ["pushes_noticed", `pushes noticed of ${c.pushed || 0} (${c.false_alarms || 0} false alarms)`], ["hurt", "times hurt"], ["collapses", "collapses"]];
+    $("counts").innerHTML = cards.map(([k, l]) => `<div class="count"><b>${(c[k] || 0).toLocaleString()}</b><span>${l}</span></div>`).join("");
+    $("stream").innerHTML = S.stream.slice().reverse().map(e => `<li><span class="t">${e.tick.toLocaleString()}</span><span><span class="kind">${esc(e.content)}</span><br>${esc(e.report)}</span></li>`).join("");
+    $("moments").innerHTML = S.moments.slice().reverse().map(e => `<li><span class="t">${e.tick.toLocaleString()}</span><span><span class="kind k-${esc(e.kind)}">${esc(e.kind)}</span> · ${esc(new Date(e.time).toLocaleString())}<br>${esc(e.text)}</span></li>`).join("");
+  }
+
+  async function poll() {
+    try {
+      const r = await fetch("/state", { cache: "no-store" });
+      const S = await r.json();
+      if (S && S.ticks !== undefined) render(S);
+    } catch (e) {
+      $("offline").hidden = false; $("bench").hidden = true;
+      $("status").className = "status out"; $("status").textContent = "resting (not running)";
+      $("flame").className = "flame out";
+    }
+    setTimeout(poll, 300);
+  }
+  poll();
+})();
+</script>

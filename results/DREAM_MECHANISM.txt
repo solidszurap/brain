@@ -1,0 +1,4 @@
+Thirsty first step leads toward water (chance is about 0.3-0.4):
+  awake-trained          0.37 ± 0.03
+  dreams only (20k)      0.59 ± 0.04
+  dreams only (200k)     0.69 ± 0.06

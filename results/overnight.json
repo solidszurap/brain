@@ -1,0 +1,335 @@
+{
+ "config": {
+  "seeds": 6,
+  "day": 6000,
+  "night": 100000,
+  "after": 3000,
+  "worlds": "easy,bushes"
+ },
+ "runs": [
+  {
+   "world": "easy",
+   "seed": 0,
+   "results": {
+    "no night": {
+     "deaths_per_1k": 3.6666666666666665,
+     "hunger_deaths_per_1k": 3.6666666666666665,
+     "thirst_deaths_per_1k": 0.0,
+     "mean_drive": 0.26827058633744916,
+     "thirsty_moves_toward_water": 0.4166666666666667
+    },
+    "replay night": {
+     "deaths_per_1k": 3.6666666666666665,
+     "hunger_deaths_per_1k": 3.6666666666666665,
+     "thirst_deaths_per_1k": 0.0,
+     "mean_drive": 0.28871982222222287,
+     "thirsty_moves_toward_water": 0.4009433962264151
+    },
+    "dream night": {
+     "deaths_per_1k": 5.0,
+     "hunger_deaths_per_1k": 4.333333333333333,
+     "thirst_deaths_per_1k": 0.6666666666666666,
+     "mean_drive": 0.46382446320987764,
+     "thirsty_moves_toward_water": 0.4386873920552677
+    }
+   }
+  },
+  {
+   "world": "easy",
+   "seed": 1,
+   "results": {
+    "no night": {
+     "deaths_per_1k": 3.6666666666666665,
+     "hunger_deaths_per_1k": 3.0,
+     "thirst_deaths_per_1k": 0.6666666666666666,
+     "mean_drive": 0.29515379028806654,
+     "thirsty_moves_toward_water": 0.4230769230769231
+    },
+    "replay night": {
+     "deaths_per_1k": 4.666666666666667,
+     "hunger_deaths_per_1k": 3.6666666666666665,
+     "thirst_deaths_per_1k": 1.0,
+     "mean_drive": 0.36521987654321053,
+     "thirsty_moves_toward_water": 0.353887399463807
+    },
+    "dream night": {
+     "deaths_per_1k": 5.0,
+     "hunger_deaths_per_1k": 5.0,
+     "thirst_deaths_per_1k": 0.0,
+     "mean_drive": 0.3244789925925933,
+     "thirsty_moves_toward_water": 0.48175182481751827
+    }
+   }
+  },
+  {
+   "world": "easy",
+   "seed": 2,
+   "results": {
+    "no night": {
+     "deaths_per_1k": 4.333333333333333,
+     "hunger_deaths_per_1k": 4.333333333333333,
+     "thirst_deaths_per_1k": 0.0,
+     "mean_drive": 0.3262602926748978,
+     "thirsty_moves_toward_water": 0.4642857142857143
+    },
+    "replay night": {
+     "deaths_per_1k": 4.666666666666667,
+     "hunger_deaths_per_1k": 4.0,
+     "thirst_deaths_per_1k": 0.6666666666666666,
+     "mean_drive": 0.38708136098765505,
+     "thirsty_moves_toward_water": 0.3080568720379147
+    },
+    "dream night": {
+     "deaths_per_1k": 5.666666666666667,
+     "hunger_deaths_per_1k": 5.0,
+     "thirst_deaths_per_1k": 0.6666666666666666,
+     "mean_drive": 0.377558933333334,
+     "thirsty_moves_toward_water": 0.4708171206225681
+    }
+   }
+  },
+  {
+   "world": "easy",
+   "seed": 3,
+   "results": {
+    "no night": {
+     "deaths_per_1k": 3.0,
+     "hunger_deaths_per_1k": 2.6666666666666665,
+     "thirst_deaths_per_1k": 0.3333333333333333,
+     "mean_drive": 0.2867120418107003,
+     "thirsty_moves_toward_water": 0.4307228915662651
+    },
+    "replay night": {
+     "deaths_per_1k": 5.0,
+     "hunger_deaths_per_1k": 4.666666666666667,
+     "thirst_deaths_per_1k": 0.3333333333333333,
+     "mean_drive": 0.3000795746502063,
+     "thirsty_moves_toward_water": 0.39655172413793105
+    },
+    "dream night": {
+     "deaths_per_1k": 5.333333333333333,
+     "hunger_deaths_per_1k": 5.333333333333333,
+     "thirst_deaths_per_1k": 0.0,
+     "mean_drive": 0.36269694913580314,
+     "thirsty_moves_toward_water": 0.45054945054945056
+    }
+   }
+  },
+  {
+   "world": "easy",
+   "seed": 4,
+   "results": {
+    "no night": {
+     "deaths_per_1k": 5.333333333333333,
+     "hunger_deaths_per_1k": 4.333333333333333,
+     "thirst_deaths_per_1k": 1.0,
+     "mean_drive": 0.41541553909465107,
+     "thirsty_moves_toward_water": 0.39036144578313253
+    },
+    "replay night": {
+     "deaths_per_1k": 5.0,
+     "hunger_deaths_per_1k": 5.0,
+     "thirst_deaths_per_1k": 0.0,
+     "mean_drive": 0.34829937448559734,
+     "thirsty_moves_toward_water": 0.4365482233502538
+    },
+    "dream night": {
+     "deaths_per_1k": 5.333333333333333,
+     "hunger_deaths_per_1k": 5.333333333333333,
+     "thirst_deaths_per_1k": 0.0,
+     "mean_drive": 0.35698966584362213,
+     "thirsty_moves_toward_water": 0.4942528735632184
+    }
+   }
+  },
+  {
+   "world": "easy",
+   "seed": 5,
+   "results": {
+    "no night": {
+     "deaths_per_1k": 4.333333333333333,
+     "hunger_deaths_per_1k": 4.333333333333333,
+     "thirst_deaths_per_1k": 0.0,
+     "mean_drive": 0.36099797037037124,
+     "thirsty_moves_toward_water": 0.4879032258064516
+    },
+    "replay night": {
+     "deaths_per_1k": 4.0,
+     "hunger_deaths_per_1k": 4.0,
+     "thirst_deaths_per_1k": 0.0,
+     "mean_drive": 0.29478758518518583,
+     "thirsty_moves_toward_water": 0.38839285714285715
+    },
+    "dream night": {
+     "deaths_per_1k": 5.333333333333333,
+     "hunger_deaths_per_1k": 5.0,
+     "thirst_deaths_per_1k": 0.3333333333333333,
+     "mean_drive": 0.3642019687242805,
+     "thirsty_moves_toward_water": 0.3542600896860987
+    }
+   }
+  },
+  {
+   "world": "bushes",
+   "seed": 0,
+   "results": {
+    "no night": {
+     "deaths_per_1k": 3.6666666666666665,
+     "hunger_deaths_per_1k": 2.3333333333333335,
+     "thirst_deaths_per_1k": 1.3333333333333333,
+     "mean_drive": 0.31550904296296367,
+     "thirsty_moves_toward_water": 0.3955094991364421
+    },
+    "replay night": {
+     "deaths_per_1k": 2.6666666666666665,
+     "hunger_deaths_per_1k": 2.0,
+     "thirst_deaths_per_1k": 0.6666666666666666,
+     "mean_drive": 0.2977880388477376,
+     "thirsty_moves_toward_water": 0.3976470588235294
+    },
+    "dream night": {
+     "deaths_per_1k": 4.666666666666667,
+     "hunger_deaths_per_1k": 2.6666666666666665,
+     "thirst_deaths_per_1k": 2.0,
+     "mean_drive": 0.36218426337448634,
+     "thirsty_moves_toward_water": 0.4150268336314848
+    }
+   }
+  },
+  {
+   "world": "bushes",
+   "seed": 1,
+   "results": {
+    "no night": {
+     "deaths_per_1k": 3.3333333333333335,
+     "hunger_deaths_per_1k": 3.3333333333333335,
+     "thirst_deaths_per_1k": 0.0,
+     "mean_drive": 0.31946870123456866,
+     "thirsty_moves_toward_water": 0.4208860759493671
+    },
+    "replay night": {
+     "deaths_per_1k": 4.333333333333333,
+     "hunger_deaths_per_1k": 3.6666666666666665,
+     "thirst_deaths_per_1k": 0.6666666666666666,
+     "mean_drive": 0.3724811473251038,
+     "thirsty_moves_toward_water": 0.38405797101449274
+    },
+    "dream night": {
+     "deaths_per_1k": 2.3333333333333335,
+     "hunger_deaths_per_1k": 2.0,
+     "thirst_deaths_per_1k": 0.3333333333333333,
+     "mean_drive": 0.16823142716049422,
+     "thirsty_moves_toward_water": 0.4657534246575342
+    }
+   }
+  },
+  {
+   "world": "bushes",
+   "seed": 2,
+   "results": {
+    "no night": {
+     "deaths_per_1k": 3.3333333333333335,
+     "hunger_deaths_per_1k": 3.0,
+     "thirst_deaths_per_1k": 0.3333333333333333,
+     "mean_drive": 0.29965203786008293,
+     "thirsty_moves_toward_water": 0.40175953079178883
+    },
+    "replay night": {
+     "deaths_per_1k": 3.0,
+     "hunger_deaths_per_1k": 2.3333333333333335,
+     "thirst_deaths_per_1k": 0.6666666666666666,
+     "mean_drive": 0.23051121514403344,
+     "thirsty_moves_toward_water": 0.49783549783549785
+    },
+    "dream night": {
+     "deaths_per_1k": 3.3333333333333335,
+     "hunger_deaths_per_1k": 3.0,
+     "thirst_deaths_per_1k": 0.3333333333333333,
+     "mean_drive": 0.29231177119341645,
+     "thirsty_moves_toward_water": 0.4756944444444444
+    }
+   }
+  },
+  {
+   "world": "bushes",
+   "seed": 3,
+   "results": {
+    "no night": {
+     "deaths_per_1k": 2.6666666666666665,
+     "hunger_deaths_per_1k": 2.0,
+     "thirst_deaths_per_1k": 0.6666666666666666,
+     "mean_drive": 0.23432453168724351,
+     "thirsty_moves_toward_water": 0.36259541984732824
+    },
+    "replay night": {
+     "deaths_per_1k": 3.6666666666666665,
+     "hunger_deaths_per_1k": 2.6666666666666665,
+     "thirst_deaths_per_1k": 1.0,
+     "mean_drive": 0.3317822074074082,
+     "thirsty_moves_toward_water": 0.3976945244956772
+    },
+    "dream night": {
+     "deaths_per_1k": 4.333333333333333,
+     "hunger_deaths_per_1k": 3.6666666666666665,
+     "thirst_deaths_per_1k": 0.6666666666666666,
+     "mean_drive": 0.2846406469135809,
+     "thirsty_moves_toward_water": 0.4050632911392405
+    }
+   }
+  },
+  {
+   "world": "bushes",
+   "seed": 4,
+   "results": {
+    "no night": {
+     "deaths_per_1k": 3.3333333333333335,
+     "hunger_deaths_per_1k": 3.3333333333333335,
+     "thirst_deaths_per_1k": 0.0,
+     "mean_drive": 0.2962854864197537,
+     "thirsty_moves_toward_water": 0.48945147679324896
+    },
+    "replay night": {
+     "deaths_per_1k": 3.6666666666666665,
+     "hunger_deaths_per_1k": 2.6666666666666665,
+     "thirst_deaths_per_1k": 1.0,
+     "mean_drive": 0.2826336151440336,
+     "thirsty_moves_toward_water": 0.34459459459459457
+    },
+    "dream night": {
+     "deaths_per_1k": 4.666666666666667,
+     "hunger_deaths_per_1k": 4.666666666666667,
+     "thirst_deaths_per_1k": 0.0,
+     "mean_drive": 0.29484893893004177,
+     "thirsty_moves_toward_water": 0.42105263157894735
+    }
+   }
+  },
+  {
+   "world": "bushes",
+   "seed": 5,
+   "results": {
+    "no night": {
+     "deaths_per_1k": 3.0,
+     "hunger_deaths_per_1k": 2.3333333333333335,
+     "thirst_deaths_per_1k": 0.6666666666666666,
+     "mean_drive": 0.32650877530864275,
+     "thirsty_moves_toward_water": 0.37124463519313305
+    },
+    "replay night": {
+     "deaths_per_1k": 2.3333333333333335,
+     "hunger_deaths_per_1k": 1.6666666666666667,
+     "thirst_deaths_per_1k": 0.6666666666666666,
+     "mean_drive": 0.17075242962963,
+     "thirsty_moves_toward_water": 0.35751295336787564
+    },
+    "dream night": {
+     "deaths_per_1k": 3.6666666666666665,
+     "hunger_deaths_per_1k": 3.3333333333333335,
+     "thirst_deaths_per_1k": 0.3333333333333333,
+     "mean_drive": 0.2542385777777785,
+     "thirsty_moves_toward_water": 0.3698630136986301
+    }
+   }
+  }
+ ]
+}

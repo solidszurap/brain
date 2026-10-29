@@ -1,0 +1,6 @@
+.env
+__pycache__/
+*.pyc
+viewer_bundle.html
+ember_state/
+ember_archive_*/
