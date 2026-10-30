@@ -46,11 +46,13 @@ python voice_controls.py                     # the checker's controls: fake voic
 
 ## Direction (decided 2026-10-30)
 
-Goal: **people love their Ember**. A small creature that lives on your computer and knows you, and everything it tells you is true (receipts; it never pretends to feel). AI companions say anything; Ember's promise is trust. Its life is too thin to talk about: the bottleneck is experience, not language, so its life must get richer. Open questions before phase 1: the time scale (a year now passes in ~10 minutes at 20 moments/s; a companion probably needs a real-clock rhythm), and what "you" are in its world (a voice and a presence, or something visible).
+Goal: **people love their Ember**. A small creature that lives on your computer and knows you, and everything it tells you is true (receipts; it never pretends to feel). AI companions say anything; Ember's promise is trust. Its life is too thin to talk about: the bottleneck is experience, not language, so its life must get richer. Decided for phase 1:
+- **Time: a day is a season.** Lively while the window is open (as now). While you're away, about one season (3,000 moments) passes per real day, lived moment by moment but fast when Ember next starts, capped at a year. Once built, this replaces "no time passes while it's stopped".
+- **You are a light it can see.** You appear as a light where you click in its world, and what you give (food) appears there. The light is a new kind of thing it sees and learns about like any other (no built-in meaning), so it can come to learn that good things happen there and come to it.
 
 ## Next (in order)
 
-1. You in its world: presence (an open window is a weak percept in its workspace), care actions from the window (e.g. leave food; it learns the link the way it learned lever → gate), asking for help on its own (with receipts), a checked "while you were away" summary, a face whose pose shows real states. Judge behaviour with `trials.py` (a simulated visitor); keep `python voice_controls.py` passing.
+1. You in its world: the time model above; you as a light (click to appear, leave food at the light; it learns the link the way it learned lever → gate, and may come to the light); asking for help on its own (with receipts); a checked "while you were away" summary; a face whose pose shows real states. Judge behaviour with `trials.py` (a simulated visitor); keep `python voice_controls.py` passing.
 2. Startup test: a 60-second video (it notices you, asks for help truthfully, tells what happened while you were away); then 10-20 testers on Windows (a zip with embeddable Python + numpy; their own free Gemini key or the template voice; a "share stats" button with no conversation text). Who keeps checking on theirs?
 3. Real things in its world: its day follows your clock; later, optionally, real weather.
 4. Others in its world: simple animals with their own needs, then maybe another Ember; makes Rochat level 5 testable.

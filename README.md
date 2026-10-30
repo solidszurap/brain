@@ -590,7 +590,10 @@ to get richer first (the bottleneck is experience, not language): you in its
 world (it notices you, you can help it, it asks for help, it tells you what
 happened while you were away), then a test with 10-20 people and their own
 Embers, then real time and weather, other creatures, a bigger world. The
-research items below continue inside that.
+research items below continue inside that. Decided for the first step: while
+you're away about a season passes per real day (lived fast when it next
+starts, capped at a year), and you appear in its world as a light it can
+see, where what you give it appears.
 
 0. Ember: let it live for weeks, then measure how it changed (world-model error, habits, map) across its own life. Find what causes the winter collapses that remain at hard moments.
 1. Make the workspace matter: the broadcast wiring is built and tested (above). Next: decide whether Ember switches to it; find why sustained attention costs self-location; give it tasks where holding a plan decides survival (longer plans than one gate).
