@@ -1,0 +1,2406 @@
+{
+ "a": "baseline",
+ "b": "gate_seen",
+ "seeds": 4,
+ "moments": 1000,
+ "table": {
+  "came_round": {
+   "n": 8,
+   "starts": 2,
+   "need_error": {
+    "a_mean": 1.139575,
+    "a_sd": 0.3143949099063151,
+    "b_mean": 0.39397499999999996,
+    "b_sd": 0.09235097116435756,
+    "diff": -0.7456,
+    "ci": [
+     -0.9987375,
+     -0.4470750000000001
+    ],
+    "verdict": "gate_seen better"
+   },
+   "collapses": {
+    "a_mean": 5.5,
+    "a_sd": 1.7320508075688772,
+    "b_mean": 1.25,
+    "b_sd": 0.4330127018922193,
+    "diff": -4.25,
+    "ci": [
+     -5.75,
+     -2.5
+    ],
+    "verdict": "gate_seen better"
+   },
+   "loop_collapses": {
+    "a_mean": 4.5,
+    "a_sd": 1.7320508075688772,
+    "b_mean": 0.0,
+    "b_sd": 0.0,
+    "diff": -4.5,
+    "ci": [
+     -6.0,
+     -2.5
+    ],
+    "verdict": "gate_seen better"
+   },
+   "two_step": {
+    "a_mean": 0.0,
+    "a_sd": 0.0,
+    "b_mean": 2.25,
+    "b_sd": 0.6614378277661477,
+    "diff": 2.25,
+    "ci": [
+     1.75,
+     2.75
+    ],
+    "verdict": "gate_seen better"
+   },
+   "meals": {
+    "a_mean": 3.5,
+    "a_sd": 3.872983346207417,
+    "b_mean": 15.375,
+    "b_sd": 1.9324531042175384,
+    "diff": 11.875,
+    "ci": [
+     8.25,
+     15.5
+    ],
+    "verdict": ""
+   },
+   "drinks": {
+    "a_mean": 18.625,
+    "a_sd": 15.434842888737158,
+    "b_mean": 58.625,
+    "b_sd": 1.9324531042175384,
+    "diff": 40.0,
+    "ci": [
+     23.0,
+     54.25312500000001
+    ],
+    "verdict": ""
+   },
+   "lost": {
+    "a_mean": 0.0009875,
+    "a_sd": 0.0026126794196762834,
+    "b_mean": 0.030762499999999998,
+    "b_sd": 0.029968022019312517,
+    "diff": 0.029775,
+    "ci": [
+     0.004095000000000002,
+     0.052149999999999995
+    ],
+    "verdict": "baseline better"
+   },
+   "unconscious": {
+    "a_mean": 0.32999999999999996,
+    "a_sd": 0.10392304845413264,
+    "b_mean": 0.075,
+    "b_sd": 0.02598076211353316,
+    "diff": -0.255,
+    "ci": [
+     -0.345,
+     -0.15
+    ],
+    "verdict": "gate_seen better"
+   }
+  },
+  "ALL HARD": {
+   "n": 32,
+   "starts": 8,
+   "need_error": {
+    "a_mean": 0.9042000000000001,
+    "a_sd": 0.5695641903025506,
+    "b_mean": 0.34839375000000006,
+    "b_sd": 0.2239820332324392,
+    "diff": -0.5558062500000001,
+    "ci": [
+     -0.792601015625,
+     -0.29294781249999996
+    ],
+    "verdict": "gate_seen better"
+   },
+   "collapses": {
+    "a_mean": 4.46875,
+    "a_sd": 3.1916333494779754,
+    "b_mean": 1.28125,
+    "b_sd": 1.2558457060881325,
+    "diff": -3.1875,
+    "ci": [
+     -4.59375,
+     -1.6875
+    ],
+    "verdict": "gate_seen better"
+   },
+   "loop_collapses": {
+    "a_mean": 3.6875,
+    "a_sd": 2.8986796563263075,
+    "b_mean": 0.34375,
+    "b_sd": 0.5367363761661771,
+    "diff": -3.34375,
+    "ci": [
+     -5.09375,
+     -1.625
+    ],
+    "verdict": "gate_seen better"
+   },
+   "two_step": {
+    "a_mean": 0.0,
+    "a_sd": 0.0,
+    "b_mean": 1.6875,
+    "b_sd": 1.0135796712641785,
+    "diff": 1.6875,
+    "ci": [
+     1.03125,
+     2.25
+    ],
+    "verdict": "gate_seen better"
+   },
+   "meals": {
+    "a_mean": 7.84375,
+    "a_sd": 9.103946173912718,
+    "b_mean": 17.21875,
+    "b_sd": 4.203676776049748,
+    "diff": 9.375,
+    "ci": [
+     5.249218750000001,
+     13.000781250000003
+    ],
+    "verdict": ""
+   },
+   "drinks": {
+    "a_mean": 31.625,
+    "a_sd": 27.928200353764293,
+    "b_mean": 60.25,
+    "b_sd": 10.559356040971437,
+    "diff": 28.625,
+    "ci": [
+     15.34296875,
+     40.970312500000006
+    ],
+    "verdict": ""
+   },
+   "lost": {
+    "a_mean": 0.0014125,
+    "a_sd": 0.005229289507189289,
+    "b_mean": 0.026253125,
+    "b_sd": 0.023638950700789894,
+    "diff": 0.024840624999999998,
+    "ci": [
+     0.014390546875,
+     0.036072265624999995
+    ],
+    "verdict": "baseline better"
+   },
+   "unconscious": {
+    "a_mean": 0.26228125,
+    "a_sd": 0.18532576628315203,
+    "b_mean": 0.07428125,
+    "b_sd": 0.07188151465041272,
+    "diff": -0.188,
+    "ci": [
+     -0.26910781250000004,
+     -0.09924765625
+    ],
+    "verdict": "gate_seen better"
+   }
+  },
+  "ALL": {
+   "n": 48,
+   "starts": 12,
+   "need_error": {
+    "a_mean": 0.7948479166666668,
+    "a_sd": 0.5744758821415625,
+    "b_mean": 0.3262541666666667,
+    "b_sd": 0.26350461330428143,
+    "diff": -0.46859375,
+    "ci": [
+     -0.6738844270833334,
+     -0.27019807291666664
+    ],
+    "verdict": "gate_seen better"
+   },
+   "collapses": {
+    "a_mean": 3.8125,
+    "a_sd": 3.2188005659458514,
+    "b_mean": 1.1458333333333333,
+    "b_sd": 1.457589095809317,
+    "diff": -2.6666666666666665,
+    "ci": [
+     -3.8333333333333335,
+     -1.4791666666666667
+    ],
+    "verdict": "gate_seen better"
+   },
+   "loop_collapses": {
+    "a_mean": 3.0208333333333335,
+    "a_sd": 2.9755222464113573,
+    "b_mean": 0.3541666666666667,
+    "b_sd": 0.7497105923102743,
+    "diff": -2.6666666666666665,
+    "ci": [
+     -4.083333333333333,
+     -1.2083333333333333
+    ],
+    "verdict": "gate_seen better"
+   },
+   "two_step": {
+    "a_mean": 0.0,
+    "a_sd": 0.0,
+    "b_mean": 1.5,
+    "b_sd": 0.9354143466934853,
+    "diff": 1.5,
+    "ci": [
+     1.0416666666666667,
+     1.9583333333333333
+    ],
+    "verdict": "gate_seen better"
+   },
+   "meals": {
+    "a_mean": 9.229166666666666,
+    "a_sd": 8.825246888268277,
+    "b_mean": 17.791666666666668,
+    "b_sd": 4.799992766198253,
+    "diff": 8.5625,
+    "ci": [
+     5.749479166666667,
+     11.25
+    ],
+    "verdict": ""
+   },
+   "drinks": {
+    "a_mean": 36.916666666666664,
+    "a_sd": 28.19414340288107,
+    "b_mean": 61.416666666666664,
+    "b_sd": 11.757680704779986,
+    "diff": 24.5,
+    "ci": [
+     14.041666666666666,
+     35.272916666666674
+    ],
+    "verdict": ""
+   },
+   "lost": {
+    "a_mean": 0.0030916666666666666,
+    "a_sd": 0.01158973743830674,
+    "b_mean": 0.023266666666666668,
+    "b_sd": 0.02140669028338778,
+    "diff": 0.020175000000000002,
+    "ci": [
+     0.010803333333333331,
+     0.029796666666666662
+    ],
+    "verdict": "baseline better"
+   },
+   "unconscious": {
+    "a_mean": 0.2236875,
+    "a_sd": 0.1868617086967882,
+    "b_mean": 0.06477083333333333,
+    "b_sd": 0.0804682234340916,
+    "diff": -0.15891666666666668,
+    "ci": [
+     -0.22677083333333328,
+     -0.08962239583333333
+    ],
+    "verdict": "gate_seen better"
+   }
+  },
+  "dry_thirsty": {
+   "n": 8,
+   "starts": 2,
+   "need_error": {
+    "a_mean": 0.1403,
+    "a_sd": 0.09144179842938349,
+    "b_mean": 0.0863625,
+    "b_sd": 0.006828055634659106,
+    "diff": -0.0539375,
+    "ci": [
+     -0.164975,
+     0.020162500000000003
+    ],
+    "verdict": "can't tell"
+   },
+   "collapses": {
+    "a_mean": 0.25,
+    "a_sd": 0.4330127018922193,
+    "b_mean": 0.0,
+    "b_sd": 0.0,
+    "diff": -0.25,
+    "ci": [
+     -0.75,
+     0.0
+    ],
+    "verdict": "can't tell"
+   },
+   "loop_collapses": {
+    "a_mean": 0.0,
+    "a_sd": 0.0,
+    "b_mean": 0.0,
+    "b_sd": 0.0,
+    "diff": 0.0,
+    "ci": [
+     0.0,
+     0.0
+    ],
+    "verdict": "can't tell"
+   },
+   "two_step": {
+    "a_mean": 0.0,
+    "a_sd": 0.0,
+    "b_mean": 0.25,
+    "b_sd": 0.4330127018922193,
+    "diff": 0.25,
+    "ci": [
+     0.0,
+     0.75
+    ],
+    "verdict": "can't tell"
+   },
+   "meals": {
+    "a_mean": 21.0,
+    "a_sd": 4.415880433163924,
+    "b_mean": 21.75,
+    "b_sd": 2.165063509461097,
+    "diff": 0.75,
+    "ci": [
+     -3.0,
+     4.125
+    ],
+    "verdict": ""
+   },
+   "drinks": {
+    "a_mean": 71.125,
+    "a_sd": 4.136348026943574,
+    "b_mean": 74.125,
+    "b_sd": 1.4523687548277813,
+    "diff": 3.0,
+    "ci": [
+     0.25,
+     6.5
+    ],
+    "verdict": ""
+   },
+   "lost": {
+    "a_mean": 0.00075,
+    "a_sd": 0.0010897247358851684,
+    "b_mean": 0.010625,
+    "b_sd": 0.00945961812125627,
+    "diff": 0.009875,
+    "ci": [
+     0.003375,
+     0.019500000000000003
+    ],
+    "verdict": "baseline better"
+   },
+   "unconscious": {
+    "a_mean": 0.015,
+    "a_sd": 0.02598076211353316,
+    "b_mean": 0.0,
+    "b_sd": 0.0,
+    "diff": -0.015,
+    "ci": [
+     -0.045,
+     0.0
+    ],
+    "verdict": "can't tell"
+   }
+  },
+  "now": {
+   "n": 4,
+   "starts": 1,
+   "need_error": {
+    "a_mean": 1.4351,
+    "a_sd": 0.04238136382892833,
+    "b_mean": 0.791675,
+    "b_sd": 0.26904395900112676,
+    "diff": -0.643425,
+    "ci": [
+     -0.871475,
+     -0.41795000000000004
+    ],
+    "verdict": "gate_seen better"
+   },
+   "collapses": {
+    "a_mean": 7.25,
+    "a_sd": 0.4330127018922193,
+    "b_mean": 3.5,
+    "b_sd": 1.8027756377319946,
+    "diff": -3.75,
+    "ci": [
+     -5.25,
+     -2.5
+    ],
+    "verdict": "gate_seen better"
+   },
+   "loop_collapses": {
+    "a_mean": 6.25,
+    "a_sd": 0.4330127018922193,
+    "b_mean": 1.5,
+    "b_sd": 1.6583123951777,
+    "diff": -4.75,
+    "ci": [
+     -6.0,
+     -3.5
+    ],
+    "verdict": "gate_seen better"
+   },
+   "two_step": {
+    "a_mean": 0.0,
+    "a_sd": 0.0,
+    "b_mean": 1.75,
+    "b_sd": 0.4330127018922193,
+    "diff": 1.75,
+    "ci": [
+     1.25,
+     2.0
+    ],
+    "verdict": "gate_seen better"
+   },
+   "meals": {
+    "a_mean": 0.0,
+    "a_sd": 0.0,
+    "b_mean": 10.5,
+    "b_sd": 4.769696007084728,
+    "diff": 10.5,
+    "ci": [
+     6.0,
+     15.0
+    ],
+    "verdict": ""
+   },
+   "drinks": {
+    "a_mean": 4.5,
+    "a_sd": 3.3541019662496847,
+    "b_mean": 45.75,
+    "b_sd": 16.90229274388537,
+    "diff": 41.25,
+    "ci": [
+     28.0,
+     57.75
+    ],
+    "verdict": ""
+   },
+   "lost": {
+    "a_mean": 0.0,
+    "a_sd": 0.0,
+    "b_mean": 0.009425000000000001,
+    "b_sd": 0.008672766283026425,
+    "diff": 0.009425000000000001,
+    "ci": [
+     0.0013999999999999998,
+     0.01745
+    ],
+    "verdict": "baseline better"
+   },
+   "unconscious": {
+    "a_mean": 0.421,
+    "a_sd": 0.001732050807568879,
+    "b_mean": 0.183,
+    "b_sd": 0.09528116288123271,
+    "diff": -0.23799999999999996,
+    "ci": [
+     -0.32125,
+     -0.14975
+    ],
+    "verdict": "gate_seen better"
+   }
+  },
+  "ordinary": {
+   "n": 8,
+   "starts": 2,
+   "need_error": {
+    "a_mean": 0.2547625,
+    "a_sd": 0.16512970612143052,
+    "b_mean": 0.1125125,
+    "b_sd": 0.023028375838300013,
+    "diff": -0.14225,
+    "ci": [
+     -0.27728749999999996,
+     -0.024637499999999993
+    ],
+    "verdict": "gate_seen better"
+   },
+   "collapses": {
+    "a_mean": 0.75,
+    "a_sd": 0.82915619758885,
+    "b_mean": 0.0,
+    "b_sd": 0.0,
+    "diff": -0.75,
+    "ci": [
+     -1.625,
+     0.0
+    ],
+    "verdict": "can't tell"
+   },
+   "loop_collapses": {
+    "a_mean": 0.125,
+    "a_sd": 0.33071891388307384,
+    "b_mean": 0.0,
+    "b_sd": 0.0,
+    "diff": -0.125,
+    "ci": [
+     -0.5,
+     0.0
+    ],
+    "verdict": "can't tell"
+   },
+   "two_step": {
+    "a_mean": 0.0,
+    "a_sd": 0.0,
+    "b_mean": 0.75,
+    "b_sd": 0.4330127018922193,
+    "diff": 0.75,
+    "ci": [
+     0.25,
+     1.0
+    ],
+    "verdict": "gate_seen better"
+   },
+   "meals": {
+    "a_mean": 16.75,
+    "a_sd": 3.112474899497183,
+    "b_mean": 21.875,
+    "b_sd": 1.4523687548277813,
+    "diff": 5.125,
+    "ci": [
+     2.25,
+     7.875
+    ],
+    "verdict": ""
+   },
+   "drinks": {
+    "a_mean": 64.125,
+    "a_sd": 5.8829733128750465,
+    "b_mean": 70.0,
+    "b_sd": 2.23606797749979,
+    "diff": 5.875,
+    "ci": [
+     -0.6281249999999989,
+     13.375
+    ],
+    "verdict": ""
+   },
+   "lost": {
+    "a_mean": 0.0024375,
+    "a_sd": 0.0038541981980692165,
+    "b_mean": 0.020124999999999997,
+    "b_sd": 0.016220646565411626,
+    "diff": 0.017687500000000002,
+    "ci": [
+     0.0085,
+     0.0269
+    ],
+    "verdict": "baseline better"
+   },
+   "unconscious": {
+    "a_mean": 0.045,
+    "a_sd": 0.049749371855330994,
+    "b_mean": 0.0,
+    "b_sd": 0.0,
+    "diff": -0.045,
+    "ci": [
+     -0.0975,
+     0.0
+    ],
+    "verdict": "can't tell"
+   }
+  },
+  "plains": {
+   "n": 4,
+   "starts": 1,
+   "need_error": {
+    "a_mean": 0.35995,
+    "a_sd": 0.17494355518280744,
+    "b_mean": 0.11120000000000001,
+    "b_sd": 0.01643669674843458,
+    "diff": -0.24875000000000003,
+    "ci": [
+     -0.39794999999999997,
+     -0.06295
+    ],
+    "verdict": "gate_seen better"
+   },
+   "collapses": {
+    "a_mean": 1.25,
+    "a_sd": 0.82915619758885,
+    "b_mean": 0.0,
+    "b_sd": 0.0,
+    "diff": -1.25,
+    "ci": [
+     -2.0,
+     -0.5
+    ],
+    "verdict": "gate_seen better"
+   },
+   "loop_collapses": {
+    "a_mean": 0.25,
+    "a_sd": 0.4330127018922193,
+    "b_mean": 0.0,
+    "b_sd": 0.0,
+    "diff": -0.25,
+    "ci": [
+     -0.75,
+     0.0
+    ],
+    "verdict": "can't tell"
+   },
+   "two_step": {
+    "a_mean": 0.0,
+    "a_sd": 0.0,
+    "b_mean": 1.25,
+    "b_sd": 0.4330127018922193,
+    "diff": 1.25,
+    "ci": [
+     1.0,
+     1.75
+    ],
+    "verdict": "gate_seen better"
+   },
+   "meals": {
+    "a_mean": 14.5,
+    "a_sd": 3.278719262151,
+    "b_mean": 21.5,
+    "b_sd": 2.29128784747792,
+    "diff": 7.0,
+    "ci": [
+     3.5,
+     11.0
+    ],
+    "verdict": ""
+   },
+   "drinks": {
+    "a_mean": 57.25,
+    "a_sd": 7.048936089935842,
+    "b_mean": 69.25,
+    "b_sd": 2.48746859276655,
+    "diff": 12.0,
+    "ci": [
+     4.5,
+     19.5
+    ],
+    "verdict": ""
+   },
+   "lost": {
+    "a_mean": 0.020925,
+    "a_sd": 0.03181810608757221,
+    "b_mean": 0.0195,
+    "b_sd": 0.011412712210513327,
+    "diff": -0.0014249999999999992,
+    "ci": [
+     -0.043325,
+     0.028250000000000004
+    ],
+    "verdict": "can't tell"
+   },
+   "unconscious": {
+    "a_mean": 0.075,
+    "a_sd": 0.049749371855330994,
+    "b_mean": 0.0,
+    "b_sd": 0.0,
+    "diff": -0.075,
+    "ci": [
+     -0.12,
+     -0.03
+    ],
+    "verdict": "gate_seen better"
+   }
+  },
+  "two_needs": {
+   "n": 8,
+   "starts": 2,
+   "need_error": {
+    "a_mean": 0.9049624999999999,
+    "a_sd": 0.5179088431797144,
+    "b_mean": 0.3563625,
+    "b_sd": 0.2568109856368104,
+    "diff": -0.5486,
+    "ci": [
+     -0.8895375,
+     -0.17715906249999971
+    ],
+    "verdict": "gate_seen better"
+   },
+   "collapses": {
+    "a_mean": 4.375,
+    "a_sd": 2.7810744326608736,
+    "b_mean": 1.25,
+    "b_sd": 1.479019945774904,
+    "diff": -3.125,
+    "ci": [
+     -5.0,
+     -1.125
+    ],
+    "verdict": "gate_seen better"
+   },
+   "loop_collapses": {
+    "a_mean": 3.5,
+    "a_sd": 2.598076211353316,
+    "b_mean": 0.375,
+    "b_sd": 0.6959705453537527,
+    "diff": -3.125,
+    "ci": [
+     -5.625,
+     -0.5
+    ],
+    "verdict": "gate_seen better"
+   },
+   "two_step": {
+    "a_mean": 0.0,
+    "a_sd": 0.0,
+    "b_mean": 1.875,
+    "b_sd": 0.5994789404140899,
+    "diff": 1.875,
+    "ci": [
+     1.5,
+     2.375
+    ],
+    "verdict": "gate_seen better"
+   },
+   "meals": {
+    "a_mean": 6.5,
+    "a_sd": 6.855654600401044,
+    "b_mean": 17.5,
+    "b_sd": 4.847679857416329,
+    "diff": 11.0,
+    "ci": [
+     6.75,
+     14.5
+    ],
+    "verdict": ""
+   },
+   "drinks": {
+    "a_mean": 28.75,
+    "a_sd": 23.03122879917613,
+    "b_mean": 58.25,
+    "b_sd": 10.485108487755385,
+    "diff": 29.5,
+    "ci": [
+     10.125,
+     49.375
+    ],
+    "verdict": ""
+   },
+   "lost": {
+    "a_mean": 0.0039125,
+    "a_sd": 0.009617878859187195,
+    "b_mean": 0.0272875,
+    "b_sd": 0.01919716369024341,
+    "diff": 0.023374999999999996,
+    "ci": [
+     0.0049728125,
+     0.0457375
+    ],
+    "verdict": "baseline better"
+   },
+   "unconscious": {
+    "a_mean": 0.2625,
+    "a_sd": 0.1668644659596524,
+    "b_mean": 0.06462499999999999,
+    "b_sd": 0.07557932504991031,
+    "diff": -0.19787499999999997,
+    "ci": [
+     -0.31425000000000003,
+     -0.0675
+    ],
+    "verdict": "gate_seen better"
+   }
+  },
+  "winter_gate": {
+   "n": 8,
+   "starts": 2,
+   "need_error": {
+    "a_mean": 1.4319625,
+    "a_sd": 0.06855433862090712,
+    "b_mean": 0.556875,
+    "b_sd": 0.10898917090702177,
+    "diff": -0.8750875,
+    "ci": [
+     -0.9634681250000001,
+     -0.7243596874999999
+    ],
+    "verdict": "gate_seen better"
+   },
+   "collapses": {
+    "a_mean": 7.75,
+    "a_sd": 0.4330127018922193,
+    "b_mean": 2.625,
+    "b_sd": 0.6959705453537527,
+    "diff": -5.125,
+    "ci": [
+     -5.75,
+     -4.125
+    ],
+    "verdict": "gate_seen better"
+   },
+   "loop_collapses": {
+    "a_mean": 6.75,
+    "a_sd": 0.4330127018922193,
+    "b_mean": 1.0,
+    "b_sd": 0.0,
+    "diff": -5.75,
+    "ci": [
+     -6.0,
+     -5.25
+    ],
+    "verdict": "gate_seen better"
+   },
+   "two_step": {
+    "a_mean": 0.0,
+    "a_sd": 0.0,
+    "b_mean": 2.375,
+    "b_sd": 0.4841229182759271,
+    "diff": 2.375,
+    "ci": [
+     2.0,
+     2.75
+    ],
+    "verdict": "gate_seen better"
+   },
+   "meals": {
+    "a_mean": 0.375,
+    "a_sd": 0.6959705453537527,
+    "b_mean": 14.25,
+    "b_sd": 2.436698586202241,
+    "diff": 13.875,
+    "ci": [
+     11.25,
+     15.75
+    ],
+    "verdict": ""
+   },
+   "drinks": {
+    "a_mean": 8.0,
+    "a_sd": 6.2048368229954285,
+    "b_mean": 50.0,
+    "b_sd": 5.0990195135927845,
+    "diff": 42.0,
+    "ci": [
+     31.375,
+     49.62812500000001
+    ],
+    "verdict": ""
+   },
+   "lost": {
+    "a_mean": 0.0,
+    "a_sd": 0.0,
+    "b_mean": 0.036337499999999995,
+    "b_sd": 0.022622220133090384,
+    "diff": 0.036337499999999995,
+    "ci": [
+     0.021449375000000003,
+     0.052858437500000036
+    ],
+    "verdict": "baseline better"
+   },
+   "unconscious": {
+    "a_mean": 0.44162500000000005,
+    "a_sd": 0.012873786350565256,
+    "b_mean": 0.15749999999999997,
+    "b_sd": 0.04175823272122516,
+    "diff": -0.28412499999999996,
+    "ci": [
+     -0.315625,
+     -0.23912499999999998
+    ],
+    "verdict": "gate_seen better"
+   }
+  }
+ },
+ "lives": [
+  {
+   "version": "baseline",
+   "file": "came_round_0.pkl.gz",
+   "seed": 1001,
+   "need_error": 1.4444,
+   "collapses": 7,
+   "loop_collapses": 6,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 2,
+   "unconscious": 0.42,
+   "lost": 0.0,
+   "situation": "came_round"
+  },
+  {
+   "version": "gate_seen",
+   "file": "came_round_0.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.3293,
+   "collapses": 1,
+   "loop_collapses": 0,
+   "two_step": 2,
+   "meals": 18,
+   "drinks": 59,
+   "unconscious": 0.06,
+   "lost": 0.0702,
+   "situation": "came_round"
+  },
+  {
+   "version": "baseline",
+   "file": "came_round_0.pkl.gz",
+   "seed": 1000,
+   "need_error": 1.3957,
+   "collapses": 7,
+   "loop_collapses": 6,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 7,
+   "unconscious": 0.42,
+   "lost": 0.0,
+   "situation": "came_round"
+  },
+  {
+   "version": "gate_seen",
+   "file": "came_round_0.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.4882,
+   "collapses": 1,
+   "loop_collapses": 0,
+   "two_step": 2,
+   "meals": 15,
+   "drinks": 58,
+   "unconscious": 0.06,
+   "lost": 0.0021,
+   "situation": "came_round"
+  },
+  {
+   "version": "baseline",
+   "file": "came_round_0.pkl.gz",
+   "seed": 1002,
+   "need_error": 1.4539,
+   "collapses": 7,
+   "loop_collapses": 6,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 2,
+   "unconscious": 0.42,
+   "lost": 0.0,
+   "situation": "came_round"
+  },
+  {
+   "version": "gate_seen",
+   "file": "came_round_0.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.5107,
+   "collapses": 2,
+   "loop_collapses": 0,
+   "two_step": 3,
+   "meals": 12,
+   "drinks": 57,
+   "unconscious": 0.12,
+   "lost": 0.0011,
+   "situation": "came_round"
+  },
+  {
+   "version": "baseline",
+   "file": "came_round_0.pkl.gz",
+   "seed": 1003,
+   "need_error": 1.3773,
+   "collapses": 7,
+   "loop_collapses": 6,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 7,
+   "unconscious": 0.42,
+   "lost": 0.0,
+   "situation": "came_round"
+  },
+  {
+   "version": "gate_seen",
+   "file": "came_round_0.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.5253,
+   "collapses": 2,
+   "loop_collapses": 0,
+   "two_step": 2,
+   "meals": 13,
+   "drinks": 55,
+   "unconscious": 0.12,
+   "lost": 0.0057,
+   "situation": "came_round"
+  },
+  {
+   "version": "baseline",
+   "file": "came_round_1.pkl.gz",
+   "seed": 1000,
+   "need_error": 1.1928,
+   "collapses": 6,
+   "loop_collapses": 5,
+   "two_step": 0,
+   "meals": 3,
+   "drinks": 19,
+   "unconscious": 0.36,
+   "lost": 0.0,
+   "situation": "came_round"
+  },
+  {
+   "version": "gate_seen",
+   "file": "came_round_1.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.3535,
+   "collapses": 1,
+   "loop_collapses": 0,
+   "two_step": 3,
+   "meals": 16,
+   "drinks": 60,
+   "unconscious": 0.06,
+   "lost": 0.0181,
+   "situation": "came_round"
+  },
+  {
+   "version": "baseline",
+   "file": "came_round_1.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.8552,
+   "collapses": 4,
+   "loop_collapses": 3,
+   "two_step": 0,
+   "meals": 8,
+   "drinks": 33,
+   "unconscious": 0.24,
+   "lost": 0.0079,
+   "situation": "came_round"
+  },
+  {
+   "version": "gate_seen",
+   "file": "came_round_1.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.2783,
+   "collapses": 1,
+   "loop_collapses": 0,
+   "two_step": 1,
+   "meals": 17,
+   "drinks": 61,
+   "unconscious": 0.06,
+   "lost": 0.0851,
+   "situation": "came_round"
+  },
+  {
+   "version": "baseline",
+   "file": "came_round_1.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.7455,
+   "collapses": 3,
+   "loop_collapses": 2,
+   "two_step": 0,
+   "meals": 8,
+   "drinks": 38,
+   "unconscious": 0.18,
+   "lost": 0.0,
+   "situation": "came_round"
+  },
+  {
+   "version": "gate_seen",
+   "file": "came_round_1.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.3641,
+   "collapses": 1,
+   "loop_collapses": 0,
+   "two_step": 3,
+   "meals": 15,
+   "drinks": 58,
+   "unconscious": 0.06,
+   "lost": 0.0223,
+   "situation": "came_round"
+  },
+  {
+   "version": "baseline",
+   "file": "came_round_1.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.6518,
+   "collapses": 3,
+   "loop_collapses": 2,
+   "two_step": 0,
+   "meals": 9,
+   "drinks": 41,
+   "unconscious": 0.18,
+   "lost": 0.0,
+   "situation": "came_round"
+  },
+  {
+   "version": "gate_seen",
+   "file": "came_round_1.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.3024,
+   "collapses": 1,
+   "loop_collapses": 0,
+   "two_step": 2,
+   "meals": 17,
+   "drinks": 61,
+   "unconscious": 0.06,
+   "lost": 0.0415,
+   "situation": "came_round"
+  },
+  {
+   "version": "baseline",
+   "file": "dry_thirsty_0.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.0682,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 27,
+   "drinks": 72,
+   "unconscious": 0.0,
+   "lost": 0.002,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "gate_seen",
+   "file": "dry_thirsty_0.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.094,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 23,
+   "drinks": 77,
+   "unconscious": 0.0,
+   "lost": 0.005,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "baseline",
+   "file": "dry_thirsty_0.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.0644,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 23,
+   "drinks": 71,
+   "unconscious": 0.0,
+   "lost": 0.0,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "gate_seen",
+   "file": "dry_thirsty_0.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.0823,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 26,
+   "drinks": 74,
+   "unconscious": 0.0,
+   "lost": 0.01,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "baseline",
+   "file": "dry_thirsty_0.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.0796,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 26,
+   "drinks": 74,
+   "unconscious": 0.0,
+   "lost": 0.003,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "gate_seen",
+   "file": "dry_thirsty_0.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.0816,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 21,
+   "drinks": 73,
+   "unconscious": 0.0,
+   "lost": 0.002,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "baseline",
+   "file": "dry_thirsty_0.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.0617,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 23,
+   "drinks": 73,
+   "unconscious": 0.0,
+   "lost": 0.001,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "gate_seen",
+   "file": "dry_thirsty_0.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.0808,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 23,
+   "drinks": 74,
+   "unconscious": 0.0,
+   "lost": 0.015,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "baseline",
+   "file": "dry_thirsty_1.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.1231,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 16,
+   "drinks": 74,
+   "unconscious": 0.0,
+   "lost": 0.0,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "gate_seen",
+   "file": "dry_thirsty_1.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.092,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 1,
+   "meals": 19,
+   "drinks": 73,
+   "unconscious": 0.0,
+   "lost": 0.004,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "baseline",
+   "file": "dry_thirsty_1.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.1424,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 22,
+   "drinks": 76,
+   "unconscious": 0.0,
+   "lost": 0.0,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "gate_seen",
+   "file": "dry_thirsty_1.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.0896,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 21,
+   "drinks": 75,
+   "unconscious": 0.0,
+   "lost": 0.033,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "baseline",
+   "file": "dry_thirsty_1.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.2866,
+   "collapses": 1,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 16,
+   "drinks": 63,
+   "unconscious": 0.06,
+   "lost": 0.0,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "gate_seen",
+   "file": "dry_thirsty_1.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.0753,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 22,
+   "drinks": 72,
+   "unconscious": 0.0,
+   "lost": 0.004,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "baseline",
+   "file": "dry_thirsty_1.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.2964,
+   "collapses": 1,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 15,
+   "drinks": 66,
+   "unconscious": 0.06,
+   "lost": 0.0,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "gate_seen",
+   "file": "dry_thirsty_1.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.0953,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 1,
+   "meals": 19,
+   "drinks": 75,
+   "unconscious": 0.0,
+   "lost": 0.012,
+   "situation": "dry_thirsty"
+  },
+  {
+   "version": "baseline",
+   "file": "now_0.pkl.gz",
+   "seed": 1000,
+   "need_error": 1.4531,
+   "collapses": 7,
+   "loop_collapses": 6,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 3,
+   "unconscious": 0.42,
+   "lost": 0.0,
+   "situation": "now"
+  },
+  {
+   "version": "gate_seen",
+   "file": "now_0.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.4635,
+   "collapses": 1,
+   "loop_collapses": 0,
+   "two_step": 2,
+   "meals": 16,
+   "drinks": 69,
+   "unconscious": 0.06,
+   "lost": 0.0128,
+   "situation": "now"
+  },
+  {
+   "version": "baseline",
+   "file": "now_0.pkl.gz",
+   "seed": 1002,
+   "need_error": 1.4947,
+   "collapses": 8,
+   "loop_collapses": 7,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 0,
+   "unconscious": 0.424,
+   "lost": 0.0,
+   "situation": "now"
+  },
+  {
+   "version": "gate_seen",
+   "file": "now_0.pkl.gz",
+   "seed": 1002,
+   "need_error": 1.1759,
+   "collapses": 6,
+   "loop_collapses": 4,
+   "two_step": 1,
+   "meals": 4,
+   "drinks": 23,
+   "unconscious": 0.318,
+   "lost": 0.0015,
+   "situation": "now"
+  },
+  {
+   "version": "baseline",
+   "file": "now_0.pkl.gz",
+   "seed": 1001,
+   "need_error": 1.3841,
+   "collapses": 7,
+   "loop_collapses": 6,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 9,
+   "unconscious": 0.42,
+   "lost": 0.0,
+   "situation": "now"
+  },
+  {
+   "version": "gate_seen",
+   "file": "now_0.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.6359,
+   "collapses": 3,
+   "loop_collapses": 0,
+   "two_step": 2,
+   "meals": 14,
+   "drinks": 52,
+   "unconscious": 0.139,
+   "lost": 0.0221,
+   "situation": "now"
+  },
+  {
+   "version": "baseline",
+   "file": "now_0.pkl.gz",
+   "seed": 1003,
+   "need_error": 1.4085,
+   "collapses": 7,
+   "loop_collapses": 6,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 6,
+   "unconscious": 0.42,
+   "lost": 0.0,
+   "situation": "now"
+  },
+  {
+   "version": "gate_seen",
+   "file": "now_0.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.8914,
+   "collapses": 4,
+   "loop_collapses": 2,
+   "two_step": 2,
+   "meals": 8,
+   "drinks": 39,
+   "unconscious": 0.215,
+   "lost": 0.0013,
+   "situation": "now"
+  },
+  {
+   "version": "baseline",
+   "file": "ordinary_0.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.2284,
+   "collapses": 1,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 16,
+   "drinks": 61,
+   "unconscious": 0.06,
+   "lost": 0.0064,
+   "situation": "ordinary"
+  },
+  {
+   "version": "gate_seen",
+   "file": "ordinary_0.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.1334,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 1,
+   "meals": 21,
+   "drinks": 72,
+   "unconscious": 0.0,
+   "lost": 0.046,
+   "situation": "ordinary"
+  },
+  {
+   "version": "baseline",
+   "file": "ordinary_0.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.539,
+   "collapses": 2,
+   "loop_collapses": 1,
+   "two_step": 0,
+   "meals": 13,
+   "drinks": 56,
+   "unconscious": 0.12,
+   "lost": 0.0,
+   "situation": "ordinary"
+  },
+  {
+   "version": "gate_seen",
+   "file": "ordinary_0.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.147,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 1,
+   "meals": 22,
+   "drinks": 73,
+   "unconscious": 0.0,
+   "lost": 0.005,
+   "situation": "ordinary"
+  },
+  {
+   "version": "baseline",
+   "file": "ordinary_0.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.1171,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 17,
+   "drinks": 69,
+   "unconscious": 0.0,
+   "lost": 0.0,
+   "situation": "ordinary"
+  },
+  {
+   "version": "gate_seen",
+   "file": "ordinary_0.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.0989,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 1,
+   "meals": 21,
+   "drinks": 71,
+   "unconscious": 0.0,
+   "lost": 0.002,
+   "situation": "ordinary"
+  },
+  {
+   "version": "baseline",
+   "file": "ordinary_0.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.4335,
+   "collapses": 2,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 13,
+   "drinks": 55,
+   "unconscious": 0.12,
+   "lost": 0.0,
+   "situation": "ordinary"
+  },
+  {
+   "version": "gate_seen",
+   "file": "ordinary_0.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.1238,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 1,
+   "meals": 22,
+   "drinks": 68,
+   "unconscious": 0.0,
+   "lost": 0.023,
+   "situation": "ordinary"
+  },
+  {
+   "version": "baseline",
+   "file": "ordinary_1.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.1583,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 18,
+   "drinks": 70,
+   "unconscious": 0.0,
+   "lost": 0.011,
+   "situation": "ordinary"
+  },
+  {
+   "version": "gate_seen",
+   "file": "ordinary_1.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.1295,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 1,
+   "meals": 20,
+   "drinks": 72,
+   "unconscious": 0.0,
+   "lost": 0.045,
+   "situation": "ordinary"
+  },
+  {
+   "version": "baseline",
+   "file": "ordinary_1.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.3912,
+   "collapses": 1,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 15,
+   "drinks": 63,
+   "unconscious": 0.06,
+   "lost": 0.0021,
+   "situation": "ordinary"
+  },
+  {
+   "version": "gate_seen",
+   "file": "ordinary_1.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.0862,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 21,
+   "drinks": 69,
+   "unconscious": 0.0,
+   "lost": 0.013,
+   "situation": "ordinary"
+  },
+  {
+   "version": "baseline",
+   "file": "ordinary_1.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.0995,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 19,
+   "drinks": 69,
+   "unconscious": 0.0,
+   "lost": 0.0,
+   "situation": "ordinary"
+  },
+  {
+   "version": "gate_seen",
+   "file": "ordinary_1.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.0771,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 25,
+   "drinks": 66,
+   "unconscious": 0.0,
+   "lost": 0.021,
+   "situation": "ordinary"
+  },
+  {
+   "version": "baseline",
+   "file": "ordinary_1.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.0711,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 23,
+   "drinks": 70,
+   "unconscious": 0.0,
+   "lost": 0.0,
+   "situation": "ordinary"
+  },
+  {
+   "version": "gate_seen",
+   "file": "ordinary_1.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.1042,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 1,
+   "meals": 23,
+   "drinks": 69,
+   "unconscious": 0.0,
+   "lost": 0.006,
+   "situation": "ordinary"
+  },
+  {
+   "version": "baseline",
+   "file": "plains_0.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.5055,
+   "collapses": 2,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 12,
+   "drinks": 48,
+   "unconscious": 0.12,
+   "lost": 0.0011,
+   "situation": "plains"
+  },
+  {
+   "version": "gate_seen",
+   "file": "plains_0.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.0901,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 1,
+   "meals": 25,
+   "drinks": 71,
+   "unconscious": 0.0,
+   "lost": 0.01,
+   "situation": "plains"
+  },
+  {
+   "version": "baseline",
+   "file": "plains_0.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.3427,
+   "collapses": 1,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 14,
+   "drinks": 60,
+   "unconscious": 0.06,
+   "lost": 0.0043,
+   "situation": "plains"
+  },
+  {
+   "version": "gate_seen",
+   "file": "plains_0.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.1007,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 1,
+   "meals": 19,
+   "drinks": 65,
+   "unconscious": 0.0,
+   "lost": 0.039,
+   "situation": "plains"
+  },
+  {
+   "version": "baseline",
+   "file": "plains_0.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.5111,
+   "collapses": 2,
+   "loop_collapses": 1,
+   "two_step": 0,
+   "meals": 12,
+   "drinks": 54,
+   "unconscious": 0.12,
+   "lost": 0.0023,
+   "situation": "plains"
+  },
+  {
+   "version": "gate_seen",
+   "file": "plains_0.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.1306,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 1,
+   "meals": 20,
+   "drinks": 70,
+   "unconscious": 0.0,
+   "lost": 0.015,
+   "situation": "plains"
+  },
+  {
+   "version": "baseline",
+   "file": "plains_0.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.0805,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 20,
+   "drinks": 67,
+   "unconscious": 0.0,
+   "lost": 0.076,
+   "situation": "plains"
+  },
+  {
+   "version": "gate_seen",
+   "file": "plains_0.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.1234,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 2,
+   "meals": 22,
+   "drinks": 71,
+   "unconscious": 0.0,
+   "lost": 0.014,
+   "situation": "plains"
+  },
+  {
+   "version": "baseline",
+   "file": "two_needs_0.pkl.gz",
+   "seed": 1000,
+   "need_error": 1.4039,
+   "collapses": 7,
+   "loop_collapses": 6,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 7,
+   "unconscious": 0.42,
+   "lost": 0.0,
+   "situation": "two_needs"
+  },
+  {
+   "version": "gate_seen",
+   "file": "two_needs_0.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.3945,
+   "collapses": 1,
+   "loop_collapses": 0,
+   "two_step": 2,
+   "meals": 16,
+   "drinks": 61,
+   "unconscious": 0.06,
+   "lost": 0.066,
+   "situation": "two_needs"
+  },
+  {
+   "version": "baseline",
+   "file": "two_needs_0.pkl.gz",
+   "seed": 1001,
+   "need_error": 1.3733,
+   "collapses": 7,
+   "loop_collapses": 6,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 9,
+   "unconscious": 0.42,
+   "lost": 0.0,
+   "situation": "two_needs"
+  },
+  {
+   "version": "gate_seen",
+   "file": "two_needs_0.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.647,
+   "collapses": 3,
+   "loop_collapses": 1,
+   "two_step": 2,
+   "meals": 13,
+   "drinks": 47,
+   "unconscious": 0.122,
+   "lost": 0.0159,
+   "situation": "two_needs"
+  },
+  {
+   "version": "baseline",
+   "file": "two_needs_0.pkl.gz",
+   "seed": 1002,
+   "need_error": 1.3246,
+   "collapses": 7,
+   "loop_collapses": 6,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 12,
+   "unconscious": 0.42,
+   "lost": 0.0,
+   "situation": "two_needs"
+  },
+  {
+   "version": "gate_seen",
+   "file": "two_needs_0.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.8116,
+   "collapses": 4,
+   "loop_collapses": 2,
+   "two_step": 1,
+   "meals": 9,
+   "drinks": 36,
+   "unconscious": 0.215,
+   "lost": 0.0191,
+   "situation": "two_needs"
+  },
+  {
+   "version": "baseline",
+   "file": "two_needs_0.pkl.gz",
+   "seed": 1003,
+   "need_error": 1.4468,
+   "collapses": 7,
+   "loop_collapses": 6,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 2,
+   "unconscious": 0.42,
+   "lost": 0.0,
+   "situation": "two_needs"
+  },
+  {
+   "version": "gate_seen",
+   "file": "two_needs_0.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.4922,
+   "collapses": 2,
+   "loop_collapses": 0,
+   "two_step": 3,
+   "meals": 15,
+   "drinks": 59,
+   "unconscious": 0.12,
+   "lost": 0.0443,
+   "situation": "two_needs"
+  },
+  {
+   "version": "baseline",
+   "file": "two_needs_1.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.6299,
+   "collapses": 3,
+   "loop_collapses": 2,
+   "two_step": 0,
+   "meals": 10,
+   "drinks": 38,
+   "unconscious": 0.18,
+   "lost": 0.0293,
+   "situation": "two_needs"
+  },
+  {
+   "version": "gate_seen",
+   "file": "two_needs_1.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.1819,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 2,
+   "meals": 21,
+   "drinks": 68,
+   "unconscious": 0.0,
+   "lost": 0.03,
+   "situation": "two_needs"
+  },
+  {
+   "version": "baseline",
+   "file": "two_needs_1.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.0839,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 17,
+   "drinks": 63,
+   "unconscious": 0.0,
+   "lost": 0.002,
+   "situation": "two_needs"
+  },
+  {
+   "version": "gate_seen",
+   "file": "two_needs_1.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.1125,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 1,
+   "meals": 19,
+   "drinks": 65,
+   "unconscious": 0.0,
+   "lost": 0.0,
+   "situation": "two_needs"
+  },
+  {
+   "version": "baseline",
+   "file": "two_needs_1.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.7247,
+   "collapses": 3,
+   "loop_collapses": 2,
+   "two_step": 0,
+   "meals": 10,
+   "drinks": 38,
+   "unconscious": 0.18,
+   "lost": 0.0,
+   "situation": "two_needs"
+  },
+  {
+   "version": "gate_seen",
+   "file": "two_needs_1.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.0928,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 2,
+   "meals": 23,
+   "drinks": 62,
+   "unconscious": 0.0,
+   "lost": 0.03,
+   "situation": "two_needs"
+  },
+  {
+   "version": "baseline",
+   "file": "winter_gate_0.pkl.gz",
+   "seed": 1000,
+   "need_error": 1.4586,
+   "collapses": 8,
+   "loop_collapses": 7,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 5,
+   "unconscious": 0.451,
+   "lost": 0.0,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "gate_seen",
+   "file": "winter_gate_0.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.5863,
+   "collapses": 3,
+   "loop_collapses": 1,
+   "two_step": 2,
+   "meals": 13,
+   "drinks": 47,
+   "unconscious": 0.18,
+   "lost": 0.0329,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "baseline",
+   "file": "two_needs_1.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.2526,
+   "collapses": 1,
+   "loop_collapses": 0,
+   "two_step": 0,
+   "meals": 15,
+   "drinks": 61,
+   "unconscious": 0.06,
+   "lost": 0.0,
+   "situation": "two_needs"
+  },
+  {
+   "version": "gate_seen",
+   "file": "two_needs_1.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.1184,
+   "collapses": 0,
+   "loop_collapses": 0,
+   "two_step": 2,
+   "meals": 24,
+   "drinks": 68,
+   "unconscious": 0.0,
+   "lost": 0.013,
+   "situation": "two_needs"
+  },
+  {
+   "version": "baseline",
+   "file": "winter_gate_0.pkl.gz",
+   "seed": 1001,
+   "need_error": 1.44,
+   "collapses": 8,
+   "loop_collapses": 7,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 7,
+   "unconscious": 0.446,
+   "lost": 0.0,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "gate_seen",
+   "file": "winter_gate_0.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.4558,
+   "collapses": 2,
+   "loop_collapses": 1,
+   "two_step": 3,
+   "meals": 15,
+   "drinks": 54,
+   "unconscious": 0.12,
+   "lost": 0.0659,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "baseline",
+   "file": "winter_gate_0.pkl.gz",
+   "seed": 1002,
+   "need_error": 1.5052,
+   "collapses": 8,
+   "loop_collapses": 7,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 2,
+   "unconscious": 0.452,
+   "lost": 0.0,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "gate_seen",
+   "file": "winter_gate_0.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.592,
+   "collapses": 3,
+   "loop_collapses": 1,
+   "two_step": 2,
+   "meals": 14,
+   "drinks": 47,
+   "unconscious": 0.18,
+   "lost": 0.039,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "baseline",
+   "file": "winter_gate_0.pkl.gz",
+   "seed": 1003,
+   "need_error": 1.506,
+   "collapses": 8,
+   "loop_collapses": 7,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 2,
+   "unconscious": 0.451,
+   "lost": 0.0,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "gate_seen",
+   "file": "winter_gate_0.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.5457,
+   "collapses": 2,
+   "loop_collapses": 1,
+   "two_step": 3,
+   "meals": 17,
+   "drinks": 57,
+   "unconscious": 0.12,
+   "lost": 0.008,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "baseline",
+   "file": "winter_gate_1.pkl.gz",
+   "seed": 1000,
+   "need_error": 1.3163,
+   "collapses": 7,
+   "loop_collapses": 6,
+   "two_step": 0,
+   "meals": 1,
+   "drinks": 17,
+   "unconscious": 0.42,
+   "lost": 0.0,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "gate_seen",
+   "file": "winter_gate_1.pkl.gz",
+   "seed": 1000,
+   "need_error": 0.6472,
+   "collapses": 3,
+   "loop_collapses": 1,
+   "two_step": 2,
+   "meals": 12,
+   "drinks": 43,
+   "unconscious": 0.18,
+   "lost": 0.0085,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "baseline",
+   "file": "winter_gate_1.pkl.gz",
+   "seed": 1001,
+   "need_error": 1.3805,
+   "collapses": 8,
+   "loop_collapses": 7,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 11,
+   "unconscious": 0.442,
+   "lost": 0.0,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "gate_seen",
+   "file": "winter_gate_1.pkl.gz",
+   "seed": 1001,
+   "need_error": 0.4167,
+   "collapses": 2,
+   "loop_collapses": 1,
+   "two_step": 2,
+   "meals": 18,
+   "drinks": 56,
+   "unconscious": 0.12,
+   "lost": 0.025,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "baseline",
+   "file": "winter_gate_1.pkl.gz",
+   "seed": 1002,
+   "need_error": 1.4947,
+   "collapses": 8,
+   "loop_collapses": 7,
+   "two_step": 0,
+   "meals": 0,
+   "drinks": 2,
+   "unconscious": 0.451,
+   "lost": 0.0,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "gate_seen",
+   "file": "winter_gate_1.pkl.gz",
+   "seed": 1002,
+   "need_error": 0.4475,
+   "collapses": 2,
+   "loop_collapses": 1,
+   "two_step": 3,
+   "meals": 15,
+   "drinks": 52,
+   "unconscious": 0.12,
+   "lost": 0.0364,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "baseline",
+   "file": "winter_gate_1.pkl.gz",
+   "seed": 1003,
+   "need_error": 1.3544,
+   "collapses": 7,
+   "loop_collapses": 6,
+   "two_step": 0,
+   "meals": 2,
+   "drinks": 18,
+   "unconscious": 0.42,
+   "lost": 0.0,
+   "situation": "winter_gate"
+  },
+  {
+   "version": "gate_seen",
+   "file": "winter_gate_1.pkl.gz",
+   "seed": 1003,
+   "need_error": 0.7638,
+   "collapses": 4,
+   "loop_collapses": 1,
+   "two_step": 2,
+   "meals": 10,
+   "drinks": 44,
+   "unconscious": 0.24,
+   "lost": 0.075,
+   "situation": "winter_gate"
+  }
+ ],
+ "bank": {
+  "built": "2026-10-30T09:39:59+01:00",
+  "source_tick": 62704,
+  "source_mtime": 1793349264.1174536,
+  "seed": 2026,
+  "snapshots": [
+   {
+    "file": "now_0.pkl.gz",
+    "situation": "now",
+    "moment": 62704,
+    "forward": 0,
+    "season": "winter",
+    "body": [
+     0.29,
+     0.36,
+     1.0
+    ]
+   },
+   {
+    "file": "winter_gate_0.pkl.gz",
+    "situation": "winter_gate",
+    "moment": 63004,
+    "forward": 300,
+    "season": "winter",
+    "body": [
+     0.14,
+     0.13,
+     1.0
+    ]
+   },
+   {
+    "file": "came_round_0.pkl.gz",
+    "situation": "came_round",
+    "moment": 63358,
+    "forward": 654,
+    "season": "winter",
+    "body": [
+     0.45,
+     0.45,
+     1.0
+    ]
+   },
+   {
+    "file": "two_needs_0.pkl.gz",
+    "situation": "two_needs",
+    "moment": 63771,
+    "forward": 1067,
+    "season": "winter",
+    "body": [
+     0.44,
+     0.44,
+     1.0
+    ]
+   },
+   {
+    "file": "winter_gate_1.pkl.gz",
+    "situation": "winter_gate",
+    "moment": 64504,
+    "forward": 1800,
+    "season": "winter",
+    "body": [
+     0.15,
+     0.14,
+     1.0
+    ]
+   },
+   {
+    "file": "came_round_1.pkl.gz",
+    "situation": "came_round",
+    "moment": 64992,
+    "forward": 2288,
+    "season": "winter",
+    "body": [
+     0.45,
+     0.45,
+     1.0
+    ]
+   },
+   {
+    "file": "two_needs_1.pkl.gz",
+    "situation": "two_needs",
+    "moment": 65399,
+    "forward": 2695,
+    "season": "spring",
+    "body": [
+     0.44,
+     0.44,
+     1.0
+    ]
+   },
+   {
+    "file": "ordinary_0.pkl.gz",
+    "situation": "ordinary",
+    "moment": 65699,
+    "forward": 2995,
+    "season": "spring",
+    "body": [
+     0.63,
+     0.65,
+     1.0
+    ]
+   },
+   {
+    "file": "plains_0.pkl.gz",
+    "situation": "plains",
+    "moment": 66789,
+    "forward": 4085,
+    "season": "spring",
+    "body": [
+     0.93,
+     0.81,
+     0.96
+    ]
+   },
+   {
+    "file": "ordinary_1.pkl.gz",
+    "situation": "ordinary",
+    "moment": 67199,
+    "forward": 4495,
+    "season": "spring",
+    "body": [
+     0.61,
+     0.7,
+     1.0
+    ]
+   },
+   {
+    "file": "dry_thirsty_0.pkl.gz",
+    "situation": "dry_thirsty",
+    "moment": 68893,
+    "forward": 6189,
+    "season": "summer",
+    "body": [
+     0.71,
+     0.4,
+     1.0
+    ]
+   },
+   {
+    "file": "dry_thirsty_1.pkl.gz",
+    "situation": "dry_thirsty",
+    "moment": 70883,
+    "forward": 8179,
+    "season": "summer",
+    "body": [
+     0.6,
+     0.33,
+     1.0
+    ]
+   }
+  ]
+ }
+}

@@ -74,7 +74,7 @@ class Mind:
     # ================================================================ decide
     def decide(self, view, intero):
         self.t += 1
-        x = encode(view, intero)
+        x = encode(view, intero, self.cortex.n_types)
         needs = self.drives.needs(intero)
         dom = int(needs.argmax())
         self._ctx = {"x": x, "view": view, "intero": intero.copy(),
@@ -112,6 +112,7 @@ class Mind:
         if self.pending_surprise is not None:
             self.gw.post(self.pending_surprise)
             self.pending_surprise = None
+        self.extra_candidates(view, intero, needs)
         frontier = self.hippo.frontier_size()
         mapped = self.hippo.map_enabled and (self.hippo.map != UNKNOWN).any()
         self.gw.post(Content("curiosity", "explore" if frontier or not mapped else "patrol", 0.32, "PFC",
@@ -132,6 +133,9 @@ class Mind:
                      "goal": self.pfc.goal, "sleeping": False, "report": report,
                      "used_plan": plan_a is not None and a == plan_a}
         return a
+
+    def extra_candidates(self, view, intero, needs):
+        """Hook for minds with more senses or skills (see mind/ember_mind.py)."""
 
     def choose_action(self, view, intero, needs):
         """v3 controller: deliberate plan on the cognitive map (PFC),

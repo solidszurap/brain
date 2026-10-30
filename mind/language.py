@@ -26,6 +26,8 @@ def template_report(content, self_model):
         return f"I need {'food' if t == 'energy' else 'water' if t == 'hydration' else 'rest'}. ({t} at {body[t]:.0%})"
     if k == "percept":
         return f"I see {t} nearby. Going for it."
+    if k == "recall" and content.data.get("season"):
+        return f"It's {content.data['season']}. Food grew over there this time of year; going to look."
     if k == "recall":
         return f"I remember {t} {content.data.get('dist', '?')} steps away. Heading there."
     if k == "threat":
@@ -35,6 +37,18 @@ def template_report(content, self_model):
         if moved and moved != (0, 0):
             return f"That wasn't me. Something pushed me; I think I'm {moved} from where I thought."
         return "That wasn't me. Something moved me, but I've kept track of where I am."
+    if k == "novel":
+        return f"Something I don't know yet: {t}. Going to find out what it is."
+    if k == "hearing":
+        return f"I heard the {t}."
+    if k == "voice":
+        return "Someone is speaking to me."
+    if k == "plan":
+        return "What I need is behind the gate. First I have to open it."
+    if k == "self" and t == "unsure where I am":
+        return "I'm not sure where I am any more. Heading back to something I recognize."
+    if k == "self":
+        return "That figure moves exactly when I move. I think it's me."
     if k == "curiosity" and t == "explore":
         return f"Nothing urgent. Exploring; I know {sm['map_known']} places so far."
     if k == "curiosity":

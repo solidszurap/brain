@@ -18,9 +18,10 @@ N_INTERO = 3
 N_IN = N_VIEW + N_INTERO
 
 
-def encode(view, intero):
-    """Sensory cortex: one-hot egocentric view + interoception."""
-    oh = np.zeros((N_CELLS, N_TYPES))
+def encode(view, intero, n_types=N_TYPES):
+    """Sensory cortex: one-hot egocentric view + interoception.
+    n_types: how many kinds of things its eyes can tell apart."""
+    oh = np.zeros((N_CELLS, n_types))
     oh[np.arange(N_CELLS), view.reshape(-1)] = 1.0
     return np.concatenate([oh.reshape(-1), intero])
 
@@ -48,14 +49,21 @@ class WorldModel:
     with a linear skip path (easy to learn 'the view shifts north') and a
     hidden layer (needed for 'unless a wall blocks me')."""
 
-    def __init__(self, rng, n_hidden=48, lr=2e-3):
+    # defaults for the original world (5 kinds of cell); a mind whose senses
+    # were expanded (see mind/growth.py) carries its own values
+    n_types, n_view, n_in = N_TYPES, N_VIEW, N_IN
+
+    def __init__(self, rng, n_hidden=48, lr=2e-3, n_types=N_TYPES):
         A, H = N_ACTIONS, n_hidden
-        n_out = N_VIEW + N_INTERO
-        self.W1 = rng.normal(0, 1 / np.sqrt(N_IN), (A, N_IN, H))
+        self.n_types = n_types
+        self.n_view = N_CELLS * n_types
+        self.n_in = self.n_view + N_INTERO
+        n_out = self.n_view + N_INTERO
+        self.W1 = rng.normal(0, 1 / np.sqrt(self.n_in), (A, self.n_in, H))
         self.b1 = np.zeros((A, H))
         self.W2 = rng.normal(0, 0.1 / np.sqrt(H), (A, H, n_out))
         self.b2 = np.zeros((A, n_out))
-        self.S = np.zeros((A, N_IN, n_out))
+        self.S = np.zeros((A, self.n_in, n_out))
         self.params = [self.W1, self.b1, self.W2, self.b2, self.S]
         self.opt = Adam([p.shape for p in self.params], lr=lr)
         self.updates = 0
@@ -63,11 +71,11 @@ class WorldModel:
     def _forward(self, x, a):
         h = np.tanh(x @ self.W1[a] + self.b1[a])
         out = h @ self.W2[a] + self.b2[a] + x @ self.S[a]
-        logits = out[:N_VIEW].reshape(N_CELLS, N_TYPES)
+        logits = out[:self.n_view].reshape(N_CELLS, self.n_types)
         logits = logits - logits.max(axis=1, keepdims=True)
         p = np.exp(logits)
         p /= p.sum(axis=1, keepdims=True)
-        return h, p, out[N_VIEW:]
+        return h, p, out[self.n_view:]
 
     def predict(self, x, a):
         """Returns (per-cell type probabilities, predicted body change)."""

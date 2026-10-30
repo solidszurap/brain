@@ -19,9 +19,9 @@ from .world import N_ACTIONS
 
 
 class Metacognition:
-    def __init__(self, lr=0.01, enabled=True):
+    def __init__(self, lr=0.01, enabled=True, n_in=N_IN):
         self.enabled = enabled
-        self.w = np.zeros(N_IN + N_ACTIONS + 1)
+        self.w = np.zeros(n_in + N_ACTIONS + 1)
         self.w[-1] = np.log(1.0)
         self.lr = lr
         self.resid_mean = 0.0

@@ -43,11 +43,18 @@ class Hippocampus:
         if not self.map_enabled or self.lost:
             return
         y0, x0 = self.pos
+        volatile = getattr(self, "volatile", None)
         for dy in range(-VIEW_R, VIEW_R + 1):
             for dx in range(-VIEW_R, VIEW_R + 1):
                 y, x = y0 + dy, x0 + dx
                 if 0 <= y < self.size and 0 <= x < self.size:
-                    self.map[y, x] = view[dy + VIEW_R, dx + VIEW_R]
+                    new = view[dy + VIEW_R, dx + VIEW_R]
+                    if volatile is not None:
+                        old = self.map[y, x]
+                        if old != UNKNOWN and old != new and (old in STATIC or new in STATIC):
+                            # a "landmark" changed: learn not to trust it for finding my way
+                            volatile[y, x] = True
+                    self.map[y, x] = new
                     self.seen[y, x] += 1
                     self.last_seen[y, x] = t
 
@@ -72,6 +79,9 @@ class Hippocampus:
             return -1e9, 0
         known = patch != UNKNOWN
         stable = np.isin(patch, STATIC) | np.isin(view, STATIC)
+        volatile = getattr(self, "volatile", None)
+        if volatile is not None:
+            stable &= ~volatile[y0 - VIEW_R:y0 + VIEW_R + 1, x0 - VIEW_R:x0 + VIEW_R + 1]
         cnt = int((known & stable).sum())
         agree = (patch == view) & known & stable
         disagree = (patch != view) & known & stable
@@ -84,6 +94,9 @@ class Hippocampus:
         y0, x0 = self.pos
         patch = self.map[y0 - VIEW_R:y0 + VIEW_R + 1, x0 - VIEW_R:x0 + VIEW_R + 1]
         known = (patch != UNKNOWN) & (np.isin(patch, STATIC) | np.isin(view, STATIC))
+        volatile = getattr(self, "volatile", None)
+        if volatile is not None:
+            known &= ~volatile[y0 - VIEW_R:y0 + VIEW_R + 1, x0 - VIEW_R:x0 + VIEW_R + 1]
         if known.sum() < 4:
             return 0.0
         return float(((patch != view) & known).sum() / known.sum())

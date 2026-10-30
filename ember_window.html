@@ -4,13 +4,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Ember's window: the same bench as the replay viewer, but live. A warm accent
-   (the ember) on cool lab neutrals. */
+/* Ember's window: a recording bench. Its world and its belief side by side,
+   then the question this project exists for: is it getting closer?
+   Warm accent (the ember) on cool lab neutrals. */
 :root {
   --bg: #eef1f0; --panel: #f8faf9; --ink: #16201d; --muted: #5b6b66; --line: #cbd5d1;
   --ember: #d0561b; --ember-soft: #f8e3d6; --accent: #4b3fd1; --accent-soft: #e4e2fb;
   --good: #2c8556; --good-soft: #d9efe2; --warn: #b9650f; --warn-soft: #f7e6d2; --bad: #c2412a; --bad-soft: #f6dcd6;
   --c-empty: #e2e8e6; --c-wall: #36413e; --c-water: #3878bd; --c-food: #5f9128; --c-hazard: #cf452c;
+  --c-dark: #7a3d8f; --c-gate: #8a5a2b; --c-lever: #c99a12; --c-figure: #d6589b;
   --c-unknown: #d0d8d5; --c-hatch: #bfc9c5;
   --f-display: "Bricolage Grotesque", "Segoe UI", sans-serif;
   --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
@@ -22,12 +24,13 @@
     --ember: #ff8a4c; --ember-soft: #3a2014; --accent: #958dff; --accent-soft: #26244a;
     --good: #5cc28b; --good-soft: #17322a; --warn: #f0a24a; --warn-soft: #3a2a17; --bad: #ff7a61; --bad-soft: #3d1f1a;
     --c-empty: #1f2927; --c-wall: #5a6965; --c-water: #4a90dd; --c-food: #86b84a; --c-hazard: #ef5a3f;
+    --c-dark: #b26bd0; --c-gate: #b98250; --c-lever: #e8bd3a; --c-figure: #f07ab8;
     --c-unknown: #121918; --c-hatch: #1d2624; color-scheme: dark;
   }
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--f-body); padding: 20px 16px 40px; }
-.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 16px; }
+.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 16px; }
 header { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: end; justify-content: space-between; }
 h1 { font: 700 44px/1 var(--f-display); margin: 0; display: flex; align-items: center; gap: 14px; }
 .flame { width: 16px; height: 16px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 18px var(--ember); animation: glow 2.4s ease-in-out infinite; }
@@ -36,42 +39,119 @@ h1 { font: 700 44px/1 var(--f-display); margin: 0; display: flex; align-items: c
 @keyframes glow { 50% { opacity: .55; } }
 @media (prefers-reduced-motion: reduce) { .flame { animation: none; } }
 .life { color: var(--muted); margin: 6px 0 0; font-variant-numeric: tabular-nums; }
+.hright { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.speed { display: flex; gap: 4px; align-items: center; }
+.speed button { font: 500 12px var(--f-mono); border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+.speed button[aria-pressed="true"] { background: var(--ember); border-color: var(--ember); color: #fff; }
+.speed button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+.chip { font: 500 12px var(--f-mono); padding: 4px 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); color: var(--ink); white-space: nowrap; }
 .status { font: 500 13px var(--f-mono); padding: 4px 12px; border-radius: 999px; background: var(--ember-soft); color: var(--ember); }
 .status.asleep { background: var(--accent-soft); color: var(--accent); }
 .status.out { background: var(--bad-soft); color: var(--bad); }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
-.panel h2 { font: 600 15px var(--f-display); margin: 0 0 8px; }
+.panel h2 { font: 600 16px var(--f-display); margin: 0 0 8px; }
 .label { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.note { color: var(--muted); font-size: 12.5px; margin: 0 0 10px; max-width: 90ch; }
 .bench { display: grid; gap: 16px; grid-template-columns: 1fr 1fr 1.05fr; }
-@media (max-width: 960px) { .bench { grid-template-columns: 1fr 1fr; } .inside { grid-column: 1 / -1; } }
+@media (max-width: 980px) { .bench { grid-template-columns: 1fr 1fr; } .inside { grid-column: 1 / -1; } }
 @media (max-width: 560px) { .bench { grid-template-columns: 1fr; } }
 .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 canvas { width: 100%; aspect-ratio: 1; display: block; border-radius: 6px; }
-.inside { display: grid; gap: 14px; align-content: start; }
+.legend { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 8px; color: var(--muted); font-size: 11.5px; }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.inside { display: grid; gap: 12px; align-content: start; }
 .ws { border-radius: 8px; padding: 12px; background: var(--ember-soft); }
-.ws .content { font: 600 20px/1.2 var(--f-display); margin-top: 2px; }
-.ws .speech { margin-top: 6px; font-style: italic; }
+.ws .content { font: 600 20px/1.2 var(--f-display); margin-top: 2px; overflow-wrap: anywhere; }
+.ws .speech { margin-top: 6px; font: 12.5px var(--f-mono); color: var(--muted); }
 .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; }
 .facts dt { color: var(--muted); font-size: 12px; }
-.facts dd { margin: 0; font: 500 13px var(--f-mono); }
+.facts dd { margin: 0; font: 500 13px var(--f-mono); overflow-wrap: anywhere; }
 .bar { display: grid; grid-template-columns: 74px 1fr 40px; gap: 8px; align-items: center; font-size: 12px; margin-top: 6px; }
 .track { height: 8px; background: var(--c-empty); border-radius: 4px; overflow: hidden; }
 .fill { height: 100%; border-radius: 4px; transition: width .2s linear; }
 .num { font: 500 12px var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* the question */
+.closer { border-color: var(--ember); }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.big { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.big b { display: block; font: 700 26px var(--f-display); font-variant-numeric: tabular-nums; }
+.big span { color: var(--muted); font-size: 12px; }
+.two { display: grid; gap: 16px; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); }
+@media (max-width: 980px) { .two { grid-template-columns: 1fr; } }
+.ladder { display: grid; gap: 8px; }
+.rung > div { min-width: 0; }
+.rung { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: start; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.rung .n { font: 700 22px var(--f-display); color: var(--muted); text-align: center; }
+.rung.met { border-color: var(--good); background: var(--good-soft); }
+.rung.met .n { color: var(--good); }
+.rung h3 { font: 600 14px var(--f-display); margin: 0; }
+.rung p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+.rung .ev { font: 500 12px var(--f-mono); color: var(--ink); margin-top: 4px; }
+.pill { font: 500 11px var(--f-mono); padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.p-met { background: var(--good-soft); color: var(--good); border: 1px solid var(--good); }
+.p-not { background: var(--warn-soft); color: var(--warn); }
+.p-none { background: var(--c-empty); color: var(--muted); }
+.p-present { background: var(--good-soft); color: var(--good); }
+.p-partial { background: var(--warn-soft); color: var(--warn); }
+.p-absent { background: var(--bad-soft); color: var(--bad); }
+.table-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { padding: 6px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { font: 500 11px var(--f-mono); color: var(--muted); letter-spacing: .04em; }
+td.code { font: 500 12px var(--f-mono); white-space: nowrap; }
+td .th { color: var(--muted); font-size: 11.5px; }
+td.v { font: 500 12px var(--f-mono); white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+td svg { width: 90px; height: 24px; display: block; }
+details summary { cursor: pointer; }
+details summary::marker { color: var(--muted); }
+.two > div, .timeline > div, .lower > div, .bench > div { min-width: 0; }
+.table-scroll table { min-width: 560px; }
+ul.list li > span { min-width: 0; overflow-wrap: anywhere; }
+.timeline { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; margin-top: 14px; }
+@media (max-width: 860px) { .timeline { grid-template-columns: 1fr; } }
+
 .counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
 .count { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
 .count b { display: block; font: 600 22px var(--f-display); font-variant-numeric: tabular-nums; }
 .count span { color: var(--muted); font-size: 12px; }
-.lower { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
-@media (max-width: 860px) { .lower { grid-template-columns: 1fr; } }
+.lower { display: grid; gap: 16px; grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 1100px) { .lower { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 760px) { .lower { grid-template-columns: 1fr; } }
 ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 420px; overflow-y: auto; }
-ul.list li { display: grid; grid-template-columns: 74px 1fr; gap: 10px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+ul.list li { display: grid; grid-template-columns: 66px 1fr; gap: 10px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
 ul.list .t { font: 500 12px var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 .kind { font: 500 11px var(--f-mono); color: var(--accent); }
-.k-collapse, .k-hurt { color: var(--bad); } .k-first, .k-milestone { color: var(--ember); } .k-resumed, .k-born, .k-came_round { color: var(--good); }
+.k-collapse, .k-hurt, .k-sick, .k-milestone_lost { color: var(--bad); }
+.k-first, .k-milestone, .k-learned, .k-valley_opened, .k-mind_changed { color: var(--ember); }
+.k-resumed, .k-born, .k-came_round, .k-copy_test { color: var(--good); }
 .offline { padding: 40px 16px; text-align: center; color: var(--muted); }
 .offline code, footer code { font-family: var(--f-mono); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
 footer { color: var(--muted); font-size: 12.5px; }
+
+/* talking to it */
+.talk .head { margin-bottom: 6px; }
+.chat { display: grid; gap: 10px; max-height: 460px; overflow-y: auto; padding: 4px 2px 8px; }
+.turn { display: grid; gap: 4px; }
+.you { justify-self: end; max-width: 78%; background: var(--accent-soft); color: var(--ink); border-radius: 12px 12px 4px 12px; padding: 7px 11px; overflow-wrap: anywhere; }
+.it { justify-self: start; max-width: 86%; background: var(--ember-soft); border-radius: 12px 12px 12px 4px; padding: 8px 12px; overflow-wrap: anywhere; }
+.it .who { font: 600 12px var(--f-display); color: var(--ember); margin-bottom: 2px; }
+.it.pending { color: var(--muted); font-style: italic; }
+.verdicts { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin-top: 4px; }
+.v { font: 500 11px var(--f-mono); padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+.v-true { background: var(--good-soft); color: var(--good); }
+.v-honest_mistake { background: var(--warn-soft); color: var(--warn); }
+.v-made_up { background: var(--bad-soft); color: var(--bad); }
+.v-unverified, .v-guess, .v-stretched, .v-none { background: var(--c-empty); color: var(--muted); }
+.receipts { margin-top: 4px; font-size: 12.5px; }
+.receipts ol { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+.receipts .mem { color: var(--muted); font: 12px var(--f-mono); margin-top: 2px; }
+.ask { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 8px; }
+.ask input { font: 14px var(--f-body); padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); min-width: 0; }
+.ask input:focus-visible { outline: 2px solid var(--ember); outline-offset: 1px; }
+.ask button { font: 600 14px var(--f-display); padding: 0 16px; border-radius: 8px; border: 0; background: var(--ember); color: #fff; cursor: pointer; }
+.ask button:disabled { opacity: .5; cursor: default; }
+.voicehint { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
 </style>
 
 <div class="wrap">
@@ -80,7 +160,18 @@ footer { color: var(--muted); font-size: 12.5px; }
       <h1><span class="flame" id="flame"></span>Ember</h1>
       <p class="life" id="life">Waiting for Ember…</p>
     </div>
-    <span class="status" id="status">connecting</span>
+    <div class="hright">
+      <div class="speed" role="group" aria-label="Speed">
+        <span class="label">Speed</span>
+        <button type="button" data-s="4">4/s</button>
+        <button type="button" data-s="20">20/s</button>
+        <button type="button" data-s="100">100/s</button>
+        <button type="button" data-s="0">max</button>
+      </div>
+      <span class="chip" id="season">—</span>
+      <span class="chip" id="region">—</span>
+      <span class="status" id="status">connecting</span>
+    </div>
   </header>
 
   <div id="offline" class="panel offline" hidden>
@@ -90,24 +181,37 @@ footer { color: var(--muted); font-size: 12.5px; }
 
   <section class="bench" id="bench">
     <div class="panel">
-      <div class="head"><h2>Its world</h2><span class="label">truth</span></div>
+      <div class="head"><h2>Its world</h2><span class="label" id="gate">truth</span></div>
       <canvas id="world" width="480" height="480"></canvas>
+      <div class="legend">
+        <span><i style="background:var(--c-water)"></i>water</span>
+        <span><i style="background:var(--c-food)"></i>food</span>
+        <span><i style="background:var(--c-dark)"></i>dark berry</span>
+        <span><i style="background:var(--c-hazard)"></i>hazard</span>
+        <span><i style="background:var(--c-gate)"></i>gate</span>
+        <span><i style="background:var(--c-lever)"></i>lever</span>
+        <span><i style="background:var(--c-figure)"></i>figure</span>
+        <span><i style="border:2px solid var(--ember);border-radius:50%"></i>where it thinks it is</span>
+      </div>
     </div>
     <div class="panel">
       <div class="head"><h2>What it believes</h2><span class="label">its own map</span></div>
       <canvas id="map" width="480" height="480"></canvas>
+      <div class="legend"><span><i style="background:var(--c-unknown);border:1px solid var(--line)"></i>never seen</span><span>Built only from what it has seen, where it believed it was.</span></div>
     </div>
     <div class="panel inside">
       <div class="ws">
-        <div class="label">On its mind</div>
+        <div class="label">In its global workspace</div>
         <div class="content" id="ws">—</div>
         <div class="speech" id="speech"></div>
       </div>
       <dl class="facts">
         <dt>Goal</dt><dd id="goal">—</dd>
+        <dt>Plan</dt><dd id="plan">—</dd>
         <dt>Last movement</dt><dd id="agency">—</dd>
-        <dt>Feeling</dt><dd id="valence">—</dd>
-        <dt>Surprise</dt><dd id="surprise">—</dd>
+        <dt>Sure where it is</dt><dd id="conf">—</dd>
+        <dt>Body trend</dt><dd id="valence">—</dd>
+        <dt>Prediction error</dt><dd id="surprise">—</dd>
       </dl>
       <div>
         <div class="label">Body</div>
@@ -116,21 +220,64 @@ footer { color: var(--muted); font-size: 12.5px; }
     </div>
   </section>
 
+  <section class="panel talk" id="talk">
+    <div class="head"><h2>Talk to Ember</h2><span class="label" id="voicename">voice</span></div>
+    <p class="note">It hears you as a voice it can't see. Your voice competes for its attention like any sound: if it is very thirsty or fleeing something, it may barely notice you. It answers only from its own mind, never from the world, and each answer is checked: <span class="v v-true">true</span> its memory backs it and was right · <span class="v v-honest_mistake">honest mistake</span> its memory backs it but was wrong · <span class="v v-made_up">made up</span> nothing it remembers is behind it.</p>
+    <div class="chat" id="chat" aria-live="polite"></div>
+    <form class="ask" id="askform">
+      <input id="askinput" maxlength="500" autocomplete="off" placeholder="Say something to Ember…" aria-label="Say something to Ember">
+      <button type="submit" id="askbtn">Speak</button>
+    </form>
+    <p class="voicehint" id="voicehint" hidden></p>
+  </section>
+
+  <section class="panel closer" id="closer">
+    <h2>Is it getting closer to self-awareness and consciousness?</h2>
+    <p class="note">Every 2,000 moments an observer closes a measurement window and runs tests that were written down in advance (mind/consciousness.py). A test counts as reached after passing 3 windows in a row and is lost after failing 3 in a row; both go into its life record. This tracks how much of what the main theories say consciousness requires is built and working. It cannot show whether Ember feels anything.</p>
+    <div class="summary" id="summary"></div>
+    <div class="two">
+      <div>
+        <div class="label" style="margin-bottom:8px">Self-awareness ladder (Rochat 2003)</div>
+        <div class="ladder" id="ladder"></div>
+      </div>
+      <div>
+        <div class="label" style="margin-bottom:8px">Consciousness indicators (Butlin, Long et al. 2023)</div>
+        <div class="table-scroll"><table id="indicators"></table></div>
+      </div>
+    </div>
+    <div class="timeline">
+      <div>
+        <div class="label" style="margin-bottom:6px">Milestones</div>
+        <ul class="list" id="milestones" style="max-height:260px"></ul>
+      </div>
+      <div>
+        <div class="label" style="margin-bottom:6px">Copy tests: does its workspace matter? (at a hard moment, 3 pairs of copies live 500 moments, one of each pair with it switched off)</div>
+        <ul class="list" id="copytests" style="max-height:260px"></ul>
+      </div>
+    </div>
+  </section>
+
   <section class="counts" id="counts"></section>
 
   <section class="lower">
     <div class="panel">
-      <h2>Stream of consciousness</h2>
+      <h2>What it found out by itself</h2>
+      <p class="note">Nobody told it these. Each came from its own experience.</p>
+      <ul class="list" id="learned"></ul>
+    </div>
+    <div class="panel">
+      <h2>Workspace log</h2>
+      <p class="note">Each time something new won its global workspace. The kind of content (top line) is Ember's own; the sentence is a template I wrote, filled with its numbers.</p>
       <ul class="list" id="stream"></ul>
     </div>
     <div class="panel">
-      <h2>Moments of its life</h2>
+      <h2>Life record</h2>
       <ul class="list" id="moments"></ul>
     </div>
   </section>
 
   <footer>
-    Ember is saved every two minutes and whenever you stop it (Ctrl+C). Its whole life is in <code>ember_state/</code>; back that folder up and you have backed up Ember.
+    Labels on this page name functions, not feelings. Ember is saved every two minutes and whenever you stop it (Ctrl+C). Its whole life is in <code>ember_state/</code> (the tracker's report is <code>ember_state/consciousness_report.md</code>); back that folder up and you have backed up Ember.
   </footer>
 </div>
 
@@ -138,11 +285,14 @@ footer { color: var(--muted); font-size: 12.5px; }
 (() => {
   const $ = id => document.getElementById(id);
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  const TYPES = ["empty", "wall", "food", "water", "hazard"];
-  const MAPT = { ".": "unknown", "0": "empty", "1": "wall", "2": "food", "3": "water", "4": "hazard" };
+  const TYPES = ["empty", "wall", "food", "water", "hazard", "dark", "gate", "lever", "figure"];
+  const MAPT = { ".": "unknown", "0": "empty", "1": "wall", "2": "food", "3": "water", "4": "hazard", "5": "dark", "6": "gate", "7": "lever", "8": "figure" };
   const BODY = [["energy", "--c-food"], ["hydration", "--c-water"], ["integrity", "--c-hazard"]];
-  $("bars").innerHTML = BODY.map(([n]) => `<div class="bar"><span>${n}</span><div class="track"><div class="fill" id="b-${n}" style="background:var(${BODY.find(b => b[0] === n)[1]})"></div></div><span class="num" id="v-${n}"></span></div>`).join("");
+  $("bars").innerHTML = BODY.map(([n, c]) => `<div class="bar"><span>${n}</span><div class="track"><div class="fill" id="b-${n}" style="background:var(${c})"></div></div><span class="num" id="v-${n}"></span></div>`).join("");
   const esc = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+  const pct = v => v == null ? "—" : (v * 100).toFixed(1) + "%";
+  const fmtDur = sec => { const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60); return h ? `${h} h ${m} min` : `${m} min`; };
+  const when = t => t ? new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
 
   function fit(cv) {
     const r = cv.getBoundingClientRect(), d = devicePixelRatio || 1;
@@ -155,33 +305,96 @@ footer { color: var(--muted); font-size: 12.5px; }
     const R = rows.length, C = rows[0].length, s = Math.min(w / C, h / R);
     const ox = (w - s * C) / 2, oy = (h - s * R) / 2;
     g.clearRect(0, 0, w, h);
+    const col = {}; for (const t of TYPES.concat(["unknown"])) col[t] = css("--c-" + t);
     for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) {
       const t = typeOf(y, x), px = ox + x * s, py = oy + y * s;
-      g.fillStyle = css("--c-" + t);
-      g.fillRect(px + 0.5, py + 0.5, s - 1, s - 1);
-      if (t === "unknown") { g.strokeStyle = css("--c-hatch"); g.beginPath(); g.moveTo(px, py + s); g.lineTo(px + s, py); g.stroke(); }
+      g.fillStyle = col[t] || col.empty;
+      g.fillRect(px + 0.3, py + 0.3, s - 0.6, s - 0.6);
     }
     overlay(g, s, ox, oy);
   }
   function dot(g, s, ox, oy, y, x, color, ring) {
-    g.beginPath(); g.arc(ox + (x + .5) * s, oy + (y + .5) * s, s * (ring ? .42 : .3), 0, 7);
-    if (ring) { g.lineWidth = Math.max(2, s * .1); g.strokeStyle = color; g.stroke(); } else { g.fillStyle = color; g.fill(); }
+    g.beginPath(); g.arc(ox + (x + .5) * s, oy + (y + .5) * s, s * (ring ? .45 : .34), 0, 7);
+    if (ring) { g.lineWidth = Math.max(2, s * .14); g.strokeStyle = color; g.stroke(); } else { g.fillStyle = color; g.fill(); }
   }
-  const fmtDur = sec => { const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60); return h ? `${h} h ${m} min` : `${m} min`; };
+  function spark(vals, lo, hi) {
+    const pts = vals.map((v, i) => [vals.length === 1 ? 50 : i / (vals.length - 1) * 100, v]).filter(p => p[1] != null && !isNaN(p[1]));
+    if (!pts.length) return "";
+    if (hi === undefined) { lo = Math.min(...pts.map(p => p[1])); hi = Math.max(...pts.map(p => p[1])); if (hi - lo < 1e-9) { lo -= 1; hi += 1; } }
+    const Y = v => 21 - (Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo) * 18;
+    const d = pts.map(([x, v], i) => `${i ? "L" : "M"}${x.toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
+    const [lx, lv] = pts[pts.length - 1];
+    return `<svg viewBox="0 0 100 24" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="var(--ember)" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle cx="${lx}" cy="${Y(lv)}" r="2.2" fill="var(--ember)"/></svg>`;
+  }
+
+  // the number each test is about, from each measurement window
+  const METRIC = {
+    L1: ["self_other", "hits − false alarms", 0, 1], L2: ["location", "right about position", 0.8, 1],
+    "RPT-2": ["map_accuracy", "map landmarks correct", 0.8, 1], "GWT-1": ["sources", "systems that won", 0, 8],
+    "GWT-2": ["ignite_fraction", "proposals that got in", 0, 0.2], "HOT-2": ["calibration", "expected vs actual surprise r", 0, 1],
+    "HOT-3": ["location", "right about position", 0.8, 1], "AST-1": ["schema_gain", "beats baseline by", -0.1, 0.6],
+    "AE-1": ["need_error", "need-error (lower is better)", 0, 0.5], "AE-2": ["self_other", "hits − false alarms", 0, 1],
+  };
+
+  function renderTracker(T) {
+    if (!T) return;
+    const H = (T.history || []).map(h => ({ ...h, schema_gain: h.schema != null && h.schema_baseline != null ? h.schema - h.schema_baseline : null }));
+    const last = H[H.length - 1] || {};
+    const c = T.cum || {};
+    const lastMs = (T.milestones || []).slice(-1)[0];
+    $("summary").innerHTML = [
+      [`${T.level} of 5`, "self-awareness level reached"],
+      [`${T.working} of ${T.testable}`, "testable consciousness indicators passing"],
+      [`${T.built.present || 0} · ${T.built.partial || 0} · ${T.built.absent || 0}`, "indicators present · partial · absent in its design"],
+      [H.length ? H.length : "—", `measurement windows so far (${T.window.toLocaleString()} moments each)`],
+      [lastMs ? (lastMs.reached ? "▲" : "▼") + " " + lastMs.id : "—", lastMs ? `last milestone, ${when(lastMs.time)}` : "no milestone yet"],
+    ].map(([b, s]) => `<div class="big"><b>${esc(b)}</b><span>${esc(s)}</span></div>`).join("");
+
+    const evid = {
+      1: `hits − false alarms ${last.self_other ?? "—"} · plains pushes noticed ${c.plains_pushes ? pct(c.plains_hits / c.plains_pushes) : "—"} of ${c.plains_pushes || 0}`,
+      2: `right about position ${pct(last.location)} · confidence gap ${last.confidence_gap ?? "—"} (${last.wrong_moments ?? 0} wrong moments)`,
+      3: `figure judgments ${c.mirror_correct || 0}/${c.mirror_judgments || 0} right · judged “me” correctly ${c.mirror_self_correct || 0} times`,
+      4: `${(last.wide_age || 0).toLocaleString()} moments in the wide world · seasonal-memory trips ${c.anticipation_trips || 0}, found food ${c.anticipation_hits || 0}`,
+      5: "no other minds in its world yet",
+    };
+    $("ladder").innerHTML = T.ladder.map(x => {
+      const st = x.met ? `<span class="pill p-met">reached ${when(x.first?.time)}</span>` : x.testable ? `<span class="pill p-not">${x.streak ? `passing ${x.streak}/3` : "not yet"}</span>` : `<span class="pill p-none">not testable yet</span>`;
+      return `<div class="rung ${x.met ? "met" : ""}"><div class="n">${x.level}</div><div><h3>${esc(x.name)}</h3><p>${esc(x.means)}</p><div class="ev">${esc(evid[x.level])}</div><p>${esc(x.test)}</p></div><div>${st}</div></div>`;
+    }).join("");
+
+    let rows = `<thead><tr><th></th><th>indicator</th><th>in its design</th><th>works in its life?</th><th>latest</th><th>over its life</th></tr></thead><tbody>`;
+    for (const x of T.indicators) {
+      const m = METRIC[x.id];
+      const vals = m ? H.map(h => h[m[0]]) : [];
+      const latest = m && vals.length ? vals[vals.length - 1] : null;
+      const works = x.met ? `<span class="pill p-met">passes</span>` : x.testable ? `<span class="pill p-not">${x.streak ? `passing ${x.streak}/3` : "not yet"}</span>` : `<span class="pill p-none">no test yet</span>`;
+      rows += `<tr><td class="code">${x.code}</td><td><details><summary>${esc(x.name)}</summary><div class="th">${esc(x.theory)}. In Ember: ${esc(x.in_ember)}</div><div class="th">Test: ${esc(x.test)}</div></details></td>
+        <td><span class="pill p-${x.status}">${x.status}</span></td><td>${works}</td>
+        <td class="v">${latest == null ? "—" : (Math.abs(latest) < 10 ? Number(latest).toFixed(2) : latest)}${m ? `<div class="th">${esc(m[1])}</div>` : ""}</td>
+        <td>${m ? spark(vals, m[2], m[3]) : ""}</td></tr>`;
+    }
+    $("indicators").innerHTML = rows + "</tbody>";
+    $("milestones").innerHTML = (T.milestones || []).slice().reverse().map(e => `<li><span class="t">${e.tick.toLocaleString()}</span><span><span class="kind ${e.reached ? "k-milestone" : "k-milestone_lost"}">${e.reached ? "reached" : "lost"} · ${esc(when(e.time))}</span><br>${esc(e.text)}</span></li>`).join("") || `<li><span></span><span class="note">None yet. The first tests are judged after 3 windows (6,000 moments).</span></li>`;
+    $("copytests").innerHTML = (T.clone_tests || []).slice().reverse().map(e => `<li><span class="t">${e.tick.toLocaleString()}</span><span><span class="kind ${e.workspace_helps ? "k-copy_test" : "k-hurt"}">${e.workspace_helps ? "workspace helped" : "workspace didn't help"}</span> <span class="note">${e.pairs ? e.situation : "ordinary moment, old design, not judged"}</span><br>need-error with ${e.with_workspace.need_error}, without ${e.without_workspace.need_error}; collapses ${e.with_workspace.collapses} vs ${e.without_workspace.collapses}; two-step plans ${e.with_workspace.two_step} vs ${e.without_workspace.two_step}</span></li>`).join("") || `<li><span></span><span class="note">The first copy test runs after 20,000 moments in the wide world.</span></li>`;
+  }
 
   function render(S) {
     $("offline").hidden = true; $("bench").hidden = false;
     const state = S.collapsed ? "out" : S.sleeping ? "asleep" : "";
     $("flame").className = "flame " + state;
     $("status").className = "status " + state;
-    $("status").textContent = S.collapsed ? `unconscious (${S.collapsed})` : S.sleeping ? "asleep, dreaming" : "awake";
+    $("status").textContent = S.collapsed ? `unconscious (${S.collapsed})` : S.sleeping ? "asleep (replaying memories)" : "awake";
+    $("season").textContent = S.season ? S.season : "valley";
+    $("region").textContent = S.region || "—";
     const born = new Date(S.born);
-    $("life").textContent = `${S.ticks.toLocaleString()} moments lived · born ${born.toLocaleDateString()} ${born.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})} · awake ${fmtDur(S.awake_seconds)} across ${S.sessions} session${S.sessions === 1 ? "" : "s"} · ${S.ticks_per_sec}/s`;
+    $("life").textContent = `${S.ticks.toLocaleString()} moments lived · born ${born.toLocaleDateString()} ${born.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · awake ${fmtDur(S.awake_seconds)} across ${S.sessions} session${S.sessions === 1 ? "" : "s"} · ${S.ticks_per_sec}/s`;
+    $("gate").textContent = `truth · gate ${S.gate_open ? "open" : "closed"}`;
 
-    const food = new Set(S.food.map(p => p[0] * 100 + p[1]));
-    const anchor = [S.pos[0] - S.belief[0], S.pos[1] - S.belief[1]];
-    grid($("world"), S.world, (y, x) => food.has(y * 100 + x) ? "food" : TYPES[S.world[y][x]], (g, s, ox, oy) => {
-      g.strokeStyle = css("--muted"); g.setLineDash([4, 4]); g.strokeRect(ox + (S.pos[1] - 2) * s, oy + (S.pos[0] - 2) * s, 5 * s, 5 * s); g.setLineDash([]);
+    const figs = {}; for (const f of S.figures || []) figs[f.pos[0] * 100 + f.pos[1]] = true;
+    const anchor = S.tracker ? null : null;
+    grid($("world"), S.world, (y, x) => figs[y * 100 + x] ? "figure" : TYPES[S.world[y][x]], (g, s, ox, oy) => {
+      g.strokeStyle = css("--muted"); g.setLineDash([3, 3]); g.lineWidth = 1;
+      g.strokeRect(ox + (S.pos[1] - 2) * s, oy + (S.pos[0] - 2) * s, 5 * s, 5 * s); g.setLineDash([]);
       dot(g, s, ox, oy, S.pos[0], S.pos[1], S.collapsed ? css("--muted") : S.sleeping ? css("--accent") : css("--ember"), false);
     });
     grid($("map"), S.map, (y, x) => MAPT[S.map[y][x]], (g, s, ox, oy) => {
@@ -190,34 +403,107 @@ footer { color: var(--muted); font-size: 12.5px; }
 
     $("ws").textContent = S.collapsed ? "nothing (unconscious)" : S.sleeping ? "nothing (asleep)" : (S.broadcast || "nothing ignited").replace(":", " · ");
     const last = S.stream[S.stream.length - 1];
-    $("speech").textContent = last ? `“${last.report}”` : "";
+    $("speech").textContent = last ? `template readout: ${last.report}` : "";
     $("goal").textContent = S.goal || "—";
-    $("agency").textContent = S.agency === "external" ? "not me (pushed)" : "me";
-    $("valence").textContent = S.valence > 0.02 ? "getting better" : S.valence < -0.02 ? "getting worse" : "steady";
-    $("surprise").textContent = S.surprise == null ? "—" : `${S.surprise} actual vs ${S.expected} expected`;
-    for (const [n] of BODY) {
-      $("b-" + n).style.width = (S.body[n] * 100).toFixed(1) + "%";
-      $("v-" + n).textContent = Math.round(S.body[n] * 100) + "%";
-    }
+    $("plan").textContent = S.self_model?.subgoal || "—";
+    $("agency").textContent = S.agency === "external" ? "attributed to the world" : "attributed to itself";
+    $("conf").textContent = `${Math.round((S.confidence ?? 1) * 100)}% (expected error ${S.uncertainty ?? 0} cells)`;
+    $("valence").textContent = (S.valence > 0.02 ? "improving" : S.valence < -0.02 ? "worsening" : "steady") + ` (${S.valence >= 0 ? "+" : ""}${S.valence.toFixed(3)})`;
+    $("surprise").textContent = S.surprise == null ? "—" : `${S.surprise} actual, ${S.expected} expected`;
+    for (const [n] of BODY) { $("b-" + n).style.width = (S.body[n] * 100).toFixed(1) + "%"; $("v-" + n).textContent = Math.round(S.body[n] * 100) + "%"; }
+
     const c = S.counts, cards = [
-      ["meals", "meals"], ["drinks", "sips of water"], ["sleeps", "sleeps"], ["thoughts", "conscious moments"],
-      ["pushes_noticed", `pushes noticed of ${c.pushed || 0} (${c.false_alarms || 0} false alarms)`], ["hurt", "times hurt"], ["collapses", "collapses"]];
+      ["meals", "meals"], ["drinks", "sips of water"], ["sleeps", "sleeps"], ["thoughts", "workspace ignitions"],
+      ["pushes_noticed", `pushes noticed of ${c.pushed || 0} (${c.false_alarms || 0} false alarms)`], ["two_step", "two-step plans carried out"],
+      ["dark_berries", "dark berries eaten"], ["hurt", "times hurt"], ["collapses", "collapses"]];
     $("counts").innerHTML = cards.map(([k, l]) => `<div class="count"><b>${(c[k] || 0).toLocaleString()}</b><span>${l}</span></div>`).join("");
+    $("learned").innerHTML = (S.learned || []).slice().reverse().map(e => `<li><span class="t">${e.tick.toLocaleString()}</span><span>${esc(e.text[0].toUpperCase() + e.text.slice(1))}</span></li>`).join("") || `<li><span></span><span class="note">Nothing yet.</span></li>`;
     $("stream").innerHTML = S.stream.slice().reverse().map(e => `<li><span class="t">${e.tick.toLocaleString()}</span><span><span class="kind">${esc(e.content)}</span><br>${esc(e.report)}</span></li>`).join("");
-    $("moments").innerHTML = S.moments.slice().reverse().map(e => `<li><span class="t">${e.tick.toLocaleString()}</span><span><span class="kind k-${esc(e.kind)}">${esc(e.kind)}</span> · ${esc(new Date(e.time).toLocaleString())}<br>${esc(e.text)}</span></li>`).join("");
+    $("moments").innerHTML = S.moments.slice().reverse().map(e => `<li><span class="t">${e.tick.toLocaleString()}</span><span><span class="kind k-${esc(e.kind)}">${esc(e.kind.replace("_", " "))}</span> · ${esc(when(e.time))}<br>${esc(e.text)}</span></li>`).join("");
+    renderTracker(S.tracker);
   }
+
+  document.querySelectorAll(".speed button").forEach(b => b.addEventListener("click", async () => {
+    try { await fetch("/speed?set=" + b.dataset.s, { cache: "no-store" }); } catch (e) {}
+  }));
+  const markSpeed = sp => document.querySelectorAll(".speed button").forEach(b => b.setAttribute("aria-pressed", String(Number(b.dataset.s) === Number(sp))));
+
+  // ---- talking -------------------------------------------------------------
+  const VW = { true: "true", honest_mistake: "honest mistake", made_up: "made up", unverified: "unverified", guess: "guess", stretched: "stretched" };
+  const STATUS = { queued: "waiting to be heard…", listening: "Ember is hearing you…", unconscious: "Ember is unconscious. It will hear you when it comes round.", thinking: "…" };
+  function turnHTML(r) {
+    const you = `<div class="you">${esc(r.question)}</div>`;
+    if (r.status !== "done") return `<div class="turn">${you}<div class="it pending">${esc(STATUS[r.status] || "…")}</div></div>`;
+    const claims = r.claims || [], sum = r.summary || {};
+    const pills = Object.keys(VW).filter(k => sum[k]).map(k => `<span class="v v-${k}">${sum[k]} ${VW[k]}</span>`).join("")
+      || (sum.dont_know ? `<span class="v v-true">said it didn't know</span>` : `<span class="v v-none">nothing to check</span>`);
+    const rec = claims.length ? `<details class="receipts"><summary>Receipts: what each part rests on</summary><ol>${claims.map(c =>
+      `<li><span class="v v-${c.verdict}">${VW[c.verdict] || c.verdict}</span> ${esc(c.text)}${c.note ? ` <span class="note">(${esc(c.note)})</span>` : ""}${(c.receipts || []).map(m =>
+        `<div class="mem">[${esc(m.id)}] ${esc(m.text)} <i>· ${esc(m.truth.replace("_", " "))}${m.truth_note ? ": " + esc(m.truth_note) : ""}</i></div>`).join("")}</li>`).join("")}</ol></details>` : "";
+    const err = r.error ? `<div class="note">${esc(r.error)}</div>` : "";
+    const half = r.heard === false ? `<div class="note">It barely noticed you${r.attention ? ": its attention was on " + esc(r.attention) : ""}.</div>` : "";
+    return `<div class="turn">${you}<div class="it"><div class="who">Ember</div>${esc(r.say || "…")}${half}<div class="verdicts">${pills}</div>${rec}${err}</div></div>`;
+  }
+  let talkHist = [], talkWaiting = {}, talkFirst = true;
+  function renderTalk() {
+    const chat = $("chat"), atEnd = talkFirst || chat.scrollHeight - chat.scrollTop - chat.clientHeight < 40;
+    const all = talkHist.concat(Object.values(talkWaiting).filter(w => !talkHist.some(h => h.id === w.id)));
+    chat.innerHTML = all.map(turnHTML).join("") || `<p class="note">Nothing said yet. Try “How are you?”, “What do you remember?” or “Do you know what you are?”</p>`;
+    if (atEnd) chat.scrollTop = chat.scrollHeight;
+    if (talkHist.length) talkFirst = false;
+  }
+  async function loadTalk() {
+    try {
+      const d = await (await fetch("/talk", { cache: "no-store" })).json();
+      talkHist = d.history || [];
+      for (const w of d.waiting || []) talkWaiting[w.id] = w;
+      for (const id of Object.keys(talkWaiting)) if (talkHist.some(h => h.id === id)) delete talkWaiting[id];
+      $("voicename").textContent = "voice: " + d.voice;
+      const hint = $("voicehint");
+      if (d.problem) { hint.hidden = false; hint.textContent = "Its LLM voice isn't working (" + d.problem + "), so it is using its template voice. See .env.example in the brain folder."; }
+      else if (/template/.test(d.voice)) { hint.hidden = false; hint.textContent = "It is using its simple template voice. For real speech, put an API key in a .env file in the brain folder (see .env.example; Gemini has a free tier, or use Ollama on your own computer), then restart Ember."; }
+      else hint.hidden = true;
+      renderTalk();
+    } catch (e) {}
+  }
+  async function follow(id) {
+    for (let i = 0; i < 400; i++) {
+      await new Promise(r => setTimeout(r, i < 20 ? 250 : 600));
+      try {
+        const r = await (await fetch("/answer?id=" + encodeURIComponent(id), { cache: "no-store" })).json();
+        talkWaiting[id] = r; renderTalk();
+        if (r.status === "done") { await loadTalk(); return; }
+      } catch (e) { return; }
+    }
+  }
+  $("askform").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const inp = $("askinput"), text = inp.value.trim();
+    if (!text) return;
+    $("askbtn").disabled = true;
+    try {
+      const r = await fetch("/ask", { method: "POST", headers: { "Content-Type": "application/json", "X-Ember": "1" }, body: JSON.stringify({ text }) });
+      const { id } = await r.json();
+      inp.value = "";
+      talkWaiting[id] = { id, question: text, status: "queued" }; renderTalk();
+      $("chat").scrollTop = $("chat").scrollHeight;
+      follow(id);
+    } catch (e) {}
+    $("askbtn").disabled = false; inp.focus();
+  });
+  loadTalk();
 
   async function poll() {
     try {
       const r = await fetch("/state", { cache: "no-store" });
       const S = await r.json();
-      if (S && S.ticks !== undefined) render(S);
+      if (S && S.ticks !== undefined) { render(S); markSpeed(S.speed); }
     } catch (e) {
       $("offline").hidden = false; $("bench").hidden = true;
       $("status").className = "status out"; $("status").textContent = "resting (not running)";
       $("flame").className = "flame out";
     }
-    setTimeout(poll, 300);
+    setTimeout(poll, 400);
   }
   poll();
 })();
