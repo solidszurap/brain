@@ -96,6 +96,10 @@ MIND_CHANGES = [
     ("2026-10-30 time while away", "Time now passes while you're away: about a season (3,000 moments) per real "
                                    "day, at most a year per absence, lived moment by moment when you come back. "
                                    "Before, no time passed while it was stopped."),
+    ("2026-10-30 the light", "Its world has a new kind of thing: a light, which is you, appearing where you click; "
+                             "food you leave lies inside it. Its eyes grew to tell apart 10 kinds of things "
+                             "(everything it knew is kept), and it can now learn that it often finds food in "
+                             "something, the way it learned that the lever opens the gate."),
 ]
 
 
@@ -292,11 +296,37 @@ def listen(life, info, conscious):
     Talk.current = None
 
 
+# ------------------------------------------------------------------------- you
+class You:
+    """What you do in its world from the window, done between two moments."""
+    actions = queue.Queue()
+
+
+def act_for_you(life):
+    w = life.world
+    changed = False
+    while True:
+        try:
+            what, arg = You.actions.get_nowait()
+        except queue.Empty:
+            break
+        if what == "light":
+            w.place_light(arg)
+            changed = True
+        elif what == "give" and w.give():
+            changed = True
+            life.counts["gifts"] += 1
+            log_event("gift", "You left food in the light.", life)
+    if changed:
+        life.view = w.view()                    # it sees the change before it decides what to do
+
+
 def tick(life):
     """One moment of Ember's life."""
     m = life.mind
     obs = ensure_observer(life)
     wit = ensure_witness(life)
+    act_for_you(life)
     life.ticks += 1
     n_learned = len(getattr(m, "learned", []))
     n_done = sum(1 for x in getattr(m, "multi_step", []) if x[2] is not None)
@@ -316,6 +346,9 @@ def tick(life):
     consumed = info.get("consumed")
     if consumed == "food":
         c["meals"] += 1
+        if info.get("gift"):
+            c["gifts_eaten"] += 1
+            log_event("gift_eaten", "Ate the food you left in the light.", life)
     elif consumed == "water":
         c["drinks"] += 1
     elif consumed == "dark berry":
@@ -433,6 +466,8 @@ def snapshot(life, ticks_per_sec):
         "voice": {"name": Talk.cfg.describe(), "problem": Talk.cfg.problem,
                   "listening": bool(getattr(m, "hearing_voice", None))},
         "catching_up": Window.catching_up,
+        "light": [int(v) for v in w.light] if getattr(w, "light", None) is not None else None,
+        "gift_ready": bool(w.gift_ready()) if hasattr(w, "gift_ready") else False,
     }
 
 
@@ -539,24 +574,39 @@ class Window(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
-        # only the window may talk to Ember: same-origin and a custom header, so
-        # other web pages open in the browser can't (the header forces a CORS
-        # preflight this server never answers)
+        # only the window may talk to Ember or act in its world: same-origin and
+        # a custom header, so other web pages open in the browser can't (the
+        # header forces a CORS preflight this server never answers)
         origin = self.headers.get("Origin")
         port = self.server.server_address[1]
-        if self.path != "/ask" or self.headers.get("X-Ember") != "1" or (
+        if self.path not in ("/ask", "/light", "/give") or self.headers.get("X-Ember") != "1" or (
                 origin and origin not in (f"http://localhost:{port}", f"http://127.0.0.1:{port}")):
             self.send_error(403)
             return
         try:
             n = min(int(self.headers.get("Content-Length", 0)), 8192)
-            text = str(json.loads(self.rfile.read(n) or b"{}").get("text", "")).strip()[:voice_mod.MAX_QUESTION]
-        except (ValueError, AttributeError):
-            text = ""
-        if not text:
+            data = json.loads(self.rfile.read(n) or b"{}")
+            if not isinstance(data, dict):
+                raise ValueError
+        except ValueError:
             self.send_error(400)
             return
-        body = json.dumps({"id": Talk.ask(text)}).encode()
+        if self.path == "/light":
+            try:
+                You.actions.put(("light", (int(data["y"]), int(data["x"]))))
+            except (KeyError, TypeError, ValueError):
+                self.send_error(400)
+                return
+            body = b"{}"
+        elif self.path == "/give":
+            You.actions.put(("give", None))
+            body = b"{}"
+        else:
+            text = str(data.get("text", "")).strip()[:voice_mod.MAX_QUESTION]
+            if not text:
+                self.send_error(400)
+                return
+            body = json.dumps({"id": Talk.ask(text)}).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
@@ -646,6 +696,8 @@ def main():
                 # nobody is watching: its time waits, and is lived when you come back
                 if getattr(life, "away_since", None) is None:
                     life.away_since = now_iso()
+                    if getattr(life.world, "light", None) is not None:
+                        life.world.clear_light()       # you left: the light goes with you
                 if time.time() - last_save > SAVE_EVERY:
                     life.sessions[-1][1] = now_iso()
                     save(life)

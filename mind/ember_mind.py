@@ -834,6 +834,8 @@ class EmberMind(Mind):
                     self.nourishing.add(kind)
                     self.learned.append((self.t, f"learned that {NAMES[kind]} feeds it"))
         self.total_contacts = getattr(self, "total_contacts", 0) + 1
+        if kind != EMPTY and d[0] - self.ground[0] > 0.03:
+            self._found_food_in(kind)
         for s in self.heard:
             self.cooccur[(kind, s)] += 1
             self.sound_count = getattr(self, "sound_count", Counter())
@@ -847,6 +849,26 @@ class EmberMind(Mind):
                 self.rules[key] = self.t
                 effect = {"gate_opened": "opens the gate", "gate_closed": "closes the gate"}.get(s, f"is followed by {s}")
                 self.learned.append((self.t, f"learned that stepping on the {NAMES[kind]} {effect}"))
+
+    def _found_food_in(self, kind):
+        """Touching this kind of thing came with food (its energy rose). Food
+        inside another kind of thing (what you leave in the light) is learned
+        like the lever: when food comes with touching this kind far more often
+        than with touching anything at all ("lift" >= 10, at least twice). The
+        average effect of touching it can't show this: the light is mostly
+        empty, and food barely changes a full body."""
+        self.fed_total = getattr(self, "fed_total", 0) + 1
+        if kind in INNATE:
+            return
+        fed_with = getattr(self, "fed_with", None)
+        if fed_with is None:
+            fed_with = self.fed_with = Counter()
+        fed_with[kind] += 1
+        p_kind = fed_with[kind] / self.contact_count[kind]
+        p_any = self.fed_total / self.total_contacts
+        if kind not in self.nourishing and kind not in self.harmful and fed_with[kind] >= 2 and p_kind >= 10 * p_any:
+            self.nourishing.add(kind)
+            self.learned.append((self.t, f"learned that it often finds food in the {NAMES[kind]}"))
 
     def _figures_seen(self, view):
         return [self._to_map(vy, vx) for vy, vx in np.argwhere(view == FIGURE)]

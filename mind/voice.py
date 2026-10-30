@@ -341,6 +341,9 @@ def build_dossier(mind, question, place_name, heard=True, attention_now=None):
     for k in sorted(getattr(mind, "harmful", set())):
         add(f"k:harmful:{k}", "knowledge", f"{TN[k].capitalize()}s hurt me; I keep away from them."
             if TN[k] != "dark berry" else "Dark berries hurt me; I don't eat them.", fact=f"harmful:{TN[k]}")
+    for k in sorted(getattr(mind, "nourishing", set())):
+        add(f"k:nourishing:{TN[k]}", "knowledge", "I often find food in the light."
+            if TN[k] == "light" else f"Touching a {TN[k]} feeds me.", fact=f"nourishing:{TN[k]}")
     for (kind, sound), _ in getattr(mind, "rules", {}).items():
         if sound == "gate_opened":
             add("k:rule:gate", "knowledge", f"Stepping on the {TN[kind]} opens the gate. I hear the gate from anywhere.",

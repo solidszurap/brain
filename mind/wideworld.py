@@ -28,9 +28,10 @@ import numpy as np
 
 from .world import LAYOUT, CHAR, EMPTY, WALL, FOOD, WATER, HAZARD, ACTIONS, VIEW_R, VIEW
 
-DARK, GATE, LEVER, FIGURE = 5, 6, 7, 8
-N_TYPES_WIDE = 9
-TYPE_NAMES_WIDE = ["empty", "wall", "food", "water", "hazard", "dark berry", "gate", "lever", "figure"]
+DARK, GATE, LEVER, FIGURE, LIGHT = 5, 6, 7, 8, 9
+N_TYPES_WIDE = 10
+TYPE_NAMES_WIDE = ["empty", "wall", "food", "water", "hazard", "dark berry", "gate", "lever", "figure", "light"]
+GIFT_EVERY = 150      # moments between two gifts you can leave in the light
 SEASONS = ["spring", "summer", "autumn", "winter"]
 SEASON_LEN = 3000
 SIZE = 40
@@ -185,7 +186,45 @@ class WideWorld:
         for f in (self.reflection, self.wanderer):
             if f is not None and abs(f[0] - y0) <= VIEW_R and abs(f[1] - x0) <= VIEW_R and f != self.pos:
                 v[f[0] - y0 + VIEW_R, f[1] - x0 + VIEW_R] = FIGURE
+        L = getattr(self, "light", None)
+        if L is not None and abs(L[0] - y0) <= VIEW_R and abs(L[1] - x0) <= VIEW_R:
+            v[L[0] - y0 + VIEW_R, L[1] - x0 + VIEW_R] = LIGHT   # it sees the light, not what is in it
         return v
+
+    # ------------------------------------------------------------------- you
+    def place_light(self, cell):
+        """You appear in its world as a light: on the nearest empty cell within
+        2 of where you clicked (never on water, a hazard, a lever, the gate, a
+        bush, a seasonal pond or Ember itself, so it can't hide anything).
+        Returns where it went, or None."""
+        y0, x0 = int(cell[0]), int(cell[1])
+        blocked = {tuple(b["pos"]) for b in self.bushes} | set(self.seasonal_ponds) | {tuple(self.pos)}
+        free = [(abs(y - y0) + abs(x - x0), y, x) for y in range(y0 - 2, y0 + 3) for x in range(x0 - 2, x0 + 3)
+                if 0 <= y < self.H and 0 <= x < self.W and self.grid[y, x] == EMPTY and (y, x) not in blocked]
+        best = min(free) if free else None
+        self.light = (best[1], best[2]) if best else None
+        return self.light
+
+    def clear_light(self):
+        self.light = None
+
+    def gift_ready(self):
+        L = getattr(self, "light", None)
+        return (L is not None and self.grid[L] == EMPTY and L != tuple(self.pos)
+                and self.t - getattr(self, "last_gift_t", -10 ** 9) >= GIFT_EVERY)
+
+    def give(self):
+        """What you give lies inside the light: food, at most once per
+        GIFT_EVERY moments. If the light goes away first, the food stays,
+        and looks like any other food. Returns True if it was given."""
+        if not self.gift_ready():
+            return False
+        self.grid[self.light] = FOOD
+        if not hasattr(self, "gifts"):
+            self.gifts = set()                  # cells holding food you gave
+        self.gifts.add(self.light)
+        self.last_gift_t = self.t
+        return True
 
     def interoception(self):
         return np.array([self.body["energy"], self.body["hydration"], self.body["integrity"]])
@@ -270,10 +309,14 @@ class WideWorld:
         b["hydration"] -= rate * 0.006
         cell = int(self.grid[self.pos])
         consumed = None
+        gift = False
         if cell == FOOD:
             b["energy"] = min(1.0, b["energy"] + 0.35)
             self.grid[self.pos] = EMPTY
             consumed = "food"
+            gift = self.pos in getattr(self, "gifts", ())
+            if gift:
+                self.gifts.discard(self.pos)
         elif cell == DARK:
             b["energy"] = min(1.0, b["energy"] + 0.08)
             b["integrity"] -= 0.12                           # it makes Ember sick
@@ -306,7 +349,7 @@ class WideWorld:
             felt = ACTIONS[int(self.rng.integers(1, 5))]
         info = {"pushed": pushed, "consumed": consumed, "contact": cell, "died": False,
                 "true_pos": self.pos, "sounds": list(self.sounds), "season": self.season,
-                "region": region_of(self.pos), "felt_push": felt}
+                "region": region_of(self.pos), "felt_push": felt, "gift": gift}
         if min(b.values()) <= 0.0:
             for k in b:
                 b[k] = max(b[k], 0.0)

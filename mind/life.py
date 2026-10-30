@@ -95,11 +95,31 @@ def open_the_valley(life):
             f"{N_TYPES_WIDE} kinds of things.")
 
 
+def grow_senses(mind):
+    """Eyes for every kind of thing in the wide world. A mind from before the
+    light existed tells apart 9 kinds; mind/growth.py adds the 10th, keeping
+    everything it learned (as when the valley opened). Lazy, so every life
+    (the real one, bank snapshots, copies) grows them before it can see a
+    light. `old_senses` keeps the old eyes (a trials.py version; only safe
+    in a world without a light)."""
+    from .wideworld import N_TYPES_WIDE
+    if mind.cortex.n_types < N_TYPES_WIDE and not getattr(mind, "old_senses", False):
+        from .growth import expand_senses
+        # a much lower prior than the valley's -3: with -3, its predictions gave a few
+        # percent to a light it had never seen, and in hard moments it was wrong about
+        # where it was more often (results/trials/2026-10-30_1432_old_senses_vs_baseline.md)
+        expand_senses(mind, N_TYPES_WIDE, prior=-8.0)
+
+
 def step_life(life):
     """One moment, without any bookkeeping: shared by Ember's real life and by
     the clone tests in mind/consciousness.py so both live by the same rules.
     Returns (world info, mind's last-moment record or None while unconscious)."""
     w, m = life.world, life.mind
+    grow_senses(m)
+    visitor = getattr(life, "visitor", None)       # a simulated you (trials); the real you acts from the window
+    if visitor is not None and visitor.act(life):
+        life.view = w.view()                       # it sees the change before it decides what to do
     if w.collapsed:
         info = w.step(0)
         life.view, life.intero = w.view(), w.interoception()

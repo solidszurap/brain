@@ -56,6 +56,8 @@ class Witness:
         """Call once per moment, right after the world and mind have moved."""
         if info.get("pushed"):
             self.last_push_tick = life.ticks
+        if info.get("gift"):
+            self.gifts_eaten = getattr(self, "gifts_eaten", 0) + 1   # it ate food you left in the light
         ab = getattr(life.mind, "autobio", None)
         if ab is None or not ab.new_ids:
             return
@@ -77,6 +79,13 @@ class Witness:
             self._pruned_at = life.ticks
 
     # ------------------------------------------------- judging memories
+    def _light_truth(self):
+        """'I often find food in the light' is true if it has eaten food you left in it."""
+        n = getattr(self, "gifts_eaten", 0)
+        if n:
+            return "true", f"it ate food you left in the light {n} time{'s' if n != 1 else ''}"
+        return "unverifiable", "no gift eaten since the witness kept records"
+
     def memory_truth(self, ev):
         """Was this memory right? -> (status, note). Status is one of
         true | false_belief | unverifiable."""
@@ -86,6 +95,8 @@ class Witness:
                 return "false_belief", "dark berries still hurt it"
             if "dark berr" in txt or "lever opens the gate" in txt:
                 return "true", "true of its world"
+            if "light feeds" in txt or "food in the light" in txt:
+                return self._light_truth()
         tr = self.truth.get(ev["id"])
         if tr is None:
             return "unverifiable", "formed before the witness kept records"
@@ -129,6 +140,8 @@ class Witness:
             fact = item.get("fact")
             if fact in ("harmful:dark berry", "rule:lever"):
                 return "true", "true of its world"
+            if fact == "nourishing:light":
+                return self._light_truth()
             if fact == "harmful:none":
                 return "own_state", "what it knows"
             return "own_state", "what it knows"

@@ -24,7 +24,11 @@ def _index_map(n_old, n_new):
     return np.array(view + intero)
 
 
-def expand_senses(mind, n_new):
+def expand_senses(mind, n_new, prior=-3.0):
+    """prior: the new kinds' starting logit. -3 (the valley) makes them rare
+    but not negligible: every prediction then gives a few percent to things it
+    has never seen, which nudges its surprise everywhere. Much lower costs its
+    predictions nothing until the new kind actually appears."""
     old = mind.cortex
     n_old = old.n_types
     if n_new <= n_old:
@@ -38,7 +42,7 @@ def expand_senses(mind, n_new):
     new.W2[:, :, imap] = old.W2
     new.b2[:] = 0.0
     new_view_logits = np.array([c * n_new + k for c in range(N_CELLS) for k in range(n_old, n_new)])
-    new.b2[:, new_view_logits] = -3.0              # new kinds: rare until seen
+    new.b2[:, new_view_logits] = prior             # new kinds: rare until seen
     new.b2[:, imap] = old.b2
     new.S[:] = 0.0
     new.S[:, imap[:, None], imap[None, :]] = old.S

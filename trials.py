@@ -66,8 +66,15 @@ def _broadcast_no_workspace(life):
     life.mind.gw.enabled = False
 
 
+def _old_senses(life):
+    """Its eyes as they were before the light existed: 9 kinds of things, not
+    10 (see grow_senses in mind/life.py). Only safe in a world with no light."""
+    life.mind.old_senses = True
+
+
 VERSIONS = {
     "baseline":     ("Ember as it is now", _baseline),
+    "old_senses":   ("its eyes before the light existed: 9 kinds of things instead of 10", _old_senses),
     "no_workspace": ("workspace without threshold or persistence: the strongest signal of each instant wins at once", _no_workspace),
     "broadcast":    ("experimental wiring: only what the workspace broadcasts decides which behaviour runs", _broadcast),
     "broadcast_no_workspace": ("broadcast wiring, workspace without threshold or persistence", _broadcast_no_workspace),

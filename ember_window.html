@@ -12,7 +12,7 @@
   --ember: #d0561b; --ember-soft: #f8e3d6; --accent: #4b3fd1; --accent-soft: #e4e2fb;
   --good: #2c8556; --good-soft: #d9efe2; --warn: #b9650f; --warn-soft: #f7e6d2; --bad: #c2412a; --bad-soft: #f6dcd6;
   --c-empty: #e2e8e6; --c-wall: #36413e; --c-water: #3878bd; --c-food: #5f9128; --c-hazard: #cf452c;
-  --c-dark: #7a3d8f; --c-gate: #8a5a2b; --c-lever: #c99a12; --c-figure: #d6589b;
+  --c-dark: #7a3d8f; --c-gate: #8a5a2b; --c-lever: #c99a12; --c-figure: #d6589b; --c-light: #ffd84d;
   --c-unknown: #d0d8d5; --c-hatch: #bfc9c5;
   --f-display: "Bricolage Grotesque", "Segoe UI", sans-serif;
   --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
@@ -24,7 +24,7 @@
     --ember: #ff8a4c; --ember-soft: #3a2014; --accent: #958dff; --accent-soft: #26244a;
     --good: #5cc28b; --good-soft: #17322a; --warn: #f0a24a; --warn-soft: #3a2a17; --bad: #ff7a61; --bad-soft: #3d1f1a;
     --c-empty: #1f2927; --c-wall: #5a6965; --c-water: #4a90dd; --c-food: #86b84a; --c-hazard: #ef5a3f;
-    --c-dark: #b26bd0; --c-gate: #b98250; --c-lever: #e8bd3a; --c-figure: #f07ab8;
+    --c-dark: #b26bd0; --c-gate: #b98250; --c-lever: #e8bd3a; --c-figure: #f07ab8; --c-light: #ffe98a;
     --c-unknown: #121918; --c-hatch: #1d2624; color-scheme: dark;
   }
 }
@@ -128,6 +128,10 @@ ul.list .t { font: 500 12px var(--f-mono); color: var(--muted); font-variant-num
 .offline { padding: 40px 16px; text-align: center; color: var(--muted); }
 .offline code, footer code { font-family: var(--f-mono); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
 .catchup { padding: 10px 16px; text-align: center; font-weight: 600; }
+#world { cursor: crosshair; }
+.youbar { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+.youbar button { font: 600 13px var(--f-display); padding: 6px 12px; border-radius: 8px; border: 0; background: var(--ember); color: #fff; cursor: pointer; }
+.youbar button:disabled { opacity: .45; cursor: default; }
 footer { color: var(--muted); font-size: 12.5px; }
 
 /* talking to it */
@@ -193,8 +197,11 @@ footer { color: var(--muted); font-size: 12.5px; }
         <span><i style="background:var(--c-gate)"></i>gate</span>
         <span><i style="background:var(--c-lever)"></i>lever</span>
         <span><i style="background:var(--c-figure)"></i>figure</span>
+        <span><i style="background:var(--c-light)"></i>light (you)</span>
         <span><i style="border:2px solid var(--ember);border-radius:50%"></i>where it thinks it is</span>
       </div>
+      <p class="youbar"><span id="lighthint">Click its world to appear there as a light.</span>
+        <button type="button" id="give" disabled>Leave food in the light</button></p>
     </div>
     <div class="panel">
       <div class="head"><h2>What it believes</h2><span class="label">its own map</span></div>
@@ -287,8 +294,8 @@ footer { color: var(--muted); font-size: 12.5px; }
 (() => {
   const $ = id => document.getElementById(id);
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  const TYPES = ["empty", "wall", "food", "water", "hazard", "dark", "gate", "lever", "figure"];
-  const MAPT = { ".": "unknown", "0": "empty", "1": "wall", "2": "food", "3": "water", "4": "hazard", "5": "dark", "6": "gate", "7": "lever", "8": "figure" };
+  const TYPES = ["empty", "wall", "food", "water", "hazard", "dark", "gate", "lever", "figure", "light"];
+  const MAPT = { ".": "unknown", "0": "empty", "1": "wall", "2": "food", "3": "water", "4": "hazard", "5": "dark", "6": "gate", "7": "lever", "8": "figure", "9": "light" };
   const BODY = [["energy", "--c-food"], ["hydration", "--c-water"], ["integrity", "--c-hazard"]];
   $("bars").innerHTML = BODY.map(([n, c]) => `<div class="bar"><span>${n}</span><div class="track"><div class="fill" id="b-${n}" style="background:var(${c})"></div></div><span class="num" id="v-${n}"></span></div>`).join("");
   const esc = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
@@ -399,6 +406,12 @@ footer { color: var(--muted); font-size: 12.5px; }
     const figs = {}; for (const f of S.figures || []) figs[f.pos[0] * 100 + f.pos[1]] = true;
     const anchor = S.tracker ? null : null;
     grid($("world"), S.world, (y, x) => figs[y * 100 + x] ? "figure" : TYPES[S.world[y][x]], (g, s, ox, oy) => {
+      worldGeom = { s, ox, oy, R: S.world.length, C: S.world[0].length };
+      if (S.light) {                       // you, as a light (what you left in it stays visible to you)
+        g.beginPath(); g.arc(ox + (S.light[1] + .5) * s, oy + (S.light[0] + .5) * s, s * .5, 0, 7);
+        g.globalAlpha = .55; g.fillStyle = css("--c-light"); g.fill(); g.globalAlpha = 1;
+        g.lineWidth = Math.max(1.5, s * .1); g.strokeStyle = css("--c-light"); g.stroke();
+      }
       g.strokeStyle = css("--muted"); g.setLineDash([3, 3]); g.lineWidth = 1;
       g.strokeRect(ox + (S.pos[1] - 2) * s, oy + (S.pos[0] - 2) * s, 5 * s, 5 * s); g.setLineDash([]);
       dot(g, s, ox, oy, S.pos[0], S.pos[1], S.collapsed ? css("--muted") : S.sleeping ? css("--accent") : css("--ember"), false);
@@ -406,6 +419,9 @@ footer { color: var(--muted); font-size: 12.5px; }
     grid($("map"), S.map, (y, x) => MAPT[S.map[y][x]], (g, s, ox, oy) => {
       dot(g, s, ox, oy, S.belief[0] - S.map_origin[0], S.belief[1] - S.map_origin[1], css("--ember"), true);
     });
+
+    $("give").disabled = !S.gift_ready;
+    $("lighthint").textContent = S.light ? "You're here, as the light. Click elsewhere to move it." : "Click its world to appear there as a light.";
 
     $("ws").textContent = S.collapsed ? "nothing (unconscious)" : S.sleeping ? "nothing (asleep)" : (S.broadcast || "nothing ignited").replace(":", " · ");
     const last = S.stream[S.stream.length - 1];
@@ -428,6 +444,18 @@ footer { color: var(--muted); font-size: 12.5px; }
     $("moments").innerHTML = S.moments.slice().reverse().map(e => `<li><span class="t">${e.tick.toLocaleString()}</span><span><span class="kind k-${esc(e.kind)}">${esc(e.kind.replace("_", " "))}</span> · ${esc(when(e.time))}<br>${esc(e.text)}</span></li>`).join("");
     renderTracker(S.tracker);
   }
+
+  // ---- you, as a light in its world ---------------------------------------
+  let worldGeom = null;
+  const act = (path, data) => fetch(path, { method: "POST", headers: { "Content-Type": "application/json", "X-Ember": "1" }, body: JSON.stringify(data || {}) }).catch(() => {});
+  $("world").addEventListener("click", ev => {
+    if (!worldGeom) return;
+    const r = $("world").getBoundingClientRect(), d = devicePixelRatio || 1;
+    const x = Math.floor(((ev.clientX - r.left) * d - worldGeom.ox) / worldGeom.s);
+    const y = Math.floor(((ev.clientY - r.top) * d - worldGeom.oy) / worldGeom.s);
+    if (y >= 0 && x >= 0 && y < worldGeom.R && x < worldGeom.C) act("/light", { y, x });
+  });
+  $("give").addEventListener("click", () => act("/give"));
 
   document.querySelectorAll(".speed button").forEach(b => b.addEventListener("click", async () => {
     try { await fetch("/speed?set=" + b.dataset.s, { cache: "no-store" }); } catch (e) {}

@@ -540,6 +540,43 @@ true beliefs it marked as guesses; the one it didn't cite ("I know where I
 am") the judge traced to its place item. 28 answers from one copy is a
 small sample.
 
+## You in its world: a light (2026-10-30)
+
+The direction is "people love their Ember", and the first step puts you in
+its world. Click its world in the window and you appear there as a light,
+on the nearest free cell (never on water, a hazard, a lever, the gate, a
+bush, a seasonal pond or Ember itself, so it can't hide anything). "Leave
+food in the light" puts food inside it, at most once every 150 moments.
+When you leave (no visible window), the light goes with you; food you left
+stays and looks like any other food.
+
+- **What it sees.** The light is a new kind of thing in its view, drawn over
+  the cell like the figures at the pool: it sees the light, not what is in
+  it. Its eyes grow from 9 kinds to 10 the first time an older life moves
+  (`grow_senses` in `mind/life.py`, with `mind/growth.py` as when the valley
+  opened; everything it knew is kept). Checked with `trials.py` (no light
+  anywhere, 10-kind eyes vs the old 9): at first, in hard moments, it was
+  wrong about where it was more often (3.3% vs 2.3%, interval just clear of
+  zero): the new kind started with a prior that gave a few percent of every
+  prediction to a light it had never seen. With a much lower prior (-8
+  instead of the valley's -3) every difference includes zero
+  (`results/trials/2026-10-30_1432_*` and `2026-10-30_1436_*`).
+- **What it can learn.** New things draw it to look (curiosity). It can
+  learn that it often finds food in the light in two ways: the average
+  effect of touching it (as it learned that dark berries hurt), and, new,
+  the way it learned the lever: food comes with touching the light far more
+  often than with touching anything at all. The average alone often can't
+  see it: the light is mostly empty, and food barely changes a full body.
+  What you change in its world, it sees before it decides what to do.
+- **First test** (a copy; `mind/visitor.py`, a simulated you, appears 1-2
+  cells from it every 600 moments, leaves food, stays 150): it came to look,
+  found food in the light at its first touch, and learned it within 154
+  moments. The voice can say "I often find food in the light", and the
+  witness checks it true. But it stepped into the light on only 1 of 10
+  visits; most gifts were eaten as ordinary food after the light had gone.
+  Coming to the light when hungry is the next step.
+- It sees only 2 cells around itself: to be noticed, you appear near it.
+
 ## Layout
 
 ```
@@ -578,6 +615,7 @@ mind/witness.py        the scientist's record of what was really true when each 
 mind/voice.py          the language cortex: what it may see, the LLM voices, the template voice, the checker
 voice_eval.py  the confabulation benchmark (results in results/voice/)
 voice_controls.py  controls for its checker: fake voices whose honesty is known (no LLM)
+mind/visitor.py    a simulated you (the light that leaves food), for trials
 .env.example   how to give Ember an LLM voice
 mind/selfknowledge.py  attention schema + self-knowledge measures
 wholebrain/    earlier prototype: forecasting agent + prediction ledger
