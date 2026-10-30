@@ -41,12 +41,18 @@ python voice_controls.py                     # the checker's controls: fake voic
 ## Where things stand (2026-10-30)
 
 - Winter collapse loops: two causes fixed. The gate belief (seeing the gate shut corrects it), and imagined winter food (let-downs now count on sight, `EmberMind._note_letdowns`): at hard moments collapses 4.6 → 3.7 per 1,000 moments, gate plans 0.25 → 1.04. Fewer, not gone; the cause of the rest is unchecked. Copy tests start at hard moments with 3 pairs.
-- Workspace: with the direct wiring it has no measurable effect. With the broadcast wiring it holds plans (more two-step plans) but Ember is wrong about its position about twice as often; cause unknown (replay priority ruled out). Decision pending: switch Ember to the broadcast wiring.
+- Workspace: with the direct wiring it has no measurable effect. With the broadcast wiring it holds plans (more two-step plans) but Ember is wrong about its position about twice as often; cause unknown (replay priority ruled out). Decided: Ember keeps the direct wiring until that cost is understood.
 - Voice + autobiography + witness + `voice_eval.py` built. Default Gemini voice: 3.5 Flash-Lite (on the free tier 3.8 Flash allows only 20 requests a day; 3.8 Live only answers in audio). The checker was fixed (refusals aren't claims; the judge names the item behind an uncited statement; `self:inner` for rule 6) and `voice_controls.py` guards it (18/18). Flash-Lite, verified run: known 12/12, traps 8/8, made up 0/28, the judge checked every answer.
+
+## Direction (decided 2026-10-30)
+
+Goal: **people love their Ember**. A small creature that lives on your computer and knows you, and everything it tells you is true (receipts; it never pretends to feel). AI companions say anything; Ember's promise is trust. Its life is too thin to talk about: the bottleneck is experience, not language, so its life must get richer. Open questions before phase 1: the time scale (a year now passes in ~10 minutes at 20 moments/s; a companion probably needs a real-clock rhythm), and what "you" are in its world (a voice and a presence, or something visible).
 
 ## Next (in order)
 
-1. Compare voices with `python voice_eval.py` (Haiku 5.5, Gemini 3.8 Flash, a local Ollama model; a run takes 56 requests, so 3.8 Flash needs billing); run `python voice_controls.py` after any change to the checker; tune `SYSTEM` in `mind/voice.py` only against the benchmark.
-2. Startup test: a 60-second video of Ember living and talking about a real moment of its past; then give 10-20 people their own Ember (needs one-click packaging) and see who keeps checking on theirs.
-3. Replace hand-written behaviours with learned ones (lessons from v4: innate reflexes + place values + dreaming), one at a time, each judged with `trials.py`.
-4. Measurement: move from the ladder + checklist to an awareness profile (Meertens et al. 2026), each dimension with an ablation test.
+1. You in its world: presence (an open window is a weak percept in its workspace), care actions from the window (e.g. leave food; it learns the link the way it learned lever → gate), asking for help on its own (with receipts), a checked "while you were away" summary, a face whose pose shows real states. Judge behaviour with `trials.py` (a simulated visitor); keep `python voice_controls.py` passing.
+2. Startup test: a 60-second video (it notices you, asks for help truthfully, tells what happened while you were away); then 10-20 testers on Windows (a zip with embeddable Python + numpy; their own free Gemini key or the template voice; a "share stats" button with no conversation text). Who keeps checking on theirs?
+3. Real things in its world: its day follows your clock; later, optionally, real weather.
+4. Others in its world: simple animals with their own needs, then maybe another Ember; makes Rochat level 5 testable.
+5. A bigger, harder world wherever its life gets repetitive; learned behaviours (lessons from v4) and the awareness profile (Meertens et al. 2026) come in here.
+- Alongside: find what causes the winter collapses that remain; compare voices with `python voice_eval.py` (Haiku 5.5; Gemini 3.8 Flash needs billing; tune `SYSTEM` only against the benchmark).

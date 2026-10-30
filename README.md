@@ -584,6 +584,14 @@ repo; it is in the older `solidszurap/artificial-mind` repo.
 
 ## Roadmap
 
+**Direction (2026-10-30): people love their Ember.** A small creature that
+lives on your computer, knows you, and only says what is true. Its life has
+to get richer first (the bottleneck is experience, not language): you in its
+world (it notices you, you can help it, it asks for help, it tells you what
+happened while you were away), then a test with 10-20 people and their own
+Embers, then real time and weather, other creatures, a bigger world. The
+research items below continue inside that.
+
 0. Ember: let it live for weeks, then measure how it changed (world-model error, habits, map) across its own life. Find what causes the winter collapses that remain at hard moments.
 1. Make the workspace matter: the broadcast wiring is built and tested (above). Next: decide whether Ember switches to it; find why sustained attention costs self-location; give it tasks where holding a plan decides survival (longer plans than one gate).
 2. Access-consciousness test: brief, weak stimuli that change behavior without igniting (and so are never reported), the machine version of masking experiments.
