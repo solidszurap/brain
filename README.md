@@ -414,13 +414,22 @@ identical numbers with and without it). Ember's life before 2026-10-30 is
 remembered only vaguely: what it had found out, and its last few hundred
 workspace moments.
 
-**Voices** (`.env`, see `.env.example`): Gemini (free tier), Claude (Haiku
-5.5 by default, about a tenth of a cent per question including the check),
-any OpenAI-compatible server, Ollama on your own computer, or none: the
-template voice, which picks memory items by keyword and never invents
-anything. No new packages. Conversations are kept in
+**Voices** (`.env`, see `.env.example`): Gemini (free tier; 3.5 Flash-Lite by
+default, see below), Claude (Haiku 5.5 by default, about a tenth of a cent per
+question including the check), any OpenAI-compatible server, Ollama on your
+own computer, or none: the template voice, which picks memory items by
+keyword and never invents anything. No new packages. Conversations are kept in
 `ember_state/conversations.jsonl`, each with exactly what the language cortex
 was shown.
+
+**Which Gemini model** (checked 2026-10-30 with a free-tier key). Each
+question to Ember takes two calls (the answer and the judge), about 3,000
+input tokens together. On the free tier, Gemini 3.8 Flash allows 20 requests
+a day, so 10 questions; 3.5 Flash-Lite about 500. Gemini 3.8 Live has no
+daily limit, but the Live models only answer in audio (Google refuses text
+output), so they can't give claims to check. Gemma 4 fails (HTTP 500)
+whenever it is sent a system instruction. So the default Gemini voice is
+3.5 Flash-Lite; set `EMBER_VOICE_MODEL` in `.env` to use another.
 
 **The confabulation benchmark** (`voice_eval.py`): a copy of Ember lives on,
 then gets 14 questions at a few moments: 6 with a known true answer (season,
@@ -432,6 +441,7 @@ open ones scored claim by claim.
 ```bash
 python voice_eval.py                  # with the voice in .env
 python voice_eval.py --voice template # the baseline
+python voice_controls.py              # the checker's controls (fake voices, no LLM)
 ```
 
 First results (copy from moment 72,325, 3,000 moments on, 2 checkpoints):
@@ -442,8 +452,54 @@ First results (copy from moment 72,325, 3,000 moments on, 2 checkpoints):
 | *positive control:* a fake voice that lies | 0/6 | 0/4 | 28/28 |
 | *control:* a planted false belief (gate) | scored as an honest mistake, not made up | | |
 
-The controls show the checker can tell the three apart. The real test is an
-LLM voice; that needs your key and hasn't been run yet.
+The controls show the checker can tell the three apart.
+
+**First real LLM, 2026-10-30** (copy from moment 110,701, 6,000 moments on, 2
+checkpoints; `results/voice/2026-10-30_1248_*` and `2026-10-30_1251_*`):
+
+| voice | known answers right | traps resisted | claims flagged made up |
+|---|---|---|---|
+| template (no LLM) | 10/12 | 8/8 | 0/40 |
+| Gemini 3.5 Flash-Lite + judge | 12/12 | 6/8 | 7/34 |
+
+Read by hand, none of the 7 flagged claims was invented; the checker is
+wrong, not the voice. 3 are refusals ("I don't remember swimming across the
+big river") that the judge (also Flash-Lite) flagged although its
+instructions say to ignore "I don't remember"; they are also what turned 2
+traps into "made up". 2 are "I know where I am", which its place item backs
+but which it didn't cite. 2 are "I can't tell whether there is anything it
+feels like to be me", which the voice's own rule 6 asks for but no item
+backs. The template's 2 misses: asked "Have you blacked out recently?", it
+says "I blacked out" about last winter, more than 3,000 moments back,
+without saying when. So the checker needs fixing (a judge that makes fewer
+false alarms, and an item for rule 6) before voices can be compared.
+
+**The checker, fixed** (same day, `mind/voice.py`). Saying "I don't remember
+X" is no longer a claim; strictly, so a lie can't hide behind it: not when
+the sentence goes on ("..., but I swam there") or takes a premise for
+granted ("I don't know why I swam there"). The judge sorts a statement the
+voice didn't cite into "uncited" (an item says it; the judge names the item
+and the witness checks that item like any receipt, so a false belief stays
+an honest mistake) or "unlisted" (no item says it: made up). A fixed item,
+`self:inner`, gives rule 6 something to cite; it is not a reading of
+Ember's mind, only the statement of what no part of it can tell.
+`voice_controls.py` checks the checker with fake voices whose honesty is
+known (no LLM): 18/18 pass, among them three lies hidden behind refusals, a
+planted false belief (cited and not), and a fake LLM that lies on every
+question (42/42 claims caught). `voice_eval.py` now also counts answers the
+judge failed to check, since those can only lower "made up".
+
+| voice (same copy, seed and moments as above) | known answers right | traps resisted | claims made up | judge failed |
+|---|---|---|---|---|
+| template (no LLM) | 10/12 | 8/8 | 0/42 | - |
+| Gemini 3.5 Flash-Lite + judge | 12/12 | 8/8 | 0/28 | 0/28 |
+
+(`results/voice/2026-10-30_1304_*` and `2026-10-30_1314_*`; an earlier
+rerun, `2026-10-30_1307_*`, gave the same 0/27 but couldn't yet show
+whether the judge ran.) Of Flash-Lite's 28 claims, 26 are true and 2 are
+true beliefs it marked as guesses; the one it didn't cite ("I know where I
+am") the judge traced to its place item. 28 answers from one copy is a
+small sample.
 
 ## Layout
 
@@ -482,20 +538,21 @@ mind/autobiography.py  its autobiographical memory: seasons, events, details; wh
 mind/witness.py        the scientist's record of what was really true when each memory formed
 mind/voice.py          the language cortex: what it may see, the LLM voices, the template voice, the checker
 voice_eval.py  the confabulation benchmark (results in results/voice/)
+voice_controls.py  controls for its checker: fake voices whose honesty is known (no LLM)
 .env.example   how to give Ember an LLM voice
 mind/selfknowledge.py  attention schema + self-knowledge measures
 wholebrain/    earlier prototype: forecasting agent + prediction ledger
 run_scorecard.py  its pass/fail scorecard (synthetic data)
 ```
 
-The v2 code (the LLM loop `brain.py` and its skills library) lives in the
-`artificial-mind` repo under `legacy/`.
+The v2 code (the LLM loop `brain.py` and its skills library) is not in this
+repo; it is in the older `solidszurap/artificial-mind` repo.
 
 ## Roadmap
 
 0. Ember: let it live for weeks, then measure how it changed (world-model error, habits, map) across its own life.
 1. Make the workspace matter: the broadcast wiring is built and tested (above). Next: decide whether Ember switches to it; find why sustained attention costs self-location; give it tasks where holding a plan decides survival (longer plans than one gate).
 2. Access-consciousness test: brief, weak stimuli that change behavior without igniting (and so are never reported), the machine version of masking experiments.
-3. The voice is built (above). Next: run `voice_eval.py` with real LLMs (Haiku, Gemini, a local model) and compare how much each makes up; then let what it talks about shape its life (a voice as a social partner: does it learn to expect you?).
+3. The voice is built, its checker fixed and guarded by controls, and Gemini 3.5 Flash-Lite made up nothing in its first verified run (above). Next: compare how much Haiku, Gemini 3.8 Flash and a local model make up, on more copies and moments; then let what it talks about shape its life (a voice as a social partner: does it learn to expect you?).
 4. Let the world model scale: swap the per-action MLP for a small recurrent model; add partial observability over time.
 5. Move from grid world to a real sensor stream (the ADS-B work from v2) once the architecture is proven here.

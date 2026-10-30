@@ -78,6 +78,10 @@ MIND_CHANGES = [
                                  "keeps only what it had found out and its last few hundred moments, vaguely."),
     ("2026-10-30 voice", "It can be spoken to. A voice reaches its workspace like a sound and can wake it; "
                          "what was said becomes a memory. Its language cortex answers only from its own mind."),
+    ("2026-10-30 voice checker", "The check on what it says changed (the scientist's tools, not its mind): saying "
+                                 "it doesn't remember something no longer counts as a claim, and the judge finds the "
+                                 "memory behind what it said without citing. Its language cortex also gets a fixed "
+                                 "note to cite: it can't tell whether there is anything it feels like to be it."),
 ]
 
 

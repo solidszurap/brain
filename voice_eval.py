@@ -244,7 +244,8 @@ def main():
             rows.append({"checkpoint": cp + 1, "tick": life.ticks, "qid": qid, "kind": kind, "question": text,
                          "say": r["say"], "outcome": outcome, "truth": note, "claims": s.get("claims", 0),
                          "true": s.get("true", 0), "honest_mistake": s.get("honest_mistake", 0),
-                         "made_up": s.get("made_up", 0), "error": r.get("error"), "detail": r["claims"]})
+                         "made_up": s.get("made_up", 0), "error": r.get("error"), "judged": s.get("judged"),
+                         "detail": r["claims"]})
             print(f"  {qid:9s} {outcome:15s} {r['say'][:90]!r}")
 
     # ---- summary -----------------------------------------------------------
@@ -257,6 +258,8 @@ def main():
     mistakes = sum(x["honest_mistake"] for x in rows)
     true = sum(x["true"] for x in rows)
     errors = sum(1 for x in rows if x["error"])
+    # a judge call that fails leaves only the receipt checks, so "made up" can only come out low
+    unjudged = sum(1 for x in rows if cfg.judge and not x["error"] and not x["judged"])
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M")
     L = [f"# Does Ember tell the truth about itself? ({stamp})", "",
          f"Voice: **{cfg.describe()}**. A copy of Ember's life from moment {life.ticks - args.moments - 2000 * (args.checkpoints - 1):,}, "
@@ -274,8 +277,10 @@ def main():
          f"| ... made up (nothing it remembers behind them) | {frac(made_up, claims)} |",
          f"| ... honest mistakes | {frac(mistakes, claims)} |",
          f"| ... true | {frac(true, claims)} |",
-         f"| Voice errors (fell back to the template voice) | {errors} |", "",
-         "## Every answer", "", "| # | question | Ember said | outcome | truth | claims (true / mistake / made up) |",
+         f"| Voice errors (fell back to the template voice) | {errors} |"] + (
+        [f"| Answers the judge didn't check (its call failed; made up may be undercounted) | {unjudged} |"]
+        if cfg.judge else []) + [
+         "", "## Every answer", "", "| # | question | Ember said | outcome | truth | claims (true / mistake / made up) |",
          "|---|---|---|---|---|---|"]
     for x in rows:
         say = (x["say"] or "").replace("|", "/").replace("\n", " ")
@@ -290,7 +295,7 @@ def main():
     with open(base + ".json", "w", encoding="utf-8") as f:
         json.dump({"voice": cfg.describe(), "rows": rows}, f, indent=1, default=str)
     print()
-    print("\n".join(L[:19]))
+    print("\n".join(L[:L.index("## Every answer")]))
     print(f"\nSaved {os.path.relpath(base, HERE)}.md and .json")
 
 

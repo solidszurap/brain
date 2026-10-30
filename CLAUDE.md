@@ -1,8 +1,8 @@
-# Ember / artificial-mind
+# Ember / brain
 
 A long-running research project, and a possible startup: **Ember**, an artificial creature that lives one continuous life on this computer, built on the thesis that an LLM is only the brain's *language cortex* and the rest of the brain has to be built around it. Goal: "a being I made" that solves its own problems, with honest, testable claims about how close it is to self-awareness. README.md is the full record (design, every result, roadmap). Read it before changing anything substantial.
 
-Owner: Szilard (Hungarian, Budapest/Szeged; prefers direct, concrete answers; runs on Windows). GitHub: solidszurap/artificial-mind.
+Owner: Szilard (Hungarian, Budapest/Szeged; prefers direct, concrete answers; runs on Windows). GitHub: solidszurap/brain.
 
 ## Run
 
@@ -12,6 +12,7 @@ python ember.py                   # Ember's life; window at http://localhost:876
 python trials.py --list           # versions/situations for fair comparisons
 python trials.py baseline <version>          # paired many-lives comparison (~6 min on 2 cores)
 python voice_eval.py                         # confabulation benchmark for the voice (.env decides the LLM)
+python voice_controls.py                     # the checker's controls: fake voices, no LLM (run after changing the checker)
 ```
 
 ## Map
@@ -41,11 +42,11 @@ python voice_eval.py                         # confabulation benchmark for the v
 
 - Gate-belief bug fixed (it caused the winter collapse loops). Copy tests now start at hard moments with 3 pairs.
 - Workspace: with the direct wiring it has no measurable effect. With the broadcast wiring it holds plans (more two-step plans) but Ember is wrong about its position about twice as often; cause unknown (replay priority ruled out). Decision pending: switch Ember to the broadcast wiring.
-- Voice + autobiography + witness + `voice_eval.py` built and tested with the template voice and fake LLMs (controls pass). **Not yet run with a real LLM**: needs a key in `.env`.
+- Voice + autobiography + witness + `voice_eval.py` built. Default Gemini voice: 3.5 Flash-Lite (on the free tier 3.8 Flash allows only 20 requests a day; 3.8 Live only answers in audio). The checker was fixed (refusals aren't claims; the judge names the item behind an uncited statement; `self:inner` for rule 6) and `voice_controls.py` guards it (18/18). Flash-Lite, verified run: known 12/12, traps 8/8, made up 0/28, the judge checked every answer.
 
 ## Next (in order)
 
-1. Run `python voice_eval.py` with a real LLM (Haiku 5.5, Gemini 3.8 Flash, a local Ollama model); compare made-up rates; tune `SYSTEM` in `mind/voice.py` only against the benchmark.
+1. Compare voices with `python voice_eval.py` (Haiku 5.5, Gemini 3.8 Flash, a local Ollama model; a run takes 56 requests, so 3.8 Flash needs billing); run `python voice_controls.py` after any change to the checker; tune `SYSTEM` in `mind/voice.py` only against the benchmark.
 2. Startup test: a 60-second video of Ember living and talking about a real moment of its past; then give 10-20 people their own Ember (needs one-click packaging) and see who keeps checking on theirs.
 3. Replace hand-written behaviours with learned ones (lessons from v4: innate reflexes + place values + dreaming), one at a time, each judged with `trials.py`.
 4. Measurement: move from the ladder + checklist to an awareness profile (Meertens et al. 2026), each dimension with an ablation test.

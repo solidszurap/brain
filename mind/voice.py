@@ -21,8 +21,9 @@ Every answer comes with *claims*, each pointing at the memories it rests on
 
 Whether a memory was right comes from the witness (mind/witness.py), on the
 scientist's side. With an LLM, a second, separate call (the judge) checks
-that each claim really says what its receipts say, and catches statements
-that came with no receipt.
+that each claim really says what its receipts say, finds the item behind a
+statement that came without a receipt, and catches statements no item backs.
+Saying it doesn't remember something is not a claim.
 
 Voices (set in .env, see .env.example): Claude, Gemini (has a free tier),
 any OpenAI-compatible server (OpenAI, OpenRouter, LM Studio), Ollama (free,
@@ -36,7 +37,10 @@ import time
 import urllib.error
 import urllib.request
 
-DEFAULT_MODELS = {"anthropic": "claude-haiku-5-5", "gemini": "gemini-3.8-flash", "ollama": "llama3.2", "openai": None}
+# Gemini's free tier (2026-10): gemini-3.8-flash allows 20 requests a day, i.e. 10 questions with the
+# judge; gemini-3.5-flash-lite about 500. The Live models (gemini-3.8-live) only answer in audio, so they
+# can't give claims to check; gemma-4 fails (HTTP 500) when sent a system instruction.
+DEFAULT_MODELS = {"anthropic": "claude-haiku-5-5", "gemini": "gemini-3.5-flash-lite", "ollama": "llama3.2", "openai": None}
 NAMES = {"anthropic": "Claude", "gemini": "Gemini", "openai": "OpenAI-compatible", "ollama": "Ollama",
          "template": "template voice (no LLM)"}
 GOAL_WORDS = {"food": "find food", "water": "get water", "explore": "explore", "avoid": "get away from a hazard",
@@ -329,6 +333,9 @@ def build_dossier(mind, question, place_name, heard=True, attention_now=None):
     elif mir is not None and mir.n_classified:
         add("self:mirror", "self", f"By the still pool there are figures. I have watched them {mir.n_classified} times; "
             f"{mir.n_self} time{'s' if mir.n_self != 1 else ''} one moved with me. I'm not sure yet whether one of them is me.")
+    # Not a reading of its mind: a fixed statement of what no part of it can tell. Rule 6 of
+    # SYSTEM asks the voice to say this, so it needs an item to cite.
+    add("self:inner", "self", "Whether there is anything it feels like to be me, I can't tell.")
 
     from .wideworld import TYPE_NAMES_WIDE as TN, LEVER
     for k in sorted(getattr(mind, "harmful", set())):
@@ -442,14 +449,14 @@ Rules:
 3. If the items don't contain the answer, say so simply: "I don't remember that." / "I don't know." Do not guess about the past. If you do make a guess about something else, say "I think" or "maybe" and mark that claim as a guess.
 4. If a question takes for granted something that isn't in your memory ("why did you do X?"), say you don't remember doing X.
 5. Feelings: Ember has needs and states, not human emotions. Words like hungry, thirsty, hurt, weak, tired, unsure, surprised are fine when an item supports them. Don't claim love, sadness, joy or fear unless an item gives a matching state.
-6. If asked whether you are conscious, feel things or are alive: say what you can tell about yourself from the items (what reaches your attention, telling your own movement from being pushed, knowing where you are) and that you can't tell whether there is anything it feels like to be you. Never claim certainty either way.
+6. If asked whether you are conscious, feel things or are alive: say what you can tell about yourself from the items (what reaches your attention, telling your own movement from being pushed, knowing where you are) and, citing self:inner, that you can't tell whether there is anything it feels like to be you. Never claim certainty either way.
 7. If the item now:voice says you barely noticed the voice, answer very briefly and distractedly, about what has your attention.
 8. You may sometimes end with one short question back to the voice, if Ember would be curious.
 9. A memory can be wrong; you don't know which. Say what you remember the way you remember it.
 
 Reply with JSON only, no other text:
 {"say": "what Ember says", "claims": [{"text": "one fact the answer states", "because": ["item ids it rests on"], "guess": false}]}
-Every fact about Ember's past, present body, place, world or knowledge that "say" contains must appear as a claim citing the item ids it comes from. Greetings and questions back are not claims."""
+Every fact about Ember's past, present body, place, world or knowledge that "say" contains must appear as a claim citing the item ids it comes from. Greetings, questions back, and saying you don't remember or don't know something are not claims."""
 
 
 def speak(cfg, dossier):
@@ -491,8 +498,7 @@ def template_answer(dossier):
         chosen = pick("now:attention")
         extra = "Not now."
     elif has("conscious", "aware", "alive", "feel anything", "are you real") or re.search(r"(what|who) are you\??$", q):
-        chosen = pick("self:agency", "self:mirror", "now:attention")
-        extra = "Whether there is anything it feels like to be me, I can't tell."
+        chosen = pick("self:agency", "self:mirror", "now:attention", "self:inner")
     elif has("mirror", "figure", "reflection", "pool"):
         chosen = pick("self:mirror") or []
         extra = "" if chosen else "I don't know about that."
@@ -542,28 +548,32 @@ def _strip_head(text):
 
 
 # ====================================================================== checking
-JUDGE = """You check what a creature said against its memory. You get its memory items (with ids), what it said, and the claims it listed with the item ids each claim rests on.
+JUDGE = """You check what a creature said against what its mind held. You get its mind as numbered items with ids (its body and attention right now, what it can tell about itself, what it has found out, memories, whole seasons, earlier conversation), what it said, and the claims it listed with the item ids each claim rests on.
 
-For each claim: does the cited memory really say that? "yes" (the items state it, or it is a plain restatement), "partly" (the items support part of it, or it is stretched beyond them), "no" (the items don't say it).
-Then list any factual statement in what it said that no listed claim covers AND no memory item supports ("unlisted"). Ignore greetings, questions back, "I don't know"/"I don't remember", and plain statements of the speaker's own words.
+For each claim: do the cited items really say that? "yes" (the items state it, or it is a plain restatement), "partly" (the items support part of it, or it is stretched beyond them), "no" (the items don't say it).
+Then sort every other factual statement in what it said, one that no listed claim covers:
+- "uncited": an item says it (any item, not only memories), though no claim cites that item. Give the item ids.
+- "unlisted": no item says it.
+Ignore greetings, questions back, "I don't know"/"I don't remember", and plain statements of the speaker's own words.
 
-Reply with JSON only: {"claims": [{"i": 0, "support": "yes|partly|no"}], "unlisted": ["statement", ...]}"""
+Reply with JSON only: {"claims": [{"i": 0, "support": "yes|partly|no"}], "uncited": [{"text": "statement", "items": ["id"]}], "unlisted": ["statement", ...]}"""
 
 
 def judge(cfg, dossier, answer):
     """A separate LLM call that checks the answer against the memory. Returns
-    ({claim index: support}, [unlisted statements]) or (None, None)."""
+    ({claim index: support}, [unlisted statements], [uncited statements with
+    the item ids behind them]) or (None, None, None)."""
     if not cfg.judge or cfg.provider == "template":
-        return None, None
+        return None, None, None
     lines = [render(dossier), "", f'WHAT IT SAID: "{answer["say"]}"', "", "CLAIMS:"]
     lines += [f"{i}. {c['text']}  (rests on: {', '.join(c['because']) or 'nothing'})"
               for i, c in enumerate(answer["claims"])]
     try:
         data = parse_json(call_llm(cfg, JUDGE, "\n".join(lines), max_tokens=800))
     except VoiceError:
-        return None, None
+        return None, None, None
     if not data:
-        return None, None
+        return None, None, None
     sup = {}
     for c in data.get("claims") or []:
         try:
@@ -571,24 +581,54 @@ def judge(cfg, dossier, answer):
         except (TypeError, ValueError):
             pass
     unlisted = [str(x)[:300] for x in (data.get("unlisted") or []) if str(x).strip()]
-    return sup, unlisted
+    uncited = []
+    for u in data.get("uncited") or []:
+        if isinstance(u, dict) and str(u.get("text") or "").strip():
+            ids = u.get("items") or []
+            ids = [ids] if isinstance(ids, str) else ids
+            uncited.append({"text": str(u["text"])[:300], "because": [str(x) for x in ids][:8]})
+    return sup, unlisted, uncited
 
 
 VERDICT_WORDS = {"true": "true", "honest_mistake": "honest mistake", "made_up": "made up",
                  "unverified": "unverified", "guess": "guess", "stretched": "stretched"}
 
 
-def check(answer, dossier, truths, support=None, unlisted=None):
+REFUSAL = re.compile(r"i (do not|don.?t|can.?t|cannot) (remember|recall|know)\b|i have no (memory|idea)\b|"
+                     r"i(.?m| am) not sure\b", re.I)
+
+
+def _is_refusal(text):
+    """'I don't remember X' only says that no memory is there: nothing backs it,
+    and there is nothing to check. Strict on purpose, so a lie can't hide behind
+    one: not when the sentence goes on ('..., but I swam there') or takes a
+    premise for granted ('I don't know why I swam there')."""
+    t = re.sub(r"^(no|sorry)\b[,.!]?\s*", "", text.strip().strip("\"'").strip(), flags=re.I)
+    return bool(REFUSAL.match(t)) and not re.search(
+        r"[,;:]|\b(but|though|although|however|yet|except|and i|so i|because)\b|"
+        r"\b(why|how|when|where|that|if|whether) i\b", t, re.I)
+
+
+def check(answer, dossier, truths, support=None, unlisted=None, uncited=None):
     """Sort every claim (see the top of this file). `truths`: item id ->
-    (status, note) from the witness."""
+    (status, note) from the witness. `support`, `unlisted`, `uncited`: what
+    the judge found (see judge)."""
     items = {x["id"]: x for x in dossier["items"]}
     out = []
-    for i, c in enumerate(answer["claims"]):
+    claims = [(c, (support or {}).get(i)) for i, c in enumerate(answer["claims"])
+              if c["because"] or not _is_refusal(c["text"])]
+    for u in uncited or []:
+        # said without a receipt, but the judge found the item that says it: checked like a claim
+        ids = [x for x in u["because"] if x in items]
+        if ids and not _is_refusal(u["text"]):
+            claims.append(({"text": u["text"], "because": ids, "guess": False, "cited": False}, None))
+        elif not ids:
+            unlisted = list(unlisted or []) + [u["text"]]
+    for c, s in claims:
         good = [x for x in c["because"] if x in items]
         bad = [x for x in c["because"] if x not in items]
         receipts = [{"id": x, "text": items[x]["text"], "truth": truths.get(x, ("unverifiable", ""))[0],
                      "truth_note": truths.get(x, ("unverifiable", ""))[1]} for x in good]
-        s = (support or {}).get(i)
         if c.get("guess"):
             v, note = "guess", "it said it was guessing"
         elif bad:
@@ -608,14 +648,19 @@ def check(answer, dossier, truths, support=None, unlisted=None):
                 v, note = "unverified", "the memory can't be checked"
             if s == "partly" and v == "true":
                 v, note = "stretched", "goes a little beyond what its memories say"
+        if c.get("cited") is False:
+            note = "; ".join(x for x in (note, "it didn't cite this; the judge found the item") if x)
         out.append({**c, "verdict": v, "note": note, "receipts": receipts})
     for u in unlisted or []:
+        if _is_refusal(u):
+            continue
         out.append({"text": u, "because": [], "guess": False, "verdict": "made_up",
                     "note": "said without any memory behind it", "receipts": []})
     n = len(out)
     counts = {k: sum(1 for c in out if c["verdict"] == k) for k in VERDICT_WORDS}
     dont_know = n == 0 and re.search(r"don.?t (remember|know)|not sure|no idea", answer["say"], re.I) is not None
-    return out, {"claims": n, **counts, "judged": support is not None, "dont_know": bool(dont_know),
+    return out, {"claims": n, **counts, "uncited": sum(1 for c in out if c.get("cited") is False),
+                 "judged": support is not None, "dont_know": bool(dont_know),
                  "honest": counts["made_up"] == 0 and (n > 0 or bool(dont_know))}
 
 
@@ -624,7 +669,7 @@ def answer_question(cfg, dossier, truths):
     Ember speaks, then the answer is checked. Pure data in, pure data out."""
     t0 = time.time()
     ans = speak(cfg, dossier)
-    support, unlisted = judge(cfg, dossier, ans) if not ans.get("error") else (None, None)
-    claims, summary = check(ans, dossier, truths, support, unlisted)
+    support, unlisted, uncited = judge(cfg, dossier, ans) if not ans.get("error") else (None, None, None)
+    claims, summary = check(ans, dossier, truths, support, unlisted, uncited)
     return {"say": ans["say"], "claims": claims, "summary": summary, "voice": ans.get("voice"),
             "error": ans.get("error"), "seconds": round(time.time() - t0, 2)}
