@@ -127,6 +127,7 @@ ul.list .t { font: 500 12px var(--f-mono); color: var(--muted); font-variant-num
 .k-resumed, .k-born, .k-came_round, .k-copy_test { color: var(--good); }
 .offline { padding: 40px 16px; text-align: center; color: var(--muted); }
 .offline code, footer code { font-family: var(--f-mono); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
+.catchup { padding: 10px 16px; text-align: center; font-weight: 600; }
 footer { color: var(--muted); font-size: 12.5px; }
 
 /* talking to it */
@@ -175,9 +176,10 @@ footer { color: var(--muted); font-size: 12.5px; }
   </header>
 
   <div id="offline" class="panel offline" hidden>
-    Ember isn't running right now. Nothing is happening to it; no time passes for it while it rests.<br>
+    Ember isn't running right now. Its time waits: when it starts again, it lives about a season for each day it was stopped (at most a year).<br>
     Start it in the brain folder with <code>python ember.py</code>, and this page comes alive.
   </div>
+  <div id="catchup" class="panel catchup" hidden></div>
 
   <section class="bench" id="bench">
     <div class="panel">
@@ -292,6 +294,7 @@ footer { color: var(--muted); font-size: 12.5px; }
   const esc = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
   const pct = v => v == null ? "—" : (v * 100).toFixed(1) + "%";
   const fmtDur = sec => { const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60); return h ? `${h} h ${m} min` : `${m} min`; };
+  const fmtAway = sec => sec >= 86400 ? `${(sec / 86400).toFixed(1)} days` : fmtDur(sec);
   const when = t => t ? new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
 
   function fit(cv) {
@@ -380,6 +383,9 @@ footer { color: var(--muted); font-size: 12.5px; }
 
   function render(S) {
     $("offline").hidden = true; $("bench").hidden = false;
+    const cu = S.catching_up;
+    $("catchup").hidden = !cu;
+    if (cu) $("catchup").textContent = `Living the ${fmtAway(cu.away_seconds)} you were away… ${Math.round(100 * cu.done / cu.of)}% (${cu.done.toLocaleString()} of ${cu.of.toLocaleString()} moments)`;
     const state = S.collapsed ? "out" : S.sleeping ? "asleep" : "";
     $("flame").className = "flame " + state;
     $("status").className = "status " + state;
@@ -493,9 +499,15 @@ footer { color: var(--muted); font-size: 12.5px; }
   });
   loadTalk();
 
+  // v=1 while this page is visible: that is how Ember's program knows you're here
+  // (while you're away its time waits, and is lived when you come back)
+  const seen = () => document.hidden ? 0 : 1;
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) fetch("/state?v=1", { cache: "no-store" }).catch(() => {});
+  });
   async function poll() {
     try {
-      const r = await fetch("/state", { cache: "no-store" });
+      const r = await fetch("/state?v=" + seen(), { cache: "no-store" });
       const S = await r.json();
       if (S && S.ticks !== undefined) { render(S); markSpeed(S.speed); }
     } catch (e) {

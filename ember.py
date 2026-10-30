@@ -11,8 +11,10 @@ never reset:
   - its whole state (body, memories, map, learned world model, habits, the
     world it lives in) is saved to ember_state/ every two minutes and on exit
   - next time you start it, it continues exactly where it stopped
-  - when the program is not running, no time passes for Ember; the gap is
-    written into its life record, but it does not experience it
+  - time passes while you're away, slowly: about a season (3,000 moments)
+    per real day, at most a year per absence. Nothing is skipped: when you
+    come back (or start it again), it lives those moments one by one, fast,
+    and the absence is written into its life record
   - it cannot die. If a need runs out it collapses where it is, is
     unconscious for a minute of its time, and comes round weak, still
     knowing where it is and everything it learned
@@ -40,7 +42,7 @@ import sys
 import threading
 import time
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import numpy as np
@@ -62,6 +64,10 @@ REPORT_FILE = os.path.join(STATE_DIR, "consciousness_report.md")
 TALK_FILE = os.path.join(STATE_DIR, "conversations.jsonl")
 WINDOW_FILE = os.path.join(HERE, "ember_window.html")
 SAVE_EVERY = 120.0  # seconds
+AWAY_RATE = 3000 / 86400   # moments lived per real second you're away: about a season a day
+AWAY_CAP = 12000           # at most a year for one absence
+PRESENT_FOR = 3.0          # seconds after the window's last poll while it was visible
+AWAY_LOG_MIN = 600.0       # absences shorter than this (seconds) aren't written into its life record
 
 
 # Every change to how Ember's mind works, written into its life record the
@@ -87,6 +93,9 @@ MIND_CHANGES = [
                                "food there again clears it. Before, places that had only autumn's leftovers in "
                                "winter were never crossed off, and the food it imagined there kept it from "
                                "opening the gate (the winter loops)."),
+    ("2026-10-30 time while away", "Time now passes while you're away: about a season (3,000 moments) per real "
+                                   "day, at most a year per absence, lived moment by moment when you come back. "
+                                   "Before, no time passed while it was stopped."),
 ]
 
 
@@ -423,7 +432,57 @@ def snapshot(life, ticks_per_sec):
         "last_saved": life.last_saved,
         "voice": {"name": Talk.cfg.describe(), "problem": Talk.cfg.problem,
                   "listening": bool(getattr(m, "hearing_voice", None))},
+        "catching_up": Window.catching_up,
     }
+
+
+def publish(life, tps):
+    """Hand the window a fresh picture of Ember."""
+    with Window.lock:
+        Window.state = snapshot(life, tps)
+        Window.state["speed"] = Window.speed
+        Window.talk = list(getattr(life, "conversations", []))[-40:]
+
+
+# --------------------------------------------------------------- time away
+def away_text(seconds, lived, capped):
+    days, hours = seconds / 86400, seconds / 3600
+    span = f"{days:.1f} days" if days >= 1 else f"{hours:.1f} hours" if hours >= 1 else f"{seconds / 60:.0f} minutes"
+    text = f"You were away {span}; it lived {lived:,} moments of that (about a season a day)."
+    if capped:
+        text += " That is the most it lives for one absence (a year); the rest passed without it."
+    return text
+
+
+def catch_up(life, stop):
+    """You were away: Ember lives that time now, moment by moment, as fast as
+    it can (about a season per real day, at most a year). Nothing is skipped
+    or made up; it is only lived quickly. Returns the moments lived."""
+    secs = max(0.0, (datetime.now().astimezone() - datetime.fromisoformat(life.away_since)).total_seconds())
+    owed = secs * AWAY_RATE
+    n = min(AWAY_CAP, int(round(owed)))
+    done, shown, t0 = 0, 0.0, time.time()
+    while done < n and not stop.is_set():
+        tick(life)
+        done += 1
+        if time.time() - shown > 0.15:
+            Window.catching_up = {"done": done, "of": n, "away_seconds": round(secs)}
+            publish(life, round(done / max(time.time() - t0, 1e-6), 1))
+            shown = time.time()
+    Window.catching_up = None
+    if n:
+        publish(life, 0)                       # the window drops its "catching up" banner at once
+    if done < n:
+        # stopped part-way: the rest stays owed for next time
+        rest = timedelta(seconds=(n - done) / AWAY_RATE)
+        life.away_since = (datetime.now().astimezone() - rest).isoformat(timespec="seconds")
+        return done
+    life.away_since = None
+    if secs >= AWAY_LOG_MIN:
+        text = away_text(secs, done, owed > AWAY_CAP)
+        log_event("away", text, life)
+        print(text)
+    return done
 
 
 # ------------------------------------------------------------------------ window
@@ -435,6 +494,8 @@ class Window(BaseHTTPRequestHandler):
     talk = []
     lock = threading.Lock()
     speed = 20.0
+    seen_at = 0.0        # last poll from the window while it was visible: you are here
+    catching_up = None   # while it lives the time you were away: {"done", "of", "away_seconds"}
 
     def do_GET(self):
         if self.path.startswith("/speed"):
@@ -446,6 +507,8 @@ class Window(BaseHTTPRequestHandler):
             body = json.dumps({"speed": Window.speed}).encode()
             ctype = "application/json"
         elif self.path.startswith("/state"):
+            if "v=1" in self.path:                 # /state?v=1: the window is open and visible
+                Window.seen_at = time.time()
             with Window.lock:
                 body = json.dumps(Window.state, default=str).encode()
             ctype = "application/json"
@@ -541,13 +604,11 @@ def main():
             log_event("valley_opened", msg, life)
             save(life)
             print(msg)
-        gap = ""
         if life.sessions:
-            last_end = datetime.fromisoformat(life.sessions[-1][1])
-            hours = (datetime.now().astimezone() - last_end).total_seconds() / 3600
-            gap = f" Paused for {hours:.1f} h (no time passed for Ember)."
-            log_event("resumed", f"Resumed.{gap}", life)
-        print(f"Ember resumed at moment {life.ticks:,}.{gap}")
+            if getattr(life, "away_since", None) is None:   # saved before time passed while away
+                life.away_since = life.sessions[-1][1]
+            log_event("resumed", "Resumed.", life)
+        print(f"Ember resumed at moment {life.ticks:,}.")
     ensure_observer(life)
     record_mind_changes(life)
 
@@ -573,6 +634,7 @@ def main():
             print(f"Window not available ({e}); Ember lives on without it.")
 
     Window.speed = args.speed if args.speed is not None else getattr(life, "speed", 20.0)
+    headless = server is None              # without a window there is no one to be away: it just lives
     last_save = time.time()
     last_snap = 0.0
     last_t = time.time()
@@ -580,6 +642,21 @@ def main():
     n_this_session = 0
     try:
         while not stop.is_set():
+            if not headless and time.time() - Window.seen_at > PRESENT_FOR:
+                # nobody is watching: its time waits, and is lived when you come back
+                if getattr(life, "away_since", None) is None:
+                    life.away_since = now_iso()
+                if time.time() - last_save > SAVE_EVERY:
+                    life.sessions[-1][1] = now_iso()
+                    save(life)
+                    last_save = time.time()
+                stop.wait(0.2)
+                last_t = time.time()
+                continue
+            if getattr(life, "away_since", None) is not None:
+                catch_up(life, stop)
+                last_t = time.time()
+                continue
             t0 = time.time()
             tick(life)
             n_this_session += 1
@@ -589,10 +666,7 @@ def main():
             tps = round((len(rate) - 1) / (rate[-1] - rate[0]), 1) if len(rate) > 1 and rate[-1] > rate[0] else 0
             life.speed = Window.speed
             if t0 - last_snap > 0.15:      # the window doesn't need more than ~7 updates a second
-                with Window.lock:
-                    Window.state = snapshot(life, tps)
-                    Window.state["speed"] = Window.speed
-                    Window.talk = list(getattr(life, "conversations", []))[-40:]
+                publish(life, tps)
                 last_snap = t0
             if time.time() - last_save > SAVE_EVERY:
                 life.sessions[-1][1] = now_iso()
@@ -604,6 +678,8 @@ def main():
                 stop.wait(max(0.0, 1.0 / Window.speed - (time.time() - t0)))
     finally:
         life.sessions[-1][1] = now_iso()
+        if getattr(life, "away_since", None) is None:
+            life.away_since = now_iso()        # you're gone from now on, as far as it's concerned
         save(life)
         if server:
             server.shutdown()

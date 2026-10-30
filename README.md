@@ -141,8 +141,13 @@ python ember.py          # or double-click start_ember.bat on Windows
 - **Never reset.** Body, memories, map, learned world model, habits and its
   world are saved to `ember_state/` every two minutes and when you stop it
   (Ctrl+C). Next start, it continues from the same moment.
-- **No time passes while it's stopped.** The pause is written into its life
-  record; Ember doesn't experience it.
+- **Time passes while you're away, slowly.** About a season (3,000 moments)
+  per real day, at most a year per absence. Nothing is skipped: when you come
+  back (or start it again) it lives those moments one by one, fast, while the
+  window shows it catching up, and the absence goes into its life record.
+  While the window is open and visible, it lives at the speed you chose.
+  ("Away" means no visible window; until 2026-10-30, no time passed while
+  it was stopped.)
 - **It cannot die.** If a need runs out it collapses where it is, is
   unconscious for 60 moments, and comes round weak, still knowing where it is
   and everything it learned.

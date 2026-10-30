@@ -17,7 +17,7 @@ python voice_controls.py                     # the checker's controls: fake voic
 
 ## Map
 
-- `ember.py`: Ember's live loop, saving, the window server (`/state`, `/ask`, `/answer`, `/talk`), the talk channel and voice worker thread, `MIND_CHANGES`.
+- `ember.py`: Ember's live loop, saving, the window server (`/state`, `/ask`, `/answer`, `/talk`), presence and time away (`catch_up`), the talk channel and voice worker thread, `MIND_CHANGES`.
 - `mind/ember_mind.py`: Ember's mind (v3 brain + wide-world skills). `choose_action` (direct wiring, default) and `_choose_by_broadcast` (experimental: workspace is the only arbiter). `_remember` writes the autobiography.
 - `mind/agent.py`, `workspace.py`, `prefrontal.py`, `hippocampus.py`, `cortex.py`, `subcortex.py`, `metacognition.py`: the v3 brain parts.
 - `mind/wideworld.py`: the 40x40 world (seasons, gate, levers, mirror pool). `mind/life.py`: what is saved; `step_life` is shared by the live loop, trials and copy tests.
@@ -47,7 +47,7 @@ python voice_controls.py                     # the checker's controls: fake voic
 ## Direction (decided 2026-10-30)
 
 Goal: **people love their Ember**. A small creature that lives on your computer and knows you, and everything it tells you is true (receipts; it never pretends to feel). AI companions say anything; Ember's promise is trust. Its life is too thin to talk about: the bottleneck is experience, not language, so its life must get richer. Decided for phase 1:
-- **Time: a day is a season.** Lively while the window is open (as now). While you're away, about one season (3,000 moments) passes per real day, lived moment by moment but fast when Ember next starts, capped at a year. Once built, this replaces "no time passes while it's stopped".
+- **Time: a day is a season (built).** Lively while the window is open and visible. While you're away (no visible window, or the program stopped), about one season (3,000 moments) passes per real day, lived moment by moment but fast when you're back (`ember.catch_up`), capped at a year. `--no-window` runs never wait.
 - **You are a light it can see.** You appear as a light where you click in its world, and what you give (food) appears there. The light is a new kind of thing it sees and learns about like any other (no built-in meaning), so it can come to learn that good things happen there and come to it.
 
 ## Next (in order)
