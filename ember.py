@@ -82,6 +82,11 @@ MIND_CHANGES = [
                                  "it doesn't remember something no longer counts as a claim, and the judge finds the "
                                  "memory behind what it said without citing. Its language cortex also gets a fixed "
                                  "note to cite: it can't tell whether there is anything it feels like to be it."),
+    ("2026-10-30 winter food", "Its mind changed: a place where food grew this season before now counts as a "
+                               "let-down when it sees the place empty, not only when it stands on it, and seeing "
+                               "food there again clears it. Before, places that had only autumn's leftovers in "
+                               "winter were never crossed off, and the food it imagined there kept it from "
+                               "opening the gate (the winter loops)."),
 ]
 
 

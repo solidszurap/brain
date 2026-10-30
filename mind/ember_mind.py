@@ -472,6 +472,33 @@ class EmberMind(Mind):
             if self.t - self._food_counted.get(cell, -10**9) > 200:
                 self.season_memory.setdefault(cell, Counter())[self.season] += 1
                 self._food_counted[cell] = self.t
+        self._note_letdowns(view)
+
+    def _note_letdowns(self, view):
+        """A place where food grew this season before, seen empty: a let-down,
+        counted on sight like a sighting. It used to count only when Ember
+        stood on the place, which it rarely does: it sees the place is empty
+        from two cells away and turns off. So places that only ever had
+        autumn's leftovers in winter were never crossed off, and that
+        imagined food kept it from trying the gate (winter loops). Seeing
+        food at a place clears its let-downs; one it just ate empty isn't
+        one (no let-down within 200 moments of food seen there)."""
+        counted = getattr(self, "_empty_counted", None)
+        if counted is None:
+            counted = self._empty_counted = {}
+        key = ("empty", self.season)
+        for vy in range(view.shape[0]):
+            for vx in range(view.shape[1]):
+                cell = self._to_map(vy, vx)
+                c = self.season_memory.get(cell)
+                if not c or c.get(self.season, 0) < 1:
+                    continue
+                if view[vy, vx] == FOOD:
+                    c.pop(key, None)
+                elif self.t - self._food_counted.get(cell, -10**9) > 200 \
+                        and self.t - counted.get(cell, -10**9) > 200:
+                    c[key] += 1
+                    counted[cell] = self.t
 
     def _is_novel(self, k):
         if k == FIGURE:
@@ -482,7 +509,8 @@ class EmberMind(Mind):
 
     def season_spots(self):
         """Places where it has seen food in this season before, that it hasn't
-        just checked, and that haven't let it down (empty twice) this season."""
+        just checked, and that haven't let it down twice (seen empty) since it
+        last saw food there."""
         out = []
         for cell, c in self.season_memory.items():
             if c.get(self.season, 0) >= 1 and self.t - self.hippo.last_seen[cell] > 80 \
@@ -848,11 +876,9 @@ class EmberMind(Mind):
                     and self.multi_step[-1][2] is None and self.t - self.multi_step[-1][1] < 400:
                 self.multi_step[-1][2] = self.t       # reached food after opening the gate itself
             if self.anticipating and tuple(self.hippo.pos) in self.anticipating:
-                here = tuple(self.hippo.pos)
-                self.anticipations.append((self.t, here))
-                if kind != FOOD:   # went where food grew this season before, found none
-                    mem = self.season_memory.setdefault(here, Counter())
-                    mem[("empty", self.season)] += 1
+                # went where food grew this season before (a let-down, if it was
+                # empty, was already counted on sight: _note_letdowns)
+                self.anticipations.append((self.t, tuple(self.hippo.pos)))
                 self.anticipating = set()
         else:
             my_disp = None

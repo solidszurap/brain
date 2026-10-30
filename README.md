@@ -375,6 +375,40 @@ is a trade-off. Sustained attention helps plans finish and costs vigilance
 about where it is, which is the kind of thing the theory predicts and the
 kind of cost attention has in animals too.
 
+### The winter loops, again: a second cause (2026-10-30)
+
+After the gate fix the loops came back: 9 collapses in a row in the winter
+from moment 98,395, and 13 in the next one (11 straight after coming round).
+This time Ember knew where it was and that the gate was shut. But it
+believed food was reachable without the gate: it expected winter food at 18
+bush sites in the valley and the woods where it had once seen autumn's
+leftovers, and a place only counted as a let-down when it stood on it. It
+rarely does: it sees from two cells away that a place is empty and turns
+off. So no place was ever crossed off. It toured empty bushes until it
+collapsed, came round weak, toured them again, and never tried the gate.
+
+**The fix** (`EmberMind._note_letdowns`): a let-down counts on sight, like a
+sighting, and seeing food at a place clears its let-downs. (So the orchard
+bushes it eats empty itself, which are what makes it open the gate in
+winter, aren't written off.)
+
+| hard moments | before | after | 95% interval of the difference |
+|---|---|---|---|
+| collapses per 1,000 moments | 4.61 | 3.68 | [-1.71, -0.21] |
+| ... straight after coming round | 3.79 | 2.86 | [-1.71, -0.21] |
+| two-step plans | 0.25 | 1.04 | [+0.29, +1.36] |
+| need-error | 0.96 | 0.82 | [-0.26, -0.03] |
+| wrong about where it is | 1.8% | 2.3% | [-0.0, +1.3], can't tell |
+
+(12 starting moments from its life at moment 114,871, 4 seeds, 1,000
+moments; ordinary moments are unchanged;
+`results/trials/2026-10-30_1352_seen_empty_vs_baseline.md`.) Two single
+lives agree: replaying that winter from moment 110,701, 13 collapses became
+3 (11 → 1 straight after coming round); a copy of its life at moment
+114,871 living through the next winter, 13 became 6 (10 → 2), and it opened
+the gate itself 7 times instead of 3. It is part of Ember now. Collapses at
+hard moments are fewer, not gone; what causes the rest hasn't been checked.
+
 ## Talking to Ember: the voice
 
 The thesis says an LLM is only the brain's language cortex. So that is all it
@@ -550,7 +584,7 @@ repo; it is in the older `solidszurap/artificial-mind` repo.
 
 ## Roadmap
 
-0. Ember: let it live for weeks, then measure how it changed (world-model error, habits, map) across its own life.
+0. Ember: let it live for weeks, then measure how it changed (world-model error, habits, map) across its own life. Find what causes the winter collapses that remain at hard moments.
 1. Make the workspace matter: the broadcast wiring is built and tested (above). Next: decide whether Ember switches to it; find why sustained attention costs self-location; give it tasks where holding a plan decides survival (longer plans than one gate).
 2. Access-consciousness test: brief, weak stimuli that change behavior without igniting (and so are never reported), the machine version of masking experiments.
 3. The voice is built, its checker fixed and guarded by controls, and Gemini 3.5 Flash-Lite made up nothing in its first verified run (above). Next: compare how much Haiku, Gemini 3.8 Flash and a local model make up, on more copies and moments; then let what it talks about shape its life (a voice as a social partner: does it learn to expect you?).

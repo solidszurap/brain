@@ -40,7 +40,7 @@ python voice_controls.py                     # the checker's controls: fake voic
 
 ## Where things stand (2026-10-30)
 
-- Gate-belief bug fixed (it caused the winter collapse loops). Copy tests now start at hard moments with 3 pairs.
+- Winter collapse loops: two causes fixed. The gate belief (seeing the gate shut corrects it), and imagined winter food (let-downs now count on sight, `EmberMind._note_letdowns`): at hard moments collapses 4.6 → 3.7 per 1,000 moments, gate plans 0.25 → 1.04. Fewer, not gone; the cause of the rest is unchecked. Copy tests start at hard moments with 3 pairs.
 - Workspace: with the direct wiring it has no measurable effect. With the broadcast wiring it holds plans (more two-step plans) but Ember is wrong about its position about twice as often; cause unknown (replay priority ruled out). Decision pending: switch Ember to the broadcast wiring.
 - Voice + autobiography + witness + `voice_eval.py` built. Default Gemini voice: 3.5 Flash-Lite (on the free tier 3.8 Flash allows only 20 requests a day; 3.8 Live only answers in audio). The checker was fixed (refusals aren't claims; the judge names the item behind an uncited statement; `self:inner` for rule 6) and `voice_controls.py` guards it (18/18). Flash-Lite, verified run: known 12/12, traps 8/8, made up 0/28, the judge checked every answer.
 
