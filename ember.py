@@ -100,6 +100,9 @@ MIND_CHANGES = [
                              "food you leave lies inside it. Its eyes grew to tell apart 10 kinds of things "
                              "(everything it knew is kept), and it can now learn that it often finds food in "
                              "something, the way it learned that the lever opens the gate."),
+    ("2026-10-30 come to the light", "Its mind changed: when it is hungry and has learned that it often finds food "
+                                     "in the light, it goes into a light it sees (not one it only remembers, and "
+                                     "not one it has just been in: it can't see inside)."),
 ]
 
 

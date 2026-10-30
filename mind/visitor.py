@@ -15,12 +15,15 @@ from .wideworld import EMPTY
 
 class Visitor:
     def __init__(self, seed, every=600, stay=150):
-        self.rng = np.random.default_rng([int(seed), 77])
+        self.reseed(seed)
         self.every, self.stay = every, stay
         self.next_at = self.leave_at = None
         self.visits = 0
         self.reached = 0              # visits where Ember stepped into the light
         self._reached_this = False
+
+    def reseed(self, seed):
+        self.rng = np.random.default_rng([int(seed), 77])
 
     def act(self, life):
         """One moment of the visitor. Returns True if it changed the world."""

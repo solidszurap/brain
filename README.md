@@ -574,8 +574,31 @@ stays and looks like any other food.
   moments. The voice can say "I often find food in the light", and the
   witness checks it true. But it stepped into the light on only 1 of 10
   visits; most gifts were eaten as ordinary food after the light had gone.
-  Coming to the light when hungry is the next step.
 - It sees only 2 cells around itself: to be noticed, you appear near it.
+
+**Coming to the light when hungry.** Once it has learned that it often finds
+food in the light, a hungry Ember treats a light it sees as a place to eat.
+The first version fell into the winter trap again: it can't see inside the
+light, so after eating the gift it hung around the empty light, and walked
+to places where the light used to be (one life: need-error 0.38 vs 0.09, a
+collapse). So: only a light it sees now counts, not one it remembers, and
+not one it has just been in. Judged with a simulated visitor every 300
+moments, both versions knowing the light holds food
+(`results/trials/2026-10-30_1442_visitor_seek_vs_visitor.md`):
+
+| hard moments | without | with | 95% interval of the difference |
+|---|---|---|---|
+| visits it stepped into the light | 24% | 77% | [+0.39, +0.66] |
+| gifts eaten | 2.36 | 2.86 | [+0.11, +0.89] |
+| need-error | 0.75 | 0.64 | [-0.20, -0.02] |
+| collapses straight after coming round | 2.14 | 1.46 | [-1.43, -0.07] |
+
+Collapses, two-step plans and being wrong about where it is: can't tell.
+It is part of Ember now. Learning from scratch (a visitor every 600
+moments), a copy stepped into the light on 7 of 10 visits, against 1 of 10
+before. And a visitor at all is good for its life: at hard moments,
+need-error 0.85 → 0.75, collapses 3.9 → 3.3, less time unconscious, all
+clear of zero (`results/trials/2026-10-30_1444_visitor_vs_baseline.md`).
 
 ## Layout
 

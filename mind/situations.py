@@ -59,6 +59,9 @@ def reseed(life, seed):
     place, so parts of the mind that share one keep sharing it."""
     for k, g in enumerate((life.world.rng, life.mind.rng)):
         g.bit_generator.state = np.random.default_rng([int(seed), k]).bit_generator.state
+    visitor = getattr(life, "visitor", None)           # a simulated you: same visits for paired versions
+    if visitor is not None:
+        visitor.reseed(seed)
 
 
 def live(life, n):
@@ -74,9 +77,13 @@ def live(life, n):
     loop_collapses = 0
     last_came_round = None
     awake = 0
+    visitor = getattr(life, "visitor", None)
+    v0 = (visitor.visits, visitor.reached) if visitor is not None else None
+    gifts = 0
     for t in range(n):
         info, last = step_life(life)
         drives.append(m.drives.drive(life.intero))
+        gifts += bool(info.get("gift"))
         if info.get("came_round"):
             last_came_round = t
         if info.get("collapse_started") and last_came_round is not None and t - last_came_round <= 150:
@@ -100,4 +107,8 @@ def live(life, n):
         "drinks": int(drinks),
         "unconscious": round(out / n, 4),
         "lost": round(lost / max(awake, 1), 4) if anchor is not None else None,
+        # with a simulated you (mind/visitor.py): gifts eaten, and the share of visits it stepped into the light
+        "gifts": int(gifts) if visitor is not None else None,
+        "reached": (round((visitor.reached - v0[1]) / (visitor.visits - v0[0]), 4)
+                    if visitor is not None and visitor.visits > v0[0] else None),
     }

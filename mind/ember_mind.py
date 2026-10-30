@@ -32,7 +32,7 @@ from .hippocampus import Hippocampus, UNKNOWN
 from .prefrontal import Prefrontal
 from .workspace import Content
 from .world import EMPTY, WALL, FOOD, WATER, HAZARD, ACTIONS, VIEW_R, VIEW, N_ACTIONS
-from .wideworld import DARK, GATE, LEVER, FIGURE, N_TYPES_WIDE, TYPE_NAMES_WIDE
+from .wideworld import DARK, GATE, LEVER, FIGURE, LIGHT, N_TYPES_WIDE, TYPE_NAMES_WIDE
 from .autobiography import Autobiography, IMPORTANCE, first_person
 
 INNATE = {EMPTY, WALL, FOOD, WATER, HAZARD}   # kinds it was born understanding
@@ -567,6 +567,16 @@ class EmberMind(Mind):
             ys, xs = slice(max(0, y0), y0 + VIEW), slice(max(0, x0), x0 + VIEW)
             g[ys, xs] = view[max(0, -y0):, max(0, -x0):][:g[ys, xs].shape[0], :g[ys, xs].shape[1]]
         g[g == FIGURE] = EMPTY
+        g[g == LIGHT] = EMPTY
+        if view is not None and LIGHT in self.nourishing and needs[0] > 0.25:
+            # hungry: a light it sees now, where it often finds food, is a place to eat. Not one it
+            # remembers (the light moves and goes), and not one it has just stepped into: it can't
+            # see inside, so once it has looked (or eaten what was there) that light is done for now
+            checked = getattr(self, "light_checked", None)
+            for vy, vx in np.argwhere(view == LIGHT):
+                cell = self._to_map(vy, vx)
+                if not (checked and checked[0] == cell and self.t - checked[1] < 200):
+                    g[cell] = FOOD
         for k in self.harmful:
             g[g == k] = HAZARD
         if self.gate_open_belief:
@@ -891,6 +901,8 @@ class EmberMind(Mind):
             tgt = int(view[VIEW_R + dy, VIEW_R + dx])
             kind = int(view[VIEW_R, VIEW_R]) if (a == 0 or tgt in (WALL, GATE)) else tgt
             self._learn_contact(kind, next_intero - c["intero"])
+            if kind == LIGHT:
+                self.light_checked = (tuple(self.hippo.pos), self.t)    # it has been in this light
             # its own movement, only when it is sure of it (no correction to its
             # belief this moment): otherwise a figure's movement can't be compared
             my_disp = (self.hippo.pos[0] - pos0[0], self.hippo.pos[1] - pos0[1]) if sure else None

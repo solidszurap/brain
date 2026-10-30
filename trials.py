@@ -72,8 +72,20 @@ def _old_senses(life):
     life.mind.old_senses = True
 
 
+def _visitor(life):
+    """A simulated you (mind/visitor.py) appears as a light 1-2 cells from
+    Ember every 300 moments, leaves food in it and stays 150. Ember already
+    knows it often finds food in the light (planted, so the comparison tests
+    what it does with that, not how fast it learns it)."""
+    from mind.visitor import Visitor
+    from mind.wideworld import LIGHT
+    life.visitor = Visitor(seed=0, every=300, stay=150)    # reseeded with each life's seed
+    life.mind.nourishing.add(LIGHT)
+
+
 VERSIONS = {
     "baseline":     ("Ember as it is now", _baseline),
+    "visitor":      ("a simulated you visits as a light and leaves food; Ember knows the light often holds food", _visitor),
     "old_senses":   ("its eyes before the light existed: 9 kinds of things instead of 10", _old_senses),
     "no_workspace": ("workspace without threshold or persistence: the strongest signal of each instant wins at once", _no_workspace),
     "broadcast":    ("experimental wiring: only what the workspace broadcasts decides which behaviour runs", _broadcast),
@@ -82,8 +94,9 @@ VERSIONS = {
 
 # lower is better for these; higher is better for two_step
 LOWER_BETTER = ["need_error", "collapses", "loop_collapses", "lost", "unconscious"]
-HIGHER_BETTER = ["two_step"]
-SHOWN = ["need_error", "collapses", "loop_collapses", "two_step", "meals", "drinks", "lost", "unconscious"]
+HIGHER_BETTER = ["two_step", "gifts", "reached"]
+SHOWN = ["need_error", "collapses", "loop_collapses", "two_step", "meals", "drinks", "lost", "unconscious",
+         "gifts", "reached"]
 
 
 # ---------------------------------------------------------------------- bank
@@ -254,7 +267,7 @@ def compare(results, a, b):
 
 
 def _fmt(x, m):
-    if m in ("need_error", "lost", "unconscious"):
+    if m in ("need_error", "lost", "unconscious", "reached"):
         return f"{x:.3f}"
     return f"{x:.2f}"
 
@@ -275,7 +288,9 @@ def report(table, a, b, seeds, moments, index):
          "is clear of zero; otherwise \"can't tell\".", "",
          "Lower is better: need-error (how far its needs are from satisfied, averaged), collapses, "
          "loop collapses (collapsed again within 150 moments of coming round), lost (wrong about where it is), "
-         "unconscious (share of moments). Higher is better: two-step plans (opened the gate, then ate).", ""]
+         "unconscious (share of moments). Higher is better: two-step plans (opened the gate, then ate); "
+         "with a visitor, gifts (food you left in the light, eaten) and reached (share of visits it "
+         "stepped into the light).", ""]
     for g in order:
         row = table[g]
         title = g if g in ("ALL HARD", "ALL") else f"{g}: {SITUATIONS.get(g, 'the saved life itself, as it is')}"
