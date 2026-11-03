@@ -81,6 +81,12 @@ python -m server                      # online mode (Render); needs the env vars
 
 ## Where things stand (2026-11-03)
 
+- **LIVE: https://ember-dztb.onrender.com** (Render service `ember`, Frankfurt, Starter; auto-deploys on push to main).
+  - Supabase project `afkhnskxmfplablmfvtl` (Ireland). Its Site URL and redirect point to the Render address.
+  - Google OAuth client "Ember" in Google Cloud project `ember-513617`, in testing; test users are added under Audience.
+  - Szilard logged in on his iPhone on 2026-11-03 and Ember greeted him.
+  - Stripe is not set up yet, so payments are off and the paywall says "coming soon".
+
 - **Slices 1 and 2 are built:** the face, chat, memories with quotes, the memory page, wants, the greeting on return, experiments and work sessions in the conversation.
 - **The online version is built and checked locally, but not deployed:**
   - `check_server.py`: all checks pass, including SupabaseStore and SupabaseAuth against a fake Supabase.

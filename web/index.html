@@ -24,6 +24,7 @@
 ::-webkit-scrollbar-thumb { background: #3f342c; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #5a4a3e; }
 ::-webkit-scrollbar-button { display: none; }
+html { background: var(--bg); }
 html, body { margin: 0; height: 100%; height: 100dvh; }
 body { background: radial-gradient(ellipse at 50% 35%, #231b14 0%, var(--bg) 70%); color: var(--text);
   font: 15px/1.5 system-ui, "Segoe UI", sans-serif; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; overflow: hidden;
@@ -228,6 +229,7 @@ form.say { display: flex; gap: 8px; padding: 10px 16px 4px; width: min(760px, 10
 <div id="freehint"></div>
 <div class="note" id="note"></div>
 
+<div class="cover on" id="boot"><img src="/icons/icon-192.png" alt=""></div>
 <div class="cover" id="login">
   <img src="/icons/icon-192.png" alt="">
   <h1>Ember</h1>
@@ -255,7 +257,7 @@ form.say { display: flex; gap: 8px; padding: 10px 16px 4px; width: min(760px, 10
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
-let S = null, lastTalkKey = "", offline = false, CFG = {mode: "local"}, token = null, sb = null, gate = null;
+let S = null, lastTalkKey = "", offline = false, CFG = {mode: "local"}, token = null, sb = null, gate = "boot";   // until it knows whether you're logged in
 let NOTE = "Ember lives on this computer. To think, it sends your conversation and what it remembers to its mind (the LLM set in .env).";
 
 // ------------------------------------------------------------------ who you are
@@ -285,7 +287,7 @@ async function boot() {
       s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js";
       s.onload = ok; s.onerror = fail; document.head.appendChild(s);
     }).catch(() => { $("#note").innerHTML = `<span class="problem">Couldn't load the login. Check your internet and reload.</span>`; });
-    if (!window.supabase) return;
+    if (!window.supabase) { showCover(null); return; }      // so the note about it shows
     sb = window.supabase.createClient(CFG.supabase_url, CFG.supabase_anon_key);
     const {data} = await sb.auth.getSession();
     setSession(data.session);
@@ -295,6 +297,7 @@ async function boot() {
     $("#logoutBtn").style.display = "none";
     $("#whoami").textContent = "On this computer";
   }
+  showCover(null);
   start();
 }
 function setSession(session) {
