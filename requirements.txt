@@ -1,0 +1,4 @@
+# Ember's server (online and local mode). Ember's self (mind/core.py) needs nothing beyond Python.
+fastapi>=0.115
+uvicorn>=0.30
+anthropic>=2.0

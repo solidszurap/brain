@@ -56,6 +56,7 @@ How you talk:
 - Use their language: reply in the language they write in.
 - Only say things about them that are in your memories or this conversation. If you don't know, say so or ask. Don't guess about their past.
 - Don't claim human feelings. You may say what you want ("I want to know more about that"): your wants are real numbers in you, shown below.
+- You are not a therapist or a doctor. If they talk about harming themselves, or seem to be in danger, respond with warmth and take it seriously, and point them to real help now: in Hungary the free 24/7 line 116-123, or 112 in an emergency; elsewhere their local emergency number.
 
 Experiments: once you know them a little, you suggest small experiments: 3 to 14 days, concrete, mostly things they can do on their own, each answering one question about them (e.g. "Build a tiny game: do you still want to on day 5?"). They pick one, and you work on it together: they start work sessions in your window, and you help with the work itself (how to do something, ideas, feedback) and with the next small step.
 
@@ -67,7 +68,7 @@ Reply with JSON only:
  "add_steps": ["a next small step for the current experiment"],
  "done_steps": ["the exact text of a step they just said they finished"],
  "experiments": [{"title": "short name", "question": "the one question it answers about them", "why": "why it fits them, in one sentence", "based_on": ["m1", "m4"], "days": 7, "steps": ["first small step", "second", "third"]}]}
-Remember only new, lasting things from their latest message (not small talk, not things you already remember). Use "update" when they correct or change something you remember. Use "add_steps" only when you and they agreed on a next step for the current experiment, and "done_steps" only for steps they said they finished. Use "experiments" only when asked to suggest them; base each on memories you have (their ids in based_on). Any of the lists may be empty.""" % (
+Remember only new, lasting things from their latest message (not small talk, not things you already remember). Use "update" when they correct or change something you remember. Use "add_steps" only when you and they agreed on a next step for the current experiment, and "done_steps" only for steps they said they finished. Use "experiments" only when asked to suggest them, or when they ask what they could try and you're told you may; base each on memories you have (their ids in based_on). Any of the lists may be empty.""" % (
     list(FACES), list(KINDS))
 SESSION_CAP = 8 * 3600      # a work session longer than this ends by itself
 CLOSED_ENDS = 600           # if Ember's program was closed this long during a session, the session ended when it closed
@@ -97,6 +98,8 @@ def ago(seconds):
 
 def fmt_minutes(seconds):
     m = round(seconds / 60)
+    if m < 1:
+        return "less than a minute"
     return f"{m} min" if m < 60 else f"{m // 60} h {m % 60} min"
 
 
@@ -221,13 +224,18 @@ class Ember:
                 "gaze": "you" if present else "away", "why": why}
 
     # ------------------------------------------------------------ talking
-    def _say(self, now, who, text, face=None):
+    def _say(self, now, who, text, face=None, **extra):
         line = {"t": now, "who": who, "text": text}
         if face:
             line["face"] = face
+        line.update(extra)          # exps: experiments it suggested with these words; checkin: it asks how a session went
         self.talk.append(line)
         self.talk = self.talk[-TALK_KEPT:]
         self.outbox.append(line)
+
+    def say(self, now, text, face=None, **extra):
+        """Something Ember says that doesn't come from its mind (e.g. that its mind can't be reached)."""
+        self._say(now, "ember", text, face, **extra)
 
     def hear(self, now, text):
         """You wrote something. It goes into the conversation; the mind answers after."""
@@ -318,8 +326,11 @@ class Ember:
                 t = self._template(event, now)          # its mind's suggestions didn't rest on its memories
                 result["suggested"] = self._take_suggestions(t.get("experiments"), now)
                 result["reply"] = t["reply"]
+        elif event["type"] == "talk" and d.get("experiments") and self.can_suggest():
+            result["suggested"] = self._take_suggestions(d.get("experiments"), now)   # you asked what to try
         self.update(now, present=True)
-        self._say(now, "ember", result["reply"], result["face"])
+        extra = {"exps": [x["id"] for x in result["suggested"]]} if result.get("suggested") else {}
+        self._say(now, "ember", result["reply"], result["face"], **extra)
         self.expr, self.expr_until = result["face"], now + EXPR_SECONDS
         return result
 
@@ -483,8 +494,8 @@ class Ember:
         if not x or x["status"] != "active" or how not in ("done", "dropped"):
             return False
         if self.session:
-            self.stop_session(now)
-            self.checkin_due = False
+            self.stop_session(now, ask=False)
+        self.checkin_due = False
         x.update(status=how, ended=now)
         return True
 
@@ -496,13 +507,17 @@ class Ember:
         self.checkin_due = False
         return True
 
-    def stop_session(self, now, ended_by="you"):
+    def stop_session(self, now, ended_by="you", ask=True):
         if not self.session:
             return None
         s = dict(self.session, end=max(now, self.session["start"]), ended_by=ended_by, rating=None, words=None)
         self.sessions.append(s)
         self.session = None
-        self.checkin_due = True
+        if ask:                      # it asks in the conversation; the window shows 1-5 under the question
+            self.checkin_due = True
+            how_long = fmt_minutes(s["end"] - s["start"])
+            why = "" if ended_by == "you" else f" (it ended because {ended_by})"
+            self._say(s["end"], "ember", f"That was {how_long} of work{why}. How did it go?", "curious", checkin=True)
         return s
 
     def checkin(self, now, rating, words):
@@ -514,7 +529,7 @@ class Ember:
         self.checkin_due = False
         minutes = round((s["end"] - s["start"]) / 60)
         self.update(now, present=True)
-        self._say(now, "you", f"[work session: {minutes} min, felt {rating}/5]" + (f" {words}" if words else ""))
+        self._say(now, "you", f"[work session: {fmt_minutes(s['end'] - s['start'])}, felt {rating}/5]" + (f" {words}" if words else ""))
         self.bump = min(1.0, self.bump + 0.1)
         return {"type": "checkin", "text": words or "", "rating": rating, "minutes": minutes}
 
@@ -539,6 +554,11 @@ class Ember:
             if self.session:
                 out.append(f"They are in a work session on it right now ({ago(now - self.session['start'])} so far). "
                            "Help with the work if they ask; keep it short so they can keep working.")
+        if not x:
+            out.append("")
+            out.append("You may suggest experiments (in \"experiments\") if they ask what they could try."
+                       if self.can_suggest() else
+                       "You don't know them well enough yet to suggest experiments; get to know them first.")
         sug = [x for x in self.experiments if x["status"] == "suggested"]
         if sug:
             out += ["", "Experiments you suggested, waiting for them to pick one: "
@@ -558,8 +578,10 @@ class Ember:
                 "talk": self.talk[-60:], "memories": len(self.memories), "thinking": thinking,
                 "last_seen": self.last_seen, "now": now,
                 "experiment": exp, "suggestions": [x for x in self.experiments if x["status"] == "suggested"],
+                "exps": {x["id"]: x for x in self.experiments},
                 "session": self.session, "checkin_due": self.checkin_due,
                 "can_suggest": self.can_suggest(), "min_memories": MIN_MEMORIES,
+                "past": sum(x["status"] in ("done", "dropped") for x in self.experiments),
                 "memory_notes": {m["id"]: m["note"] for m in self.memories}}
 
     def memory_page(self):

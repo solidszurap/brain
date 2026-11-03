@@ -1,60 +1,90 @@
 # Ember
 
-A small being with a face that lives on your computer. It helps you find what to work towards, then works alongside you on it, and over time it becomes someone who knows your story.
+A small being with a face that helps you find what to work towards, then works alongside you on it, and over time becomes someone who knows your story. It is a web app: you open it on your phone, log in with Google, and add it to your home screen, where it opens like an app.
+
+## Ember online
+
+- **Where it runs:** on a server at Render (Frankfurt). Your Ember (its memories, experiments, the whole conversation) is kept in a Supabase database (Frankfurt).
+- **Its mind:** Claude Haiku 5.5, through Anthropic's API.
+- **Who can use it:** it's invite-only while being tested (`EMBER_ALLOWED_EMAILS`).
+- **Setting it up:** **[DEPLOY.md](DEPLOY.md)**, step by step.
+- **What it costs:** Render Starter about $7 a month; Claude Haiku about $0.0005 per reply ($0.10/$0.50 per million tokens in/out), so $5 of credit is roughly 8,000–10,000 replies; Supabase free to start.
+- **When the mind is busy or down:** Ember says so honestly and answers once it's back. It never fakes an answer.
+- **A daily limit per person** (`EMBER_DAILY_CAP`, 150 replies) keeps costs in check.
+- **Your data:** the menu (⋯) has Privacy ([web/privacy.html](web/privacy.html)), "Download my data" (everything, as JSON), and "Delete my Ember", which deletes everything and the account, for good. Logs hold ids and errors only, never what anyone said.
+
+## Run it on your own computer
 
 ```bash
-python ember.py            # then open http://localhost:8765 (start_ember.bat does both)
-python check_ember.py      # quick checks (about a second, no LLM)
+pip install -r requirements.txt
+python ember.py            # local mode: one Ember, yours, in ember_state/, no login; http://localhost:8765
+python check_ember.py      # Ember's self: quick checks, about a second, no LLM
+python check_server.py     # the server: quick checks with a fake mind, fake logins and a fake Supabase
 ```
 
-No packages needed: standard library only. Its mind is an LLM set in `.env`:
-
-```
-EMBER_VOICE=gemini
-GEMINI_API_KEY=...         # the free tier is enough: it only thinks when you talk or come back
-```
-
-Without a key, a simple template mind answers instead. It asks questions, keeps what you say about yourself, and suggests simple experiments from it.
-
-Gemini's free tier can be slow: about 20 seconds per answer on 2026-11-03, even for one line. Turning its "thinking" off made no difference.
+Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_API_KEY=...`, or Gemini). Without a key, a simple template mind answers. It asks questions and keeps what you say about yourself.
 
 ## What it is
 
 - **A computer-native being.** It's not an imitation animal: it doesn't eat or sleep, and nothing is simulated while you're away. It knows the real time and remembers exactly.
 - **The LLM is its mind.** It gives Ember its personality, thoughts and speech. Plain code gives it what an LLM lacks:
-  - a memory that lasts (`ember_state/ember.json`);
+  - a memory that lasts;
   - wants that change with real time (connection, curiosity);
   - a face that shows them.
 - **Honest, lightly.** Every memory keeps your exact words and the date. A memory whose quote isn't in what you wrote is not kept. "Why this face?" shows the numbers behind its face. Those numbers are not feelings, and nothing shows Ember feels anything.
-- **Your memory is yours.** The "What Ember knows about me" page lists everything it remembers, with its source. You can correct anything or make it forget.
-- **Privacy.** Everything stays on this computer, except what is sent to the LLM when it thinks: the conversation and what it remembers.
+- **Memory is the core promise, for everyone.** Ember remembers everything, forever. The "What it knows" page lists everything it remembers, with its source. You can correct anything or make it forget.
+- **Not a therapist.** If someone talks about harming themselves, Ember points to real help (in Hungary 116-123, or 112).
 
 ## Build order
 
 1. **Core (done).**
    - The face: animated, driven by its state, with a "why this face?" panel.
-   - Chat with its mind; Gemini by default, the template mind as fallback.
+   - Chat with its mind.
    - Memories with your words as the source.
    - The memory page.
    - Its wants, moved by real time apart and together.
    - A greeting when you come back after an hour or more.
 2. **Experiments (done).**
-   - **Suggestions.** Once it knows at least 3 things about you, it suggests 2–3 small experiments, from 3 to 14 days each, each with one question. Every suggestion names the memories it rests on; one that rests on none isn't shown.
-   - **Picking one.** You pick one, and it becomes your active experiment, with a checklist of steps.
-   - **Work sessions.** "Start working on it" shows a timer, and its face goes focused while real time is counted. A session ends by itself after 8 hours. If Ember's program was closed during a session, the session ends at the moment it closed.
-   - **Check-in.** After a session you rate how it went (1–5) and add a few words. Its mind answers, agrees the next step (added to the checklist), and ticks off steps you say you finished.
+   - **Suggestions, in the conversation.** Once it knows at least 3 things about you, ask it what you could try (or press "Ask Ember for ideas"). Its ideas appear as cards under its message: small experiments, 3 to 14 days each, each with one question. Every suggestion names the memories it rests on; one that rests on none isn't shown.
+   - **Picking one.** "Pick this" on a card makes it your active experiment. It shows as one line above the input (title, day, steps done, Start/Stop); click the title for the steps, Finish and Drop.
+   - **Work sessions.** "Start working on it" shows a timer, and its face goes focused while real time is counted. A session ends by itself after 8 hours.
+   - **Check-in, in the conversation.** When you stop a session, Ember asks how it went; you answer under its question with 1–5 and a few words. Its mind answers, agrees the next step (added to the checklist), and ticks off steps you say you finished.
    - **Help with the work.** During a session, its mind knows the experiment, the steps and the time so far.
-3. **Nudges and reviews.**
-   - Rare Windows notifications when you drift.
+3. **Online (built, not yet deployed).**
+   - A web app with Google login, one Ember per person.
+   - Phone layout, installable to the home screen.
+   - Retries, and honesty when the mind is down.
+   - The daily limit.
+   - Privacy, export and delete.
+   - The safety rule.
+4. **Nudges and reviews.**
+   - Phone notifications when you drift (Web Push).
    - An honest end-of-experiment review: hours, sessions started without a nudge, how they felt.
-4. **Becoming someone.** Its character and its story of the two of you grow from your shared history.
+5. **Becoming someone.** Its character and its story of the two of you grow from your shared history.
+
+**Later: making money.** A free plan with a daily limit, plus Ember Plus (about €3–5 a month) through Stripe on the website. No ads, no selling data.
 
 ## Files
 
-- `ember.py`: the program. Its window server, the mind's thread, saving, and archiving the old life.
-- `mind/core.py`: Ember's self. Its wants, memory, conversation, face, the prompt for its mind, and the template mind.
-- `mind/llm.py`: which LLM, and the call itself (Gemini, Claude, OpenAI-compatible, Ollama).
-- `ember_window.html`: its window. The face, the chat, and "What Ember knows about me".
-- `check_ember.py`: quick checks with fake events and a fake mind.
-- `ember_state/` (not in git): `ember.json` (its self), `conversation.jsonl` (every line said), `archive/` (earlier lives).
-- `old/`: the earlier Ember, a survival creature in a 40×40 grid world with a hand-built brain. Its full record is in `old/README.md`. It was set aside on 2026-11-03: the survival world made no sense as a life for it, and nobody would want it. Its life is archived in `ember_state/archive/`, never deleted.
+- `server/app.py`: the server.
+  - One Ember per person, kept in memory and saved to the store.
+  - Real time acts lazily on each poll.
+  - The mind worker: one thought at a time, retries, the honest "can't think" line, the daily limit.
+  - The routes and the pages.
+- `server/store.py`: where Embers live. `FileStore` (a folder: local mode and checks) and `SupabaseStore` (Postgres through Supabase's REST API).
+- `server/auth.py`: who's asking. Supabase login tokens (cached), the invite list, local mode.
+- `server/__main__.py`: `python -m server` (online, on Render), and `run_local` for `ember.py`.
+- `server/schema.sql`: the tables, with row level security on.
+- `render.yaml`: the Render setup.
+- `mind/core.py`: Ember's self. Its wants, memory, conversation, experiments, sessions, face, the prompt for its mind, and the template mind. Standard library only.
+- `mind/llm.py`: which LLM, and the call itself. Claude goes through the `anthropic` SDK at low effort; Gemini, OpenAI-compatible and Ollama go through urllib.
+- `web/index.html`: its window.
+  - The Google login.
+  - The face on top, the conversation under it (with experiment cards and the check-in inside it), the experiment line above the input.
+  - "What it knows" and the menu.
+- `web/privacy.html`, `web/manifest.webmanifest`, `web/sw.js`, `web/icons/` (drawn by `tools/make_icons.py`).
+- `tools/import_local.py`: moves a local Ember into an online account.
+- `ember.py`: local mode, plus archiving the grid-world life.
+- `check_ember.py`, `check_server.py`: the quick checks.
+- `ember_state/` (not in git): your local Ember (`ember.json`, `conversation.jsonl`, `usage.json`, `archive/`).
+- The earlier Ember, a survival creature in a 40×40 grid world with a hand-built brain, is no longer in the repo. It lives on in git as the tag **`grid-ember-final`** (its full record is in that version's README). It was set aside on 2026-11-03: the survival world made no sense as a life for it, and nobody would want it. Its life is archived in `ember_state/archive/`, never deleted.

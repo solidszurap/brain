@@ -123,7 +123,8 @@ _, user = f.prompt({"type": "talk", "text": "how do I draw a sprite?"}, x0 + 400
 check("its mind knows the experiment and the session", "Tiny game" in user and "work session" in user)
 f.stop_session(x0 + 100 + 45 * 60)
 check("a stopped session counts real time", f.stats(eid)["seconds"] == 45 * 60)
-check("it asks how it went", f.checkin_due)
+check("it asks how it went, in the conversation", f.checkin_due and f.talk[-1].get("checkin")
+      and "45 min" in f.talk[-1]["text"])
 ev = f.checkin(x0 + 2800, 4, "fun, made the player move")
 check("the check-in goes to its mind", ev and ev["minutes"] == 45 and ev["rating"] == 4)
 r = f.respond(ev, mind_says(reply="Nice! Next: add one enemy?", face="happy", add_steps=["Add one enemy"],
@@ -141,6 +142,21 @@ f.update(x0 + 20 * H + 600, present=False)
 check("a session left open while Ember was closed ends when it closed",
       f.resume(x0 + 23 * H) and f.sessions[-1]["end"] == x0 + 20 * H + 600)
 check("you can finish the experiment", f.end_experiment(eid, "done", x0 + 24 * H) and not f.active())
+f.hear(x0 + 25 * H, "any ideas what I could try next?")
+r = f.respond({"type": "talk", "text": "any ideas what I could try next?"}, mind_says(
+    reply="How about this?", experiments=[{"title": "Draw a level", "question": "Is drawing still fun?",
+                                           "based_on": ["m1"], "days": 5, "steps": ["Sketch it"]}]), x0 + 25 * H + 1)
+check("asked in the chat, it suggests there, and the cards sit on its line",
+      f.talk[-1].get("exps") == [r["suggested"][0]["id"]] and f.find_exp(r["suggested"][0]["id"])["status"] == "suggested")
+f.pick(r["suggested"][0]["id"], x0 + 25 * H + 2)
+f.hear(x0 + 25 * H + 3, "more ideas?")
+r = f.respond({"type": "talk", "text": "more ideas?"}, mind_says(
+    reply="Sure", experiments=[{"title": "Other", "question": "?", "based_on": ["m1"]}]), x0 + 25 * H + 4)
+check("no new suggestions in the chat while one is active", not r.get("suggested") and "exps" not in f.talk[-1])
+f.start_session(x0 + 26 * H)
+n = len(f.talk)
+f.end_experiment(f.active()["id"], "dropped", x0 + 26 * H + 600)
+check("ending an experiment mid-session doesn't ask how the session went", len(f.talk) == n and not f.checkin_due)
 g = Ember.from_dict(json.loads(json.dumps(f.to_dict())))
 check("experiments and sessions survive a save", g.experiments == f.experiments and g.sessions == f.sessions)
 

@@ -1,0 +1,32 @@
+-- Ember's tables. Run once in Supabase: SQL Editor -> New query -> paste -> Run.
+-- Row level security is on with no policies: the public ("anon") key can't read or
+-- write anything. Only Ember's server, with the service key, can.
+
+create table if not exists public.embers (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  self       jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.lines (
+  id      bigserial primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  t       double precision not null,
+  who     text not null,
+  text    text not null,
+  extra   jsonb
+);
+create index if not exists lines_user_t on public.lines (user_id, t);
+
+create table if not exists public.usage (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  day        date not null,
+  calls      integer not null default 0,
+  tokens_in  bigint not null default 0,
+  tokens_out bigint not null default 0,
+  primary key (user_id, day)
+);
+
+alter table public.embers enable row level security;
+alter table public.lines  enable row level security;
+alter table public.usage  enable row level security;

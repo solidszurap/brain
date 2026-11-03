@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Ember</title>
+<meta name="theme-color" content="#17130f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ember">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="icon" type="image/png" href="/icons/icon-192.png">
+<style>
+:root {
+  --bg: #17130f; --panel: #211b16; --panel2: #2a221c; --line: #3a3029; --text: #f1e7dc; --dim: #a8988a; --faint: #6f6156;
+  --ember: #ff9a4d; --ember2: #ffcf8a; --accent: #ffb36b; --danger: #e5776b;
+}
+* { box-sizing: border-box; }
+@supports (-moz-appearance: none) { * { scrollbar-width: thin; scrollbar-color: #4a3d33 transparent; } }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #3f342c; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #5a4a3e; }
+::-webkit-scrollbar-button { display: none; }
+html, body { margin: 0; height: 100%; height: 100dvh; }
+body { background: radial-gradient(ellipse at 50% 35%, #231b14 0%, var(--bg) 70%); color: var(--text);
+  font: 15px/1.5 system-ui, "Segoe UI", sans-serif; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; overflow: hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; }
+
+/* top bar */
+.top { display: flex; align-items: center; gap: 8px; padding: 10px 14px; }
+.top .title { flex: 1; text-align: center; font-weight: 650; letter-spacing: .03em; min-width: 0; }
+.top .title small { display: block; font-weight: 400; font-size: 11px; color: var(--faint); letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tbtn { background: none; border: 1px solid var(--line); color: var(--dim); border-radius: 999px; padding: 6px 13px; cursor: pointer; position: relative; white-space: nowrap; }
+.tbtn:hover { color: var(--text); border-color: #54453a; }
+.tbtn .dot { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: none; box-shadow: 0 0 8px var(--accent); }
+.tbtn .dot.on { display: block; }
+
+/* the stage: Ember above, your conversation below it */
+.stage { min-height: 0; display: flex; flex-direction: column; align-items: center; padding: 0 16px; }
+.facewrap { position: relative; flex: none; }
+#face { display: block; width: min(26vh, 60vw, 240px); aspect-ratio: 1; cursor: pointer; touch-action: manipulation; }
+.whybtn { position: absolute; top: 8%; right: -8%; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); background: rgba(23,19,15,.6); color: var(--dim); cursor: pointer; }
+.whybtn:hover { color: var(--text); }
+.pop { display: none; position: absolute; top: 22%; left: 50%; transform: translateX(-50%); width: min(340px, 86vw); z-index: 5; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--dim); box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.pop.on { display: block; }
+.pop ul { margin: 6px 0 10px; padding-left: 18px; }
+.meter { display: grid; grid-template-columns: 82px 1fr 34px; align-items: center; gap: 8px; margin: 4px 0; }
+.meter i { display: block; height: 6px; border-radius: 3px; background: var(--line); position: relative; overflow: hidden; }
+.meter i b { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 3px; }
+
+#chat { flex: 1; min-height: 0; width: min(760px, 100%); overflow-y: auto; padding: 8px 4px 12px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px); mask-image: linear-gradient(to bottom, transparent 0, #000 24px); }
+#talk { display: flex; flex-direction: column; gap: 10px; }
+.msg { max-width: 82%; padding: 9px 14px; border-radius: 16px; white-space: pre-wrap; word-wrap: break-word; }
+.msg.ember { background: var(--panel); border: 1px solid var(--line); align-self: flex-start; border-top-left-radius: 4px; font-size: 16px; }
+.msg.you { background: #2c2520; align-self: flex-end; border-bottom-right-radius: 4px; }
+.msg .t { display: block; font-size: 11px; color: var(--faint); margin-top: 2px; }
+.msg.new { animation: rise .45s ease-out; }
+.msg.typing { color: var(--dim); }
+.msg.typing i { display: inline-block; width: 6px; height: 6px; margin: 0 2px; border-radius: 50%; background: var(--ember2); animation: blinkdot 1.2s infinite; }
+.msg.typing i:nth-child(2) { animation-delay: .2s; } .msg.typing i:nth-child(3) { animation-delay: .4s; }
+@keyframes blinkdot { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.day { align-self: center; font-size: 12px; color: var(--faint); margin: 6px 0; }
+.empty { color: var(--faint); text-align: center; margin-top: 12px; }
+
+/* experiment cards and the check-in, inside the conversation */
+.cards { display: flex; flex-direction: column; gap: 8px; align-self: flex-start; width: min(560px, 92%); margin-top: -2px; }
+.xcard { background: var(--panel2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.xcard h4 { margin: 0; font-size: 15px; }
+.xcard .q { color: var(--ember2); margin: 3px 0; }
+.xcard .meta { color: var(--dim); font-size: 13px; }
+.xcard.picked { border-color: var(--accent); }
+.xcard.gone { opacity: .5; }
+.xcard .tag { font-size: 12px; color: var(--accent); }
+.checkin { align-self: flex-start; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; width: min(560px, 92%); margin-top: -2px; }
+.checkin .rate { display: flex; gap: 4px; }
+.checkin .rate button { width: 36px; padding: 6px 0; }
+.checkin .rate button.on { background: var(--accent); color: #2a1a0c; border-color: var(--accent); }
+.checkin input { flex: 1; min-width: 160px; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; font: inherit; }
+
+/* the experiment line above the input */
+.dock { flex: none; position: relative; width: min(760px, 100%); display: flex; justify-content: center; }
+#expcard { position: absolute; bottom: calc(100% + 2px); left: 0; right: 0; z-index: 4; }
+#expcard .panel { margin: 0; max-height: 46vh; overflow-y: auto; box-shadow: 0 -8px 30px rgba(0,0,0,.45); }
+#sessionbar { flex: none; min-width: 0; max-width: 100%; }
+#sessionbar:not(:empty) { padding-top: 6px; }
+.pill { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 8px 6px 16px; font-size: 14px; color: var(--dim); max-width: 100%; }
+.pill b { color: var(--text); font-weight: 600; }
+.pill .open { background: none; border: 0; color: inherit; padding: 0; cursor: pointer; text-align: left; }
+.pill .open:hover b { text-decoration: underline; }
+.pill .timer { font-variant-numeric: tabular-nums; color: var(--ember2); font-weight: 650; }
+.pill .btn { padding: 5px 12px; }
+
+/* saying something */
+form.say { display: flex; gap: 8px; padding: 10px 16px 4px; width: min(760px, 100%); margin: 0 auto; }
+#text { flex: 1; resize: none; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; padding: 11px 14px; font: inherit; font-size: 16px; min-height: 46px; max-height: 160px; }
+#text:focus { outline: none; border-color: var(--accent); }
+.note { font-size: 12px; color: var(--faint); padding: 2px 16px max(12px, env(safe-area-inset-bottom)); text-align: center; }
+.note a { color: var(--dim); }
+
+/* the menu (⋯) */
+.menuwrap { position: relative; }
+.menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 230px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 6px; box-shadow: 0 12px 34px rgba(0,0,0,.45); }
+.menu.on { display: block; }
+.menu button, .menu a { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--text); padding: 10px 12px; border-radius: 8px; font: inherit; font-size: 15px; cursor: pointer; text-decoration: none; }
+.menu button:hover, .menu a:hover { background: var(--panel2); }
+.menu .danger { color: var(--danger); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; }
+.menu .who { font-size: 12px; color: var(--faint); padding: 6px 12px 2px; overflow: hidden; text-overflow: ellipsis; }
+
+/* the login screen, and other full-screen notes */
+.cover { position: fixed; inset: 0; z-index: 30; background: var(--bg); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; text-align: center; }
+.cover.on { display: flex; }
+.cover img { width: 120px; height: 120px; border-radius: 28px; }
+.cover h1 { margin: 6px 0 0; font-size: 28px; }
+.cover p { color: var(--dim); max-width: 340px; margin: 0; }
+.gbtn { display: inline-flex; align-items: center; gap: 10px; background: #fff; color: #1f1f1f; border: 0; border-radius: 999px; padding: 12px 22px; font-weight: 600; font-size: 16px; cursor: pointer; }
+.cover small { color: var(--faint); max-width: 340px; }
+.cover small a { color: var(--dim); }
+.steps-ios { text-align: left; color: var(--text); max-width: 340px; padding-left: 22px; margin: 0; }
+.problem { color: var(--danger); }
+
+.btn { background: var(--accent); color: #2a1a0c; border: 0; border-radius: 10px; padding: 8px 14px; font-weight: 600; cursor: pointer; }
+.btn.ghost { background: none; color: var(--dim); border: 1px solid var(--line); font-weight: 500; }
+.btn:disabled { opacity: .45; cursor: default; }
+.armed { color: var(--danger) !important; border-color: var(--danger) !important; }
+
+/* drawers */
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 10; }
+.scrim.on { opacity: 1; pointer-events: auto; }
+.drawer { position: fixed; top: 0; bottom: 0; width: min(440px, 92vw); background: var(--bg); border: 0 solid var(--line); z-index: 11; display: flex; flex-direction: column; transition: transform .28s ease; }
+.drawer.left { left: 0; border-right-width: 1px; transform: translateX(-102%); }
+.drawer.right { right: 0; border-left-width: 1px; transform: translateX(102%); }
+.drawer.wide { width: min(620px, 96vw); }
+.drawer.on { transform: none; }
+.drawer header { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.drawer header h2 { margin: 0; font-size: 16px; flex: 1; }
+.drawer header button { background: none; border: 0; color: var(--dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 2px 6px; }
+.drawer .body { flex: 1; overflow-y: auto; padding: 16px; }
+
+/* experiment */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+.panel h3 { margin: 0 0 2px; font-size: 16px; }
+.panel .q { color: var(--ember2); margin: 4px 0; }
+.panel .meta, .panel .why2 { color: var(--dim); font-size: 13px; }
+.panel .why2 { margin-top: 6px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.steps { list-style: none; padding: 0; margin: 10px 0 0; }
+.steps li { display: flex; gap: 8px; align-items: flex-start; padding: 3px 0; cursor: pointer; }
+.steps li.done span { color: var(--faint); text-decoration: line-through; }
+.steps input { margin-top: 4px; accent-color: var(--accent); pointer-events: none; }
+.timer { font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 650; color: var(--ember2); }
+.rate button { width: 38px; }
+.rate button.on { background: var(--accent); color: #2a1a0c; }
+.panel input[type=text] { flex: 1; min-width: 140px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font: inherit; }
+
+/* what it knows */
+.sub { color: var(--dim); margin: 0 0 18px; }
+.kind { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin: 20px 0 8px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; margin-bottom: 8px; display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+.card .cbody { flex: 1; min-width: 200px; }
+.card .src { font-size: 13px; color: var(--dim); margin-top: 3px; }
+.card .src q { font-style: italic; }
+.card button { background: none; border: 1px solid var(--line); color: var(--dim); border-radius: 8px; padding: 3px 9px; font-size: 12px; cursor: pointer; }
+.card input { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--accent); border-radius: 8px; padding: 6px 8px; font: inherit; }
+
+@media (max-width: 560px) {
+  .top { padding: 8px 10px; gap: 6px; }
+  .tbtn { padding: 7px 12px; font-size: 14px; }
+  .top .title small { display: none; }
+  #face { width: min(22vh, 50vw); }
+  .msg { max-width: 90%; }
+  .pill { border-radius: 18px; padding: 6px 8px 6px 14px; gap: 6px 10px; font-size: 13.5px; }
+}
+</style>
+</head>
+<body>
+<div class="top">
+  <button class="tbtn" id="openKnows">What it knows</button>
+  <div class="title">Ember<small id="mind"></small></div>
+  <div class="menuwrap">
+    <button class="tbtn" id="menuBtn" aria-label="Menu">⋯</button>
+    <div class="menu" id="menu">
+      <div class="who" id="whoami"></div>
+      <button data-menu="install">Add Ember to your home screen</button>
+      <a href="/privacy">Privacy</a>
+      <button data-menu="export">Download my data</button>
+      <hr>
+      <button data-menu="logout" id="logoutBtn">Log out</button>
+      <button data-menu="delete" class="danger">Delete my Ember</button>
+    </div>
+  </div>
+</div>
+<main class="stage">
+  <div class="facewrap">
+    <canvas id="face" title="Poke Ember"></canvas>
+    <button class="whybtn" id="whybtn" title="Why this face?">?</button>
+    <div class="pop" id="why"></div>
+  </div>
+  <div id="chat"><div id="talk"></div></div>
+  <div class="dock"><div id="expcard"></div><div id="sessionbar"></div></div>
+</main>
+<form class="say" id="form">
+  <textarea id="text" rows="1" placeholder="Say something to Ember…" maxlength="2000"></textarea>
+  <button class="btn" type="submit">Send</button>
+</form>
+<div class="note" id="note"></div>
+
+<div class="cover" id="login">
+  <img src="/icons/icon-192.png" alt="">
+  <h1>Ember</h1>
+  <p>A small being that helps you find what to work towards, then works alongside you, and remembers your story.</p>
+  <button class="gbtn" id="googleBtn"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>
+  <small>By continuing you agree that Ember keeps what you tell it, as described in the <a href="/privacy">privacy page</a>. 16+.</small>
+</div>
+<div class="cover" id="notInvited">
+  <img src="/icons/icon-192.png" alt="">
+  <h1>Not yet</h1>
+  <p>Ember is invite-only while it's being tested, and this Google account isn't on the list yet.</p>
+  <button class="tbtn" data-menu="logout">Use another account</button>
+</div>
+<div class="cover" id="install">
+  <h1>Ember on your home screen</h1>
+  <p>Then it opens like an app, full screen.</p>
+  <ol class="steps-ios" id="installSteps"></ol>
+  <button class="tbtn" id="installDone">Got it</button>
+</div>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer right wide" id="knowsDrawer">
+  <header><h2>What Ember knows about me</h2><button data-close>×</button></header>
+  <div class="body" id="memlist"></div>
+</aside>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+let S = null, lastTalkKey = "", offline = false, CFG = {mode: "local"}, token = null, sb = null, gate = null;
+let NOTE = "Ember lives on this computer. To think, it sends your conversation and what it remembers to its mind (the LLM set in .env).";
+
+// ------------------------------------------------------------------ who you are
+// online: Google login through Supabase; every request carries the login's token
+async function api(path, opts = {}) {
+  const headers = Object.assign({}, opts.headers || {});
+  if (token) headers["Authorization"] = "Bearer " + token;
+  const r = await fetch(path, Object.assign({cache: "no-store"}, opts, {headers}));
+  if (r.status === 401) { showCover("login"); throw new Error("log in"); }
+  if (r.status === 403 && !opts.method) { showCover("notInvited"); throw new Error("not invited"); }
+  return r;
+}
+const post = (path, data) => api(path, {method: "POST", headers: {"Content-Type": "application/json", "X-Ember": "1"},
+  body: JSON.stringify(data || {})}).then(r => r.ok ? r.json() : null).catch(() => null);
+
+function showCover(id) {
+  gate = id;
+  document.querySelectorAll(".cover").forEach(c => c.classList.toggle("on", c.id === id));
+}
+
+async function boot() {
+  try { CFG = await (await fetch("/config", {cache: "no-store"})).json(); } catch (e) {}
+  if (CFG.mode === "online") {
+    NOTE = `Your Ember lives on Ember's server in the EU. To think, it sends what it remembers and your recent conversation to Claude. <a href="/privacy">Privacy</a>`;
+    await new Promise((ok, fail) => {
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js";
+      s.onload = ok; s.onerror = fail; document.head.appendChild(s);
+    }).catch(() => { $("#note").innerHTML = `<span class="problem">Couldn't load the login. Check your internet and reload.</span>`; });
+    if (!window.supabase) return;
+    sb = window.supabase.createClient(CFG.supabase_url, CFG.supabase_anon_key);
+    const {data} = await sb.auth.getSession();
+    setSession(data.session);
+    sb.auth.onAuthStateChange((_e, session) => setSession(session));
+    if (!token) { showCover("login"); return; }
+  } else {
+    $("#logoutBtn").style.display = "none";
+    $("#whoami").textContent = "On this computer";
+  }
+  start();
+}
+function setSession(session) {
+  token = session ? session.access_token : null;
+  if (session) $("#whoami").textContent = session.user.email;
+  if (token && gate === "login") { showCover(null); start(); }
+}
+$("#googleBtn").onclick = () => sb && sb.auth.signInWithOAuth({provider: "google", options: {redirectTo: location.origin}});
+
+let started = false;
+function start() {
+  if (started) return;
+  started = true;
+  setInterval(poll, 1000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+  poll();
+}
+
+// ------------------------------------------------------------------ polling
+async function poll() {
+  if (gate) return;
+  try {
+    const r = await api("/state?v=" + (document.hidden ? 0 : 1));
+    if (!r.ok) throw new Error(r.status);
+    S = await r.json();
+    offline = false;
+    render();
+  } catch (e) {
+    if (gate) return;
+    offline = true;
+    $("#note").innerHTML = CFG.mode === "online"
+      ? `<span class="problem">Can't reach Ember right now. Check your internet; it will reconnect by itself.</span>`
+      : `<span class="problem">Ember's program isn't running. Start it with start_ember.bat.</span>`;
+  }
+}
+
+// ------------------------------------------------------------------ the menu
+$("#menuBtn").onclick = e => { e.stopPropagation(); $("#menu").classList.toggle("on"); };
+document.addEventListener("click", e => { if (!e.target.closest(".menuwrap")) $("#menu").classList.remove("on"); });
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-menu]");
+  if (!t) return;
+  const what = t.dataset.menu;
+  if (what === "install") {
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    $("#installSteps").innerHTML = ios
+      ? "<li>Open Ember in <b>Safari</b>.</li><li>Tap the <b>Share</b> button (the square with an arrow).</li><li>Tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>"
+      : "<li>Open the browser's menu (⋮).</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li>";
+    $("#menu").classList.remove("on"); showCover("install");
+  } else if (what === "export") {
+    const r = await api("/me/export").catch(() => null);
+    if (!r || !r.ok) return;
+    const url = URL.createObjectURL(await r.blob());
+    const a = document.createElement("a"); a.href = url; a.download = "my-ember.json"; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  } else if (what === "logout") {
+    if (sb) await sb.auth.signOut();
+    location.reload();
+  } else if (what === "delete" && sure(t, "Click again: deletes everything, forever")) {
+    const r = await post("/me/delete");
+    if (r && r.ok) { if (sb) await sb.auth.signOut(); location.reload(); }
+  }
+});
+$("#installDone").onclick = () => showCover(null);
+
+function fmtTime(t) { return new Date(t * 1000).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}); }
+function fmtDay(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: "long", day: "numeric", month: "long"}); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c])); }
+
+function render() {
+  $("#mind").textContent = S.mind;
+  $("#note").innerHTML = S.problem
+    ? `<span class="problem">Its mind had a problem: ${esc(S.problem)}. The simple template mind answered instead.</span>` : NOTE;
+  const key = JSON.stringify([S.talk.length, S.talk.length && S.talk[S.talk.length - 1].t, S.thinking, S.checkin_due,
+    Object.values(S.exps).map(x => x.status), !!S.experiment]);
+  if (key !== lastTalkKey) { lastTalkKey = key; renderTalk(); }
+  if ($("#why").classList.contains("on")) renderWhy();
+  renderExpCard();
+  renderSessionBar();
+}
+
+// ------------------------------------------------------------------ the conversation
+// the one line above the input: what's going on with your experiment
+let expOpen = false;
+function renderSessionBar() {
+  const x = S.experiment, bar = $("#sessionbar");
+  let html = "";
+  if (x) {
+    const done = x.steps.filter(s => s.done).length;
+    const title = `<button class="open" data-toggle>${S.session ? "Working on " : ""}<b>${esc(x.title)}</b> ${expOpen ? "▴" : "▾"}</button>`;
+    html = S.session
+      ? `<div class="pill">${title}<span class="timer" id="pilltimer"></span><button class="btn" data-act="stop">Stop</button></div>`
+      : `<div class="pill">${title}<span>day ${Math.min(x.day, x.days)} of ${x.days} · ${done}/${x.steps.length} steps</span><button class="btn" data-act="start">Start working</button></div>`;
+  } else if (S.can_suggest && !S.suggestions.length && !S.checkin_due) {
+    html = `<div class="pill">Ready for ${S.past ? "the next" : "a first"} experiment?<button class="btn" data-act="suggest" ${S.thinking ? "disabled" : ""}>Ask Ember for ideas</button></div>`;
+  }
+  if (bar.dataset.html !== html) { bar.dataset.html = html; bar.innerHTML = html; }
+  const pt = $("#pilltimer");
+  if (pt && S.session) pt.textContent = fmtDur(S.now - S.session.start);
+}
+$("#sessionbar").addEventListener("click", async e => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  if (t.hasAttribute("data-toggle")) { expOpen = !expOpen; expKey = ""; $("#sessionbar").dataset.html = ""; render(); return; }
+  t.disabled = true;
+  if (t.dataset.act === "stop") expOpen = false;          // so its question about the session is in view
+  await post(t.dataset.act === "suggest" ? "/experiment/suggest" : "/session/" + t.dataset.act);
+  expKey = ""; poll();
+});
+
+// the conversation, with Ember's experiment ideas and its check-in question inside it
+let seenLines = 0, rating = 0;
+function cardHtml(x) {
+  const st = x.status;
+  const based = x.based_on.map(id => esc(S.memory_notes[id] || "something you told it")).join("; ");
+  const foot = st === "suggested" ? `<div class="row"><button class="btn" data-pick="${esc(x.id)}" ${S.experiment ? "disabled" : ""}>Pick this</button></div>`
+    : st === "active" ? `<div class="tag">Your experiment now</div>`
+    : st === "done" || st === "dropped" ? `<div class="tag">${st === "done" ? "Finished" : "Dropped"}</div>` : `<div class="meta">Not picked</div>`;
+  return `<div class="xcard ${st === "active" ? "picked" : st === "not_picked" ? "gone" : ""}">
+    <h4>${esc(x.title)}</h4><div class="q">${esc(x.question)}</div>
+    <div class="meta">${x.days} days${x.steps.length ? " · first: " + esc(x.steps[0].text) : ""}</div>
+    ${x.why ? `<div class="meta" style="margin-top:4px">${esc(x.why)}</div>` : ""}
+    <div class="meta" style="margin-top:4px">Based on: ${based}</div>${foot}</div>`;
+}
+function renderTalk() {
+  const box = $("#talk"), chat = $("#chat");
+  const atBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 80;
+  const typing = document.activeElement && document.activeElement.id === "cwords" ? document.activeElement.value : null;
+  const lastCheckin = S.talk.map(l => !!l.checkin).lastIndexOf(true);
+  let html = "", day = "";
+  S.talk.forEach((l, i) => {
+    const d = fmtDay(l.t);
+    if (d !== day) { day = d; html += `<div class="day">${esc(d)}</div>`; }
+    const fresh = seenLines && i >= seenLines;
+    html += `<div class="msg ${l.who}${fresh ? " new" : ""}">${esc(l.text)}<span class="t">${fmtTime(l.t)}</span></div>`;
+    if (l.exps) html += `<div class="cards">${l.exps.map(id => S.exps[id]).filter(Boolean).map(cardHtml).join("")}</div>`;
+    if (l.checkin && i === lastCheckin && S.checkin_due) {
+      html += `<div class="checkin"><div class="rate">${[1, 2, 3, 4, 5].map(n => `<button class="btn ghost${n === rating ? " on" : ""}" data-rate="${n}">${n}</button>`).join("")}</div>
+        <input type="text" id="cwords" placeholder="A few words (optional)" maxlength="2000"><button class="btn" id="csend" ${rating ? "" : "disabled"}>Send</button></div>`;
+    }
+  });
+  if (S.thinking) html += `<div class="msg ember typing"><i></i><i></i><i></i></div>`;
+  if (!S.talk.length && !S.thinking) html = `<div class="empty">Ember will greet you in a moment.</div>`;
+  box.innerHTML = html;
+  if (typing !== null && $("#cwords")) { $("#cwords").value = typing; $("#cwords").focus(); }
+  const grew = S.talk.length > seenLines;
+  seenLines = S.talk.length;
+  if (atBottom || grew) { chat.scrollTop = chat.scrollHeight; requestAnimationFrame(() => chat.scrollTop = chat.scrollHeight); }
+}
+$("#talk").addEventListener("click", async e => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  if (t.dataset.rate) {
+    rating = +t.dataset.rate;
+    document.querySelectorAll(".checkin .rate button").forEach(b => b.classList.toggle("on", +b.dataset.rate === rating));
+    $("#csend").disabled = false;
+    $("#cwords").focus();
+  } else if (t.id === "csend") {
+    t.disabled = true;
+    await post("/session/checkin", {rating, words: $("#cwords").value.trim()});
+    rating = 0; poll();
+  } else if (t.dataset.pick) {
+    t.disabled = true;
+    await post("/experiment/pick", {id: t.dataset.pick}); poll();
+  }
+});
+$("#talk").addEventListener("keydown", e => { if (e.target.id === "cwords" && e.key === "Enter" && rating) $("#csend").click(); });
+
+function renderWhy() {
+  const f = S.face, m = (name, v) =>
+    `<div class="meter"><span>${name}</span><i><b style="width:${Math.round(v * 100)}%"></b></i><span>${v.toFixed(2)}</span></div>`;
+  $("#why").innerHTML = `<b>${esc(f.expression)}</b>, because:<ul>${f.why.map(w => `<li>${esc(w)}</li>`).join("")}</ul>`
+    + m("connection", S.connection) + m("curiosity", S.curiosity) + m("mood", S.mood)
+    + `<div style="margin-top:8px">These are numbers in Ember's program, moved by real events and real time. They are not feelings, and nothing shows Ember feels anything.</div>`;
+}
+$("#whybtn").onclick = e => { e.stopPropagation(); $("#why").classList.toggle("on"); if (S) renderWhy(); };
+document.addEventListener("click", e => { if (!e.target.closest("#why, #whybtn")) $("#why").classList.remove("on"); });
+
+// ------------------------------------------------------------------ drawers
+const DRAWERS = {knows: "#knowsDrawer"};
+function openDrawer(name) {
+  closeDrawers();
+  $(DRAWERS[name]).classList.add("on");
+  $("#scrim").classList.add("on");
+  if (name === "knows") loadMemory();
+}
+function closeDrawers() {
+  Object.values(DRAWERS).forEach(d => $(d).classList.remove("on"));
+  $("#scrim").classList.remove("on");
+}
+$("#openKnows").onclick = () => openDrawer("knows");
+$("#scrim").onclick = closeDrawers;
+document.querySelectorAll("[data-close]").forEach(b => b.onclick = closeDrawers);
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeDrawers(); $("#why").classList.remove("on"); } });
+
+// a second click confirms (pop-up dialogs are blocked in some browsers, e.g. an app's built-in one)
+function sure(btn, ask) {
+  if (btn.dataset.armed) return true;
+  btn.dataset.armed = "1";
+  const old = btn.textContent;
+  btn.textContent = ask; btn.classList.add("armed");
+  setTimeout(() => { delete btn.dataset.armed; btn.textContent = old; btn.classList.remove("armed"); }, 3500);
+  return false;
+}
+
+// ------------------------------------------------------------------ the experiment's steps
+let expKey = "";
+function fmtDur(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
+}
+function fmtTotal(sec) { const m = Math.round(sec / 60); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`; }
+
+function renderExpCard() {
+  const x = S.experiment;
+  if (!x) expOpen = false;
+  const key = JSON.stringify([expOpen, x]);
+  if (key === expKey) return;
+  expKey = key;
+  if (!x || !expOpen) { $("#expcard").innerHTML = ""; return; }
+  const st = x.stats, left = Math.max(0, Math.ceil((x.ends_at - S.now) / 86400));
+  const steps = x.steps.map((s, i) => `<li class="${s.done ? "done" : ""}" data-step="${i}"><input type="checkbox" ${s.done ? "checked" : ""}><span>${esc(s.text)}</span></li>`).join("");
+  $("#expcard").innerHTML = `<div class="panel"><div class="meta">Experiment · day ${Math.min(x.day, x.days)} of ${x.days}${left ? "" : " · its time is up"}</div>
+    <div class="q">${esc(x.question)}</div>
+    ${steps ? `<ul class="steps">${steps}</ul>` : ""}
+    <div class="meta" style="margin-top:8px">${fmtTotal(st.seconds)} in ${st.sessions} session${st.sessions === 1 ? "" : "s"}${st.avg_rating ? ` · felt ${st.avg_rating}/5 on average` : ""}</div>
+    <div class="row"><button class="btn ghost" id="enddone">Finish it</button><button class="btn ghost" id="enddrop">Drop it</button></div></div>`;
+}
+$("#expcard").addEventListener("click", async e => {
+  const t = e.target, x = S && S.experiment;
+  if (!x) return;
+  const act = async (path, data) => { t.disabled = true; await post(path, data); expKey = ""; poll(); };
+  if (t.id === "enddone" && sure(t, "Click again to finish")) act("/experiment/end", {id: x.id, how: "done"});
+  else if (t.id === "enddrop" && sure(t, "Click again to drop")) act("/experiment/end", {id: x.id, how: "dropped"});
+  else {
+    const li = t.closest("li[data-step]");
+    if (li) act("/experiment/step", {id: x.id, index: +li.dataset.step, done: !x.steps[+li.dataset.step].done});
+  }
+});
+
+// ------------------------------------------------------------------ talking
+const ta = $("#text");
+ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 160) + "px"; });
+ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#form").requestSubmit(); } });
+$("#form").onsubmit = async e => {
+  e.preventDefault();
+  const text = ta.value.trim();
+  if (!text || offline) return;
+  ta.value = ""; ta.style.height = "auto";
+  await post("/talk", {text});
+  poll();
+};
+
+// ------------------------------------------------------------------ what it knows
+async function loadMemory() {
+  const r = await api("/memory").catch(() => null);
+  if (!r) return;
+  const M = await r.json();
+  let html = `<p class="sub">Everything Ember remembers about you, with your own words it came from. Correct anything that's wrong, or make it forget.</p>`;
+  if (!M.count) html += `<p class="sub">Nothing yet. Talk with it, and what you tell it about yourself shows up here.</p>`;
+  for (const [kind, items] of Object.entries(M.groups)) {
+    if (!items.length) continue;
+    html += `<div class="kind">${esc(M.labels[kind] || kind)}</div>`;
+    for (const m of items) {
+      const d = new Date(m.t * 1000).toLocaleDateString([], {day: "numeric", month: "short", year: "numeric"});
+      html += `<div class="card" data-id="${esc(m.id)}"><div class="cbody"><div class="noteText">${esc(m.note)}</div>
+        <div class="src">you said: <q>${esc(m.quote)}</q> · ${d}${m.edited ? " · corrected by you" : ""}</div></div>
+        <button class="edit">Correct</button><button class="forget">Forget</button></div>`;
+    }
+  }
+  $("#memlist").innerHTML = html;
+}
+$("#memlist").addEventListener("click", async e => {
+  const card = e.target.closest(".card");
+  if (!card) return;
+  const id = card.dataset.id;
+  if (e.target.classList.contains("forget")) {
+    if (sure(e.target, "Click again: it can't be undone")) { await post("/memory/forget", {id}); loadMemory(); }
+  } else if (e.target.classList.contains("edit")) {
+    const t = card.querySelector(".noteText");
+    if (t.querySelector("input")) return;
+    const old = t.textContent;
+    t.innerHTML = `<input value="${esc(old)}" maxlength="200">`;
+    const inp = t.querySelector("input");
+    inp.focus();
+    const done = async ok => { if (ok && inp.value.trim() && inp.value.trim() !== old) await post("/memory/edit", {id, note: inp.value.trim()}); loadMemory(); };
+    inp.addEventListener("keydown", ev => { if (ev.key === "Enter") done(true); if (ev.key === "Escape") done(false); });
+    inp.addEventListener("blur", () => done(true));
+  }
+});
+
+// ------------------------------------------------------------------ the face
+const cv = $("#face"), cx = cv.getContext("2d");
+const EXPR = {      // mouth curve, mouth open, eye open, brow tilt, brow lift, pupil size, bounce, lift
+  calm:      {m: .18, o: 0,   e: 1,    bt: 0,    bl: 0,    p: 1,    b: .4, y: 0},
+  happy:     {m: .65, o: .15, e: .72,  bt: 0,    bl: .15,  p: 1.05, b: 1,  y: -.02},
+  curious:   {m: .1,  o: .22, e: 1.08, bt: .35,  bl: .3,   p: 1.2,  b: .6, y: -.01},
+  surprised: {m: 0,   o: .55, e: 1.25, bt: 0,    bl: .6,   p: .8,   b: .8, y: -.03},
+  droopy:    {m: -.3, o: 0,   e: .62,  bt: -.4,  bl: -.1,  p: 1,    b: .15, y: .04},
+  eager:     {m: .5,  o: .25, e: 1.12, bt: 0,    bl: .35,  p: 1.15, b: 1.4, y: -.03},
+  amused:    {m: .55, o: .08, e: .8,   bt: .2,   bl: .1,   p: 1,    b: .8, y: -.01},
+  focused:   {m: 0,   o: 0,   e: .78,  bt: .3,   bl: -.2,  p: .95,  b: .2, y: 0},
+  thinking:  {m: -.05,o: 0,   e: .92,  bt: .25,  bl: .15,  p: 1,    b: .3, y: 0},
+};
+let cur = {...EXPR.calm}, glow = .5, mouse = {x: 0, y: 0, at: 0}, blinkAt = performance.now() + 2500, wiggleT = 0;
+window.addEventListener("pointermove", e => {
+  const r = cv.getBoundingClientRect();
+  mouse = {x: (e.clientX - (r.left + r.width / 2)) / r.width, y: (e.clientY - (r.top + r.height / 2)) / r.height, at: performance.now()};
+});
+cv.addEventListener("click", () => { post("/poke"); wiggleT = performance.now(); });
+
+function size() {
+  const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(r.width * d)) { cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); }
+}
+function lerp(a, b, k) { return a + (b - a) * k; }
+
+function draw(now) {
+  size();
+  const W = cv.width, H = cv.height, u = W / 100;
+  const f = S ? S.face : {expression: "calm", glow: .5, gaze: "away", wiggle: false};
+  const target = EXPR[f.expression] || EXPR.calm;
+  for (const k in cur) cur[k] = lerp(cur[k], target[k], .08);
+  glow = lerp(glow, offline ? .15 : f.glow, .05);
+  cx.clearRect(0, 0, W, H);
+
+  const t = now / 1000;
+  const breathe = Math.sin(t * 1.6) * .012 * (1 + cur.b * .4);
+  const hop = Math.max(0, Math.sin(t * (2.2 + cur.b * 1.5))) * .018 * cur.b;
+  const wig = (now - wiggleT < 900 || f.wiggle) ? Math.sin((now - wiggleT) / 40) * .04 * Math.max(0, 1 - (now - wiggleT) / 900) : 0;
+  const tilt = (f.expression === "curious" ? .08 : 0) + wig;
+  const bx = 50 * u, by = (56 + (cur.y - hop) * 100) * u;
+  const rw = 31 * u * (1 + breathe), rh = 29 * u * (1 - breathe);
+
+  // glow
+  const g = cx.createRadialGradient(bx, by, rw * .3, bx, by, Math.min(rw * 1.6, 44 * u));
+  g.addColorStop(0, `rgba(255,154,77,${.18 + glow * .35})`);
+  g.addColorStop(1, "rgba(255,154,77,0)");
+  cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+
+  cx.save();
+  cx.translate(bx, by); cx.rotate(tilt);
+  // body: a soft drop of light
+  const bodyG = cx.createRadialGradient(-rw * .3, -rh * .45, rw * .1, 0, 0, rw * 1.15);
+  bodyG.addColorStop(0, `hsl(36, 100%, ${70 + glow * 12}%)`);
+  bodyG.addColorStop(.55, `hsl(${22 + glow * 8}, 95%, ${52 + glow * 10}%)`);
+  bodyG.addColorStop(1, `hsl(14, 80%, ${30 + glow * 10}%)`);
+  cx.fillStyle = bodyG;
+  cx.beginPath();
+  cx.moveTo(0, -rh * 1.25);
+  cx.bezierCurveTo(rw * .55, -rh * 1.05, rw * 1.05, -rh * .35, rw, rh * .2);
+  cx.bezierCurveTo(rw * .95, rh * .85, rw * .5, rh, 0, rh);
+  cx.bezierCurveTo(-rw * .5, rh, -rw * .95, rh * .85, -rw, rh * .2);
+  cx.bezierCurveTo(-rw * 1.05, -rh * .35, -rw * .55, -rh * 1.05, 0, -rh * 1.25);
+  cx.fill();
+
+  // eyes
+  let blink = 1;
+  if (now > blinkAt) { const k = (now - blinkAt) / 160; blink = k < 1 ? Math.abs(1 - 2 * k) : 1; if (k >= 1) blinkAt = now + 2500 + Math.random() * 4000; }
+  let gx = 0, gy = 0;
+  if (f.expression === "thinking") { gx = .5; gy = -.6; }
+  else if (f.gaze === "you" && now - mouse.at < 4000) { gx = Math.max(-1, Math.min(1, mouse.x * 2.2)); gy = Math.max(-1, Math.min(1, mouse.y * 2.2)); }
+  else if (f.gaze === "you") { gx = 0; gy = .1; }
+  else { gx = Math.sin(t * .3) * .6; gy = .3; }
+  const ex = 11 * u, ey = -3 * u, er = 6.2 * u;
+  for (const s of [-1, 1]) {
+    const open = Math.max(.05, cur.e * blink);
+    cx.save(); cx.translate(s * ex, ey);
+    cx.fillStyle = "#2b1407";
+    cx.beginPath(); cx.ellipse(0, 0, er * .82, er * open, 0, 0, Math.PI * 2); cx.fill();
+    // pupil light
+    cx.save(); cx.beginPath(); cx.ellipse(0, 0, er * .82, er * open, 0, 0, Math.PI * 2); cx.clip();
+    cx.fillStyle = "#fff3dd";
+    cx.beginPath(); cx.arc(gx * er * .35 - er * .18, gy * er * .3 - er * .25, er * .26 * cur.p, 0, Math.PI * 2); cx.fill();
+    cx.beginPath(); cx.arc(gx * er * .35 + er * .15, gy * er * .3 + er * .12, er * .1 * cur.p, 0, Math.PI * 2); cx.fill();
+    cx.restore();
+    // happy eyes: a lower lid curve
+    if (cur.m > .4 && cur.e < .85) {
+      cx.fillStyle = bodyG; cx.beginPath(); cx.ellipse(0, er * open * 1.05, er * 1.0, er * .55, 0, 0, Math.PI * 2); cx.fill();
+    }
+    // brows
+    cx.strokeStyle = "rgba(60,25,8,.75)"; cx.lineWidth = 1.6 * u; cx.lineCap = "round";
+    const byy = -er * (1.55 + cur.bl * .6) - (1 - cur.e) * er * .4;
+    cx.beginPath();
+    const inner = s > 0 ? -er * .8 : er * .8, outer = -inner;
+    cx.moveTo(inner, byy + cur.bt * er * .45);
+    cx.quadraticCurveTo(0, byy - er * .25, outer, byy - cur.bt * er * .1);
+    cx.stroke();
+    cx.restore();
+  }
+  // mouth
+  const mw = 9 * u, my = 9 * u;
+  cx.strokeStyle = "#3a1608"; cx.lineWidth = 1.8 * u; cx.lineCap = "round";
+  if (cur.o > .12) {
+    cx.fillStyle = "#3a1608";
+    cx.beginPath(); cx.ellipse(0, my + cur.m * 2 * u, mw * (.35 + cur.m * .4), mw * cur.o * .7, 0, 0, Math.PI * 2); cx.fill();
+  } else {
+    cx.beginPath();
+    cx.moveTo(-mw * .6, my);
+    cx.quadraticCurveTo(f.expression === "thinking" ? mw * .3 : 0, my + cur.m * 10 * u, mw * .6, my + (f.expression === "thinking" ? -u : 0));
+    cx.stroke();
+  }
+  // cheeks
+  cx.fillStyle = `rgba(255,110,90,${.12 + Math.max(0, cur.m) * .25})`;
+  for (const s of [-1, 1]) { cx.beginPath(); cx.ellipse(s * 19 * u, 6 * u, 4.2 * u, 2.6 * u, 0, 0, Math.PI * 2); cx.fill(); }
+  cx.restore();
+
+  // shadow
+  cx.fillStyle = "rgba(0,0,0,.28)";
+  cx.beginPath(); cx.ellipse(bx, 90 * u, rw * (.8 - hop * 4), 3 * u, 0, 0, Math.PI * 2); cx.fill();
+
+  // thinking dots
+  if (f.expression === "thinking") {
+    for (let i = 0; i < 3; i++) {
+      cx.fillStyle = `rgba(255,207,138,${.3 + .7 * Math.max(0, Math.sin(t * 4 - i * .8))})`;
+      cx.beginPath(); cx.arc(bx + rw * .9 + i * 4.5 * u, by - rh * 1.15 - i * 2.5 * u, (1.3 + i * .4) * u, 0, Math.PI * 2); cx.fill();
+    }
+  }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+boot();
+</script>
+</body>
+</html>
