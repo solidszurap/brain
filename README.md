@@ -16,6 +16,7 @@ A small being with a face that helps you find what to work towards, then works a
   - Deleting your Ember also cancels the subscription.
   - Comped Plus by email: `EMBER_PLUS_EMAILS`.
 - **A safety cap per person** (`EMBER_DAILY_CAP`, 150 replies a day, Plus included) keeps costs in check.
+- **Colours:** the menu (⋯) has five colour versions (Ember, Night, Plum, Forest, Day), kept on each device. Ember itself stays orange in all of them.
 - **Your data:** the menu (⋯) has Privacy ([web/privacy.html](web/privacy.html)), "Download my data" (everything, as JSON), and "Delete my Ember", which deletes everything and the account, for good. Logs hold ids and errors only, never what anyone said.
 
 ## Run it on your own computer
