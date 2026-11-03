@@ -88,7 +88,7 @@ Taking real money needs a registered business (for example egyéni vállalkozó)
 1. On your iPhone, open the Render address in **Safari**, then tap **Continue with Google**.
 2. Ember greets you. Say something.
 3. **Share → Add to Home Screen**. Now Ember has its own icon and opens full screen.
-4. Optional: bring your local Ember's memories over with `tools/import_local.py` (instructions at the top of that file), then in Render: **Manual Deploy → Restart service**.
+4. Optional, and only before you talk to the online Ember: bring your local Ember over with `tools/import_local.py`. It replaces the online one; the steps (suspend the service, import, resume) are at the top of that file.
 
 ## Afterwards
 

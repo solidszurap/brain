@@ -21,7 +21,7 @@ from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from mind import llm
-from mind.core import MIN_MEMORIES, Ember
+from mind.core import Ember
 from .auth import NotInvited, NotLoggedIn
 from .billing import PLUS_STATUSES, BillingError
 from .store import StoreError
@@ -39,6 +39,9 @@ CAPPED = ("I've reached today's limit for thinking (it keeps Ember affordable). 
 LAST_FREE = ("That was your last free message for today. With Ember Plus we can keep going without a daily "
              "limit; otherwise I'll be here tomorrow.")
 COUNTED = ("talk", "suggest", "checkin")      # what you send that makes Ember think; its greetings are free
+PLUS_ON = "Ember Plus is on. Thank you! There's no daily limit now."
+PLUS_ENDED = ("Your Ember Plus has ended, so there's a daily limit of free messages again. "
+              "I still remember everything, as always.")
 
 
 def today(t):
@@ -336,7 +339,6 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
             if now - u.saved_at > SAVE_EVERY:
                 users.save(u)
         plan = users.plan(u) if auth.mode != "local" else None
-        s["mind"] = cfg.describe()
         s["plan"] = {"plus": is_plus(u), "free_left": free_left(u, now), "free_per_day": free_per_day,
                      "price": billing.price_label if billing else None,
                      "payments": bool(billing and billing.enabled),
@@ -361,11 +363,12 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         text = str(body.get("text", "")).strip()[:MAX_TEXT]
         if not text:
             raise HTTPException(400, "empty")
+        mode = "experiment" if body.get("mode") == "experiment" else "chat"
 
         def f(u, now):
             spend_free(u, now)
             u.ember.hear(now, text)
-            worker.put(u.uid, {"type": "talk", "text": text})
+            worker.put(u.uid, {"type": "talk", "text": text, "mode": mode})
             return True
         return act(request, f)
 
@@ -384,7 +387,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
     @app.post("/experiment/suggest")
     def suggest(request: Request):
         def f(u, now):
-            ok = u.ember.can_suggest() or len(u.ember.memories) < MIN_MEMORIES
+            ok = u.ember.can_suggest()
             if ok:
                 spend_free(u, now)
                 worker.put(u.uid, {"type": "suggest"})
@@ -401,7 +404,16 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
 
     @app.post("/experiment/end")
     def end(request: Request, body: dict = Body(default={})):
-        return act(request, lambda u, now: u.ember.end_experiment(body.get("id"), body.get("how"), now))
+        def f(u, now):
+            ok = u.ember.end_experiment(body.get("id"), body.get("how"), now)
+            if ok:
+                worker.put(u.uid, {"type": "review", "id": body.get("id")})   # it looks back; not a free message
+            return ok
+        return act(request, f)
+
+    @app.post("/experiment/extend")
+    def extend(request: Request):
+        return act(request, lambda u, now: u.ember.active() and u.ember.extend(u.ember.active()["id"], now))
 
     @app.post("/session/start")
     def session_start(request: Request):
@@ -497,6 +509,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         if found:
             uid, plan = found
             try:
+                before = store.get_plan(uid)
                 store.set_plan(uid, plan)
             except StoreError as e:
                 log.error("plan save failed for %s: %s", uid, e)
@@ -504,6 +517,12 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
             cached = users.cache.get(uid)
             if cached:
                 cached.plan = plan
+            was, now_plus = bool(before and before.get("status") in PLUS_STATUSES), plan.get("status") in PLUS_STATUSES
+            if was != now_plus and store.load_self(uid) is not None:     # Ember says so in the conversation, once
+                u = users.get(uid)
+                with u.lock:
+                    u.ember.say(clock(), PLUS_ON if now_plus else PLUS_ENDED, "happy" if now_plus else "calm")
+                    users.save(u)
             log.info("plan for %s is now %s", uid, plan.get("status"))
         return {"received": True}
 

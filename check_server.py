@@ -23,7 +23,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import uvicorn
 
 from mind import llm
-from server.app import CAPPED, FAILED, UNREACHABLE, create_app
+from server.app import CAPPED, FAILED, PLUS_ENDED, PLUS_ON, UNREACHABLE, create_app
 from server.auth import NotInvited, NotLoggedIn, SupabaseAuth
 from server.store import FileStore, SupabaseStore
 
@@ -106,10 +106,13 @@ class FakeMind:
 
     def __call__(self, cfg, system, user, json_mode=False):
         self.calls += 1
+        self.last = user
         if self.fail > 0:
             self.fail -= 1
             raise llm.LLMError("fake trouble", retryable=self.retryable)
         cfg.last_usage = (3000, 200)
+        if "Look back on it honestly" in user:
+            return json.dumps({"reply": "Looking back: " + re.search(r"What actually happened: (.*)", user).group(1)[:80]})
         m = re.search(r'Their latest message: "(.*)"', user)
         if not m:
             return json.dumps({"reply": "Hello again.", "face": "happy"})
@@ -149,6 +152,8 @@ check("a first visit gets a greeting", wait(lambda: ember_lines("tok-a") == ["He
 call(base, "/talk", "tok-a", {"text": "I love drawing"})
 check("you talk, it answers from what you said", wait(lambda: "I heard: I love drawing" in ember_lines("tok-a")))
 check("...and remembers it, with your words", call(base, "/memory", "tok-a")[1]["count"] == 1)
+check("a brand-new person can ask for ideas right away", call(base, "/experiment/suggest", "tok-b", {})[1]["ok"]
+      and wait(lambda: all(x["starter"] for x in state("tok-b", 0)["suggestions"]) and state("tok-b", 0)["suggestions"]))
 check("another person's Ember knows nothing of it",
       call(base, "/memory", "tok-b")[1]["count"] == 0 and "I love drawing" not in json.dumps(state("tok-b", 0)))
 check("it's saved: self and every line", wait(lambda: os.path.exists(os.path.join(tmp, "users", "user-a", "ember.json"))
@@ -177,7 +182,24 @@ for s in ("I code for hours", "I want to make a game"):
     call(base, "/talk", "tok-a", {"text": s})
 wait(lambda: "I heard: I want to make a game" in ember_lines("tok-a"))
 st = state("tok-a", 0)
-check("enough memories to suggest", st["can_suggest"], str(st["memories"]))
+check("enough memories to build ideas on them", st["knows_enough"], str(st["memories"]))
+call(base, "/talk", "tok-a", {"text": "what should I work on", "mode": "experiment"})
+check("in Experiment mode, its mind is told so", wait(lambda: "I heard: what should I work on" in ember_lines("tok-a"))
+      and "experiment mode" in mind.last)
+call(base, "/experiment/suggest", "tok-a", {})
+check("asked for ideas, it suggests experiments", wait(lambda: state("tok-a", 0)["suggestions"]))
+xid = state("tok-a", 0)["suggestions"][0]["id"]
+check("you pick one", call(base, "/experiment/pick", "tok-a", {"id": xid})[1]["ok"])
+T[0] += 8 * 86400
+state("tok-a")
+check("when its days are up, it asks: finish or keep going",
+      wait(lambda: any(l.get("timeup") == xid for l in state("tok-a", 0)["talk"])))
+check("3 more days", call(base, "/experiment/extend", "tok-a", {})[1]["ok"] and state("tok-a", 0)["experiment"]["days"] == 11)
+check("finish it", call(base, "/experiment/end", "tok-a", {"id": xid, "how": "done"})[1]["ok"])
+check("...and it looks back on what actually happened, on its own line",
+      wait(lambda: any(l.get("review") == xid and l["text"].startswith("Looking back: 0 work sessions")
+                       for l in state("tok-a", 0)["talk"])))
+check("...with the facts kept for the window", state("tok-a", 0)["exps"][xid]["facts"]["sessions"] == 0)
 
 print("The daily limit")
 store2 = FileStore(os.path.join(tmp, "users2"))
@@ -342,6 +364,7 @@ sent = FakeStripe.seen[-1]
 check("Get Ember Plus opens a Stripe checkout page for this person",
       status == 200 and out["url"] == "https://pay.test/checkout" and sent[2]["client_reference_id"] == "user-b"
       and sent[2]["line_items[0][price]"] == "price_plus" and sent[2]["mode"] == "subscription"
+      and sent[2]["payment_method_types[0]"] == "card"
       and sent[3] == "Bearer sk_test_x")
 
 
@@ -363,11 +386,16 @@ paid = {"type": "checkout.session.completed", "data": {"object": {"mode": "subsc
 check("a webhook with a wrong signature is refused", hook(paid, secret="whsec_wrong") == 400)
 check("an old webhook (replayed) is refused", hook(paid, t=int(clock()) - 3600) == 400)
 check("Stripe says paid: Ember Plus is on", hook(paid) == 200 and plan4()["plus"] and plan4()["manage"])
+said4 = lambda: [l["text"] for l in call(base4, "/state", "tok-b")[1]["talk"]]
+created = {"type": "customer.subscription.created", "data": {"object": {"id": "sub_b", "customer": "cus_b",
+                                                                        "status": "active", "metadata": {"user_id": "user-b"}}}}
+check("...Ember says thank you in the conversation, once", hook(created) == 200 and said4().count(PLUS_ON) == 1)
 check("with Plus, you can talk again", call(base4, "/talk", "tok-b", {"text": "now plus"})[0] == 200)
 check("Manage Ember Plus opens Stripe's portal", call(base4, "/plus/portal", "tok-b", {})[1]["url"] == "https://pay.test/portal")
 ended = {"type": "customer.subscription.deleted", "data": {"object": {"id": "sub_b", "customer": "cus_b",
                                                                       "status": "canceled", "metadata": {"user_id": "user-b"}}}}
 check("Stripe says canceled: back to free", hook(ended) == 200 and not plan4()["plus"])
+check("...and Ember says so", said4()[-1] == PLUS_ENDED)
 hook(paid)
 call(base4, "/me/delete", "tok-b", {})
 check("deleting your Ember also cancels the subscription",

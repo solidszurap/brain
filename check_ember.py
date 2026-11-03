@@ -99,19 +99,25 @@ check("a Gemini key: Gemini is its mind", llm.LLMConfig(env={"GEMINI_API_KEY": "
 print("Experiments and work sessions")
 x0 = t + 10 * D
 f = Ember(now=x0)
-check("no suggestions before it knows you", not f.can_suggest())
-r = f.respond({"type": "suggest"}, None, x0)
-check("...it says it needs to know you first", not r["suggested"] and "know you" in r["reply"])
+check("ideas are there from the start", f.can_suggest() and not f.knows_enough())
+_, user = f.prompt({"type": "suggest"}, x0)
+check("...knowing nothing yet, its mind is asked for starter experiments", "starter" in user)
+r = f.respond({"type": "suggest"}, mind_says(reply="I don't know you yet, so: starting points.", experiments=[
+    {"title": "Three kinds of making", "question": "Which do you want back?", "based_on": [], "days": 3}]), x0)
+check("...a starter idea needs no memory, and says it's a starter",
+      [x["title"] for x in r["suggested"]] == ["Three kinds of making"] and r["suggested"][0]["starter"])
+r = f.respond({"type": "suggest"}, None, x0 + 1)
+check("...the template mind has starter ideas too", len(r["suggested"]) == 3 and all(x["starter"] for x in r["suggested"]))
 for i, s in enumerate(["I love building things with code", "I can code for hours", "I want to make my own game"]):
     f.hear(x0 + i, s)
     f.respond({"type": "talk", "text": s}, None, x0 + i)
-check("three things known: it can suggest", f.can_suggest(), f"{len(f.memories)} memories")
+check("three things known: ideas are built on what it knows", f.knows_enough(), f"{len(f.memories)} memories")
 r = f.respond({"type": "suggest"}, mind_says(reply="Two ideas.", face="eager", experiments=[
     {"title": "Tiny game", "question": "Do you still want to on day 5?", "why": "you want to make a game",
      "based_on": ["m3"], "days": 30, "steps": ["Pick a tiny idea", "Make one screen"]},
     {"title": "Invented", "question": "?", "based_on": ["m99"]}]), x0 + 10)
 check("a suggestion resting on a real memory is kept", [x["title"] for x in r["suggested"]] == ["Tiny game"])
-check("a suggestion resting on no memory is dropped", not any(x["title"] == "Invented" for x in f.experiments))
+check("...and an idea resting on no memory is dropped", not any(x["title"] == "Invented" for x in f.experiments))
 check("days are kept between 3 and 14", r["suggested"][0]["days"] == 14)
 eid = r["suggested"][0]["id"]
 check("you can pick it", f.pick(eid, x0 + 20) and f.active()["id"] == eid)
@@ -142,6 +148,20 @@ f.update(x0 + 20 * H + 600, present=False)
 check("a session left open while Ember was closed ends when it closed",
       f.resume(x0 + 23 * H) and f.sessions[-1]["end"] == x0 + 20 * H + 600)
 check("you can finish the experiment", f.end_experiment(eid, "done", x0 + 24 * H) and not f.active())
+fx = f.find_exp(eid)["facts"]
+check("when it ends, what actually happened is kept", fx["sessions"] == 3 and fx["ratings"] == [4]
+      and (fx["steps_done"], fx["steps"]) == (1, 3) and fx["words"] == ["fun, made the player move"], str(fx))
+_, user = f.prompt({"type": "review", "id": eid}, x0 + 24 * H)
+check("its mind looks back on the real numbers and your words", "3 work sessions" in user
+      and "fun, made the player move" in user and "Do you still want to on day 5?" in user and "finished" in user)
+check("the template mind's look back is only the facts and the question",
+      "3 work sessions" in (tr := f._template({"type": "review", "id": eid}, x0 + 24 * H)["reply"]) and tr.endswith("day 5?"))
+r = f.respond({"type": "review", "id": eid}, mind_says(reply="Three sessions; one was left open for 8 hours. Your answer?",
+              remember=[{"kind": "about", "note": "x", "quote": "x"}]), x0 + 24 * H + 5)
+check("its look back sits on its line, is kept, and remembers nothing",
+      f.talk[-1].get("review") == eid and f.find_exp(eid)["review"].startswith("Three") and not r["remembered"])
+_, user = f.prompt({"type": "talk", "text": "hi"}, x0 + 24 * H + 60)
+check("later, its mind still knows how it looked back", "Your look back: Three sessions" in user)
 f.hear(x0 + 25 * H, "any ideas what I could try next?")
 r = f.respond({"type": "talk", "text": "any ideas what I could try next?"}, mind_says(
     reply="How about this?", experiments=[{"title": "Draw a level", "question": "Is drawing still fun?",
@@ -159,6 +179,21 @@ f.end_experiment(f.active()["id"], "dropped", x0 + 26 * H + 600)
 check("ending an experiment mid-session doesn't ask how the session went", len(f.talk) == n and not f.checkin_due)
 g = Ember.from_dict(json.loads(json.dumps(f.to_dict())))
 check("experiments and sessions survive a save", g.experiments == f.experiments and g.sessions == f.sessions)
+T = x0 + 30 * H
+r = f.respond({"type": "suggest"}, mind_says(reply="One idea.", experiments=[
+    {"title": "Three days", "question": "Is it fun?", "based_on": ["m1"], "days": 3, "steps": ["Start"]}]), T)
+f.pick(r["suggested"][0]["id"], T)
+n = len(f.talk)
+f.update(T + 3 * D - 60, present=False)
+check("before its days are up, nothing is said", len(f.talk) == n)
+f.update(T + 3 * D + 60, present=False)
+f.update(T + 3 * D + 120, present=True)
+check("when its days are up, it asks once: finish or keep going", len(f.talk) == n + 1
+      and f.talk[-1].get("timeup") == f.active()["id"] and f.active()["time_up"])
+check("3 more days", f.extend(f.active()["id"], T + 3 * D + 200) and f.active()["days"] == 6
+      and not f.active()["time_up"] and "6 in all" in f.talk[-1]["text"])
+f.update(T + 6 * D + 300, present=False)
+check("...and it asks again when those are up", f.talk[-1].get("timeup") and f.active()["time_up"])
 
 print("Saving")
 e.poke(back + 200)

@@ -16,6 +16,12 @@
 :root {
   --bg: #17130f; --panel: #211b16; --panel2: #2a221c; --line: #3a3029; --text: #f1e7dc; --dim: #a8988a; --faint: #6f6156;
   --ember: #ff9a4d; --ember2: #ffcf8a; --accent: #ffb36b; --danger: #e5776b;
+  /* liquid glass: see-through surfaces, blurred behind, with a lit top edge */
+  --glass: rgba(255, 238, 222, .055); --glass2: rgba(255, 238, 222, .09); --glass3: rgba(40, 30, 24, .62);
+  --edge: rgba(255, 245, 235, .13); --edge2: rgba(255, 245, 235, .22);
+  --shine: inset 0 1px 0 rgba(255, 255, 255, .16), inset 0 -1px 0 rgba(255, 255, 255, .03);
+  --lift: 0 10px 30px rgba(0, 0, 0, .28);
+  --blur: blur(22px) saturate(180%);
 }
 * { box-sizing: border-box; }
 @supports (-moz-appearance: none) { * { scrollbar-width: thin; scrollbar-color: #4a3d33 transparent; } }
@@ -26,7 +32,9 @@
 ::-webkit-scrollbar-button { display: none; }
 html { background: var(--bg); }
 html, body { margin: 0; height: 100%; height: 100dvh; }
-body { background: radial-gradient(ellipse at 50% 35%, #231b14 0%, var(--bg) 70%); color: var(--text);
+body { background: radial-gradient(55% 38% at 50% 20%, rgba(255, 138, 58, .2), transparent 72%),
+  radial-gradient(45% 35% at 92% 78%, rgba(255, 190, 125, .09), transparent 70%),
+  radial-gradient(42% 32% at 6% 62%, rgba(214, 88, 48, .11), transparent 70%), var(--bg); color: var(--text);
   font: 15px/1.5 system-ui, "Segoe UI", sans-serif; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; overflow: hidden;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 button { font: inherit; }
@@ -34,9 +42,15 @@ button { font: inherit; }
 /* top bar */
 .top { display: flex; align-items: center; gap: 8px; padding: 10px 14px; }
 .top .title { flex: 1; text-align: center; font-weight: 650; letter-spacing: .03em; min-width: 0; }
-.top .title small { display: block; font-weight: 400; font-size: 11px; color: var(--faint); letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tbtn { background: none; border: 1px solid var(--line); color: var(--dim); border-radius: 999px; padding: 6px 13px; cursor: pointer; position: relative; white-space: nowrap; }
-.tbtn:hover { color: var(--text); border-color: #54453a; }
+.tbtn { background: var(--glass2); border: 1px solid var(--edge); box-shadow: var(--shine); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  color: var(--text); border-radius: 999px; padding: 7px 14px; cursor: pointer; position: relative; white-space: nowrap; }
+.tbtn:hover { border-color: var(--edge2); }
+/* the switch between chatting and working on an experiment */
+.modes { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--glass2); border: 1px solid var(--edge); box-shadow: var(--shine);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+.modes button { background: none; border: 0; color: var(--dim); padding: 6px 15px; border-radius: 999px; font-weight: 600; cursor: pointer; transition: color .2s, background .2s, box-shadow .2s; }
+.modes button:hover { color: var(--text); }
+.modes button.on { color: #2a1a0c; background: linear-gradient(180deg, #ffc690, #ff9e55); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 2px 10px rgba(255, 140, 60, .3); }
 .tbtn .dot { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: none; box-shadow: 0 0 8px var(--accent); }
 .tbtn .dot.on { display: block; }
 
@@ -44,9 +58,11 @@ button { font: inherit; }
 .stage { min-height: 0; display: flex; flex-direction: column; align-items: center; padding: 0 16px; }
 .facewrap { position: relative; flex: none; }
 #face { display: block; width: min(26vh, 60vw, 240px); aspect-ratio: 1; cursor: pointer; touch-action: manipulation; }
-.whybtn { position: absolute; top: 8%; right: -8%; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); background: rgba(23,19,15,.6); color: var(--dim); cursor: pointer; }
+.whybtn { position: absolute; top: 8%; right: -8%; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--edge); background: var(--glass2); box-shadow: var(--shine);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); color: var(--dim); cursor: pointer; }
 .whybtn:hover { color: var(--text); }
-.pop { display: none; position: absolute; top: 22%; left: 50%; transform: translateX(-50%); width: min(340px, 86vw); z-index: 5; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--dim); box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.pop { display: none; position: absolute; top: 22%; left: 50%; transform: translateX(-50%); width: min(340px, 86vw); z-index: 5; background: var(--glass3); border: 1px solid var(--edge); border-radius: 20px; padding: 12px 14px; font-size: 13px; color: var(--dim);
+  box-shadow: var(--shine), var(--lift); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
 .pop.on { display: block; }
 .pop ul { margin: 6px 0 10px; padding-left: 18px; }
 .meter { display: grid; grid-template-columns: 82px 1fr 34px; align-items: center; gap: 8px; margin: 4px 0; }
@@ -56,9 +72,9 @@ button { font: inherit; }
 #chat { flex: 1; min-height: 0; width: min(760px, 100%); overflow-y: auto; padding: 8px 4px 12px;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24px); mask-image: linear-gradient(to bottom, transparent 0, #000 24px); }
 #talk { display: flex; flex-direction: column; gap: 10px; }
-.msg { max-width: 82%; padding: 9px 14px; border-radius: 16px; white-space: pre-wrap; word-wrap: break-word; }
-.msg.ember { background: var(--panel); border: 1px solid var(--line); align-self: flex-start; border-top-left-radius: 4px; font-size: 16px; }
-.msg.you { background: #2c2520; align-self: flex-end; border-bottom-right-radius: 4px; }
+.msg { max-width: 82%; padding: 9px 14px; border-radius: 20px; white-space: pre-wrap; word-wrap: break-word; border: 1px solid var(--edge); box-shadow: var(--shine); }
+.msg.ember { background: var(--glass); align-self: flex-start; border-top-left-radius: 6px; font-size: 16px; }
+.msg.you { background: linear-gradient(180deg, rgba(255, 168, 98, .2), rgba(255, 140, 70, .12)); border-color: rgba(255, 190, 140, .2); align-self: flex-end; border-bottom-right-radius: 6px; }
 .msg .t { display: block; font-size: 11px; color: var(--faint); margin-top: 2px; }
 .msg.new { animation: rise .45s ease-out; }
 .msg.typing { color: var(--dim); }
@@ -71,7 +87,7 @@ button { font: inherit; }
 
 /* experiment cards and the check-in, inside the conversation */
 .cards { display: flex; flex-direction: column; gap: 8px; align-self: flex-start; width: min(560px, 92%); margin-top: -2px; }
-.xcard { background: var(--panel2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.xcard { background: var(--glass2); border: 1px solid var(--edge); box-shadow: var(--shine); border-radius: 20px; padding: 12px 14px; }
 .xcard h4 { margin: 0; font-size: 15px; }
 .xcard .q { color: var(--ember2); margin: 3px 0; }
 .xcard .meta { color: var(--dim); font-size: 13px; }
@@ -82,15 +98,17 @@ button { font: inherit; }
 .checkin .rate { display: flex; gap: 4px; }
 .checkin .rate button { width: 36px; padding: 6px 0; }
 .checkin .rate button.on { background: var(--accent); color: #2a1a0c; border-color: var(--accent); }
-.checkin input { flex: 1; min-width: 160px; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; font: inherit; }
+.checkin input { flex: 1; min-width: 160px; background: var(--glass); color: var(--text); border: 1px solid var(--edge); border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 16px; }
 
 /* the experiment line above the input */
 .dock { flex: none; position: relative; width: min(760px, 100%); display: flex; justify-content: center; }
 #expcard { position: absolute; bottom: calc(100% + 2px); left: 0; right: 0; z-index: 4; }
-#expcard .panel { margin: 0; max-height: 46vh; overflow-y: auto; box-shadow: 0 -8px 30px rgba(0,0,0,.45); }
+#expcard .panel { margin: 0; max-height: 46vh; overflow-y: auto; background: var(--glass3); box-shadow: var(--shine), 0 -8px 30px rgba(0,0,0,.4);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
 #sessionbar { flex: none; min-width: 0; max-width: 100%; }
 #sessionbar:not(:empty) { padding-top: 6px; }
-.pill { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 8px 6px 16px; font-size: 14px; color: var(--dim); max-width: 100%; }
+.pill { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; background: var(--glass2); border: 1px solid var(--edge); box-shadow: var(--shine), var(--lift);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border-radius: 999px; padding: 6px 6px 6px 16px; font-size: 14px; color: var(--dim); max-width: 100%; }
 .pill b { color: var(--text); font-weight: 600; }
 .pill .open { background: none; border: 0; color: inherit; padding: 0; cursor: pointer; text-align: left; }
 .pill .open:hover b { text-decoration: underline; }
@@ -98,15 +116,20 @@ button { font: inherit; }
 .pill .btn { padding: 5px 12px; }
 
 /* saying something */
-form.say { display: flex; gap: 8px; padding: 10px 16px 4px; width: min(760px, 100%); margin: 0 auto; }
-#text { flex: 1; resize: none; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; padding: 11px 14px; font: inherit; font-size: 16px; min-height: 46px; max-height: 160px; }
-#text:focus { outline: none; border-color: var(--accent); }
+form.say { display: flex; gap: 6px; align-items: flex-end; padding: 5px; width: min(760px, calc(100% - 24px)); margin: 8px auto 2px; border-radius: 26px;
+  background: var(--glass2); border: 1px solid var(--edge); box-shadow: var(--shine), var(--lift); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); transition: border-color .2s; }
+form.say:focus-within { border-color: rgba(255, 179, 107, .45); }
+#text { flex: 1; resize: none; background: none; color: var(--text); border: 0; padding: 9px 12px; font: inherit; font-size: 16px; min-height: 42px; max-height: 160px; }
+#text:focus { outline: none; }
+#text::placeholder { color: var(--faint); }
+form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .note { font-size: 12px; color: var(--faint); padding: 2px 16px max(12px, env(safe-area-inset-bottom)); text-align: center; }
 .note a { color: var(--dim); }
 
 /* free messages and Ember Plus */
 #freehint { font-size: 12.5px; color: var(--dim); text-align: center; padding: 2px 16px 0; min-height: 0; }
-#paywall { display: none; width: min(760px, calc(100% - 32px)); margin: 10px auto 4px; background: var(--panel2); border: 1px solid var(--accent); border-radius: 16px; padding: 14px 16px; text-align: center; }
+#paywall { display: none; width: min(760px, calc(100% - 24px)); margin: 10px auto 4px; background: var(--glass2); border: 1px solid rgba(255, 179, 107, .45); border-radius: 26px; padding: 14px 16px; text-align: center;
+  box-shadow: var(--shine), var(--lift); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
 #paywall.on { display: block; }
 #paywall h3 { margin: 0 0 4px; font-size: 16px; }
 #paywall p { margin: 0 0 10px; color: var(--dim); font-size: 14px; }
@@ -115,12 +138,14 @@ form.say { display: flex; gap: 8px; padding: 10px 16px 4px; width: min(760px, 10
 
 /* the menu (⋯) */
 .menuwrap { position: relative; }
-.menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 230px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 6px; box-shadow: 0 12px 34px rgba(0,0,0,.45); }
-.menu.on { display: block; }
-.menu button, .menu a { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--text); padding: 10px 12px; border-radius: 8px; font: inherit; font-size: 15px; cursor: pointer; text-decoration: none; }
-.menu button:hover, .menu a:hover { background: var(--panel2); }
+.menu { display: none; position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; min-width: 240px; background: var(--glass3); border: 1px solid var(--edge); border-radius: 22px; padding: 6px;
+  box-shadow: var(--shine), 0 16px 40px rgba(0,0,0,.45); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+.menu.on { display: block; animation: pop .18s ease-out; }
+@keyframes pop { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: none; } }
+.menu button, .menu a { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--text); padding: 10px 14px; border-radius: 16px; font: inherit; font-size: 15px; cursor: pointer; text-decoration: none; }
+.menu button:hover, .menu a:hover { background: var(--glass2); }
 .menu .danger { color: var(--danger); }
-.menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; }
+.menu hr { border: 0; border-top: 1px solid var(--edge); margin: 6px 10px; }
 .menu .who { font-size: 12px; color: var(--faint); padding: 6px 12px 2px; overflow: hidden; text-overflow: ellipsis; }
 
 /* the login screen, and other full-screen notes */
@@ -135,26 +160,28 @@ form.say { display: flex; gap: 8px; padding: 10px 16px 4px; width: min(760px, 10
 .steps-ios { text-align: left; color: var(--text); max-width: 340px; padding-left: 22px; margin: 0; }
 .problem { color: var(--danger); }
 
-.btn { background: var(--accent); color: #2a1a0c; border: 0; border-radius: 10px; padding: 8px 14px; font-weight: 600; cursor: pointer; }
-.btn.ghost { background: none; color: var(--dim); border: 1px solid var(--line); font-weight: 500; }
+.btn { background: linear-gradient(180deg, #ffc690, #ff9e55); color: #2a1a0c; border: 0; border-radius: 999px; padding: 8px 16px; font-weight: 600; cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -1px 0 rgba(150, 60, 10, .25), 0 4px 14px rgba(255, 140, 60, .28); }
+.btn.ghost { background: var(--glass2); color: var(--text); border: 1px solid var(--edge); box-shadow: var(--shine); font-weight: 500; }
 .btn:disabled { opacity: .45; cursor: default; }
 .armed { color: var(--danger) !important; border-color: var(--danger) !important; }
 
 /* drawers */
-.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 10; }
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 10; }
 .scrim.on { opacity: 1; pointer-events: auto; }
-.drawer { position: fixed; top: 0; bottom: 0; width: min(440px, 92vw); background: var(--bg); border: 0 solid var(--line); z-index: 11; display: flex; flex-direction: column; transition: transform .28s ease; }
+.drawer { position: fixed; top: 0; bottom: 0; width: min(440px, 92vw); background: rgba(28, 22, 18, .72); border: 0 solid var(--edge); z-index: 11; display: flex; flex-direction: column; transition: transform .28s ease;
+  -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%); padding-top: env(safe-area-inset-top); }
 .drawer.left { left: 0; border-right-width: 1px; transform: translateX(-102%); }
 .drawer.right { right: 0; border-left-width: 1px; transform: translateX(102%); }
 .drawer.wide { width: min(620px, 96vw); }
 .drawer.on { transform: none; }
-.drawer header { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.drawer header { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--edge); }
 .drawer header h2 { margin: 0; font-size: 16px; flex: 1; }
 .drawer header button { background: none; border: 0; color: var(--dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 2px 6px; }
 .drawer .body { flex: 1; overflow-y: auto; padding: 16px; }
 
 /* experiment */
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+.panel { background: var(--glass2); border: 1px solid var(--edge); box-shadow: var(--shine); border-radius: 22px; padding: 14px 16px; margin-bottom: 10px; }
 .panel h3 { margin: 0 0 2px; font-size: 16px; }
 .panel .q { color: var(--ember2); margin: 4px 0; }
 .panel .meta, .panel .why2 { color: var(--dim); font-size: 13px; }
@@ -172,17 +199,17 @@ form.say { display: flex; gap: 8px; padding: 10px 16px 4px; width: min(760px, 10
 /* what it knows */
 .sub { color: var(--dim); margin: 0 0 18px; }
 .kind { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin: 20px 0 8px; }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; margin-bottom: 8px; display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+.card { background: var(--glass); border: 1px solid var(--edge); box-shadow: var(--shine); border-radius: 18px; padding: 11px 14px; margin-bottom: 8px; display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
 .card .cbody { flex: 1; min-width: 200px; }
 .card .src { font-size: 13px; color: var(--dim); margin-top: 3px; }
 .card .src q { font-style: italic; }
-.card button { background: none; border: 1px solid var(--line); color: var(--dim); border-radius: 8px; padding: 3px 9px; font-size: 12px; cursor: pointer; }
+.card button { background: var(--glass2); border: 1px solid var(--edge); color: var(--dim); border-radius: 999px; padding: 3px 11px; font-size: 12px; cursor: pointer; }
 .card input { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--accent); border-radius: 8px; padding: 6px 8px; font: inherit; }
 
 @media (max-width: 560px) {
   .top { padding: 8px 10px; gap: 6px; }
   .tbtn { padding: 7px 12px; font-size: 14px; }
-  .top .title small { display: none; }
+  .modes button { padding: 6px 11px; font-size: 14px; }
   #face { width: min(22vh, 50vw); }
   .msg { max-width: 90%; }
   .pill { border-radius: 18px; padding: 6px 8px 6px 14px; gap: 6px 10px; font-size: 13.5px; }
@@ -192,7 +219,7 @@ form.say { display: flex; gap: 8px; padding: 10px 16px 4px; width: min(760px, 10
 <body>
 <div class="top">
   <button class="tbtn" id="openKnows">What it knows</button>
-  <div class="title">Ember<small id="mind"></small></div>
+  <div class="title"><div class="modes" id="modes"><button data-mode="chat">Chat</button><button data-mode="experiment">Experiment</button></div></div>
   <div class="menuwrap">
     <button class="tbtn" id="menuBtn" aria-label="Menu">⋯</button>
     <div class="menu" id="menu">
@@ -281,7 +308,7 @@ function showCover(id) {
 async function boot() {
   try { CFG = await (await fetch("/config", {cache: "no-store"})).json(); } catch (e) {}
   if (CFG.mode === "online") {
-    NOTE = `Your Ember lives on Ember's server in the EU. To think, it sends what it remembers and your recent conversation to Claude. <a href="/privacy">Privacy</a>`;
+    NOTE = `Your Ember lives on Ember's server in the EU. To think, it sends what it remembers and your recent conversation to its AI mind. <a href="/privacy">Privacy</a>`;
     await new Promise((ok, fail) => {
       const s = document.createElement("script");
       s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js";
@@ -371,11 +398,10 @@ function fmtDay(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c])); }
 
 function render() {
-  $("#mind").textContent = S.mind;
   $("#note").innerHTML = S.problem
     ? `<span class="problem">Its mind had a problem: ${esc(S.problem)}. The simple template mind answered instead.</span>` : NOTE;
   const key = JSON.stringify([S.talk.length, S.talk.length && S.talk[S.talk.length - 1].t, S.thinking, S.checkin_due,
-    Object.values(S.exps).map(x => x.status), !!S.experiment]);
+    Object.values(S.exps).map(x => x.status), !!S.experiment, !!(S.experiment && S.experiment.time_up)]);
   if (key !== lastTalkKey) { lastTalkKey = key; renderTalk(); }
   if ($("#why").classList.contains("on")) renderWhy();
   renderExpCard();
@@ -413,27 +439,39 @@ document.addEventListener("click", e => {
   const b = e.target.closest("[data-plus]");
   if (b) goPlus(false, b);
 });
-(function () {
-  const q = new URLSearchParams(location.search).get("plus");
-  if (!q) return;
-  history.replaceState(null, "", "/");
-  if (q === "success") setTimeout(() => { $("#note").textContent = "Thank you! Ember Plus is on (it can take a few seconds to show)."; }, 1500);
-})();
+// back from Stripe: Ember itself says thank you in the conversation once Stripe confirms the payment
+if (new URLSearchParams(location.search).get("plus")) history.replaceState(null, "", "/");
 
 // ------------------------------------------------------------------ the conversation
+// Chat or Experiment: the experiment line and its tools show in Experiment mode (or while you're working)
+let mode = "chat";
+try { mode = localStorage.getItem("ember.mode") === "experiment" ? "experiment" : "chat"; } catch (e) {}
+function setMode(m) {
+  mode = m;
+  try { localStorage.setItem("ember.mode", m); } catch (e) {}
+  document.querySelectorAll("#modes button").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
+  if (m === "chat") expOpen = false;
+  expKey = ""; $("#sessionbar").dataset.html = "";
+  if (S) render();
+}
+$("#modes").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setMode(b.dataset.mode); });
+
 // the one line above the input: what's going on with your experiment
 let expOpen = false;
 function renderSessionBar() {
-  const x = S.experiment, bar = $("#sessionbar");
+  const x = S.experiment, bar = $("#sessionbar"), work = mode === "experiment";
+  ta.placeholder = !work ? "Say something to Ember…" : x ? `Ask about ${x.title}…` : "Ask Ember what you could try…";
   let html = "";
-  if (x) {
+  if (x && (work || S.session)) {
     const done = x.steps.filter(s => s.done).length;
     const title = `<button class="open" data-toggle>${S.session ? "Working on " : ""}<b>${esc(x.title)}</b> ${expOpen ? "▴" : "▾"}</button>`;
     html = S.session
       ? `<div class="pill">${title}<span class="timer" id="pilltimer"></span><button class="btn" data-act="stop">Stop</button></div>`
       : `<div class="pill">${title}<span>day ${Math.min(x.day, x.days)} of ${x.days} · ${done}/${x.steps.length} steps</span><button class="btn" data-act="start">Start working</button></div>`;
-  } else if (S.can_suggest && !S.suggestions.length && !S.checkin_due) {
-    html = `<div class="pill">Ready for ${S.past ? "the next" : "a first"} experiment?<button class="btn" data-act="suggest" ${S.thinking ? "disabled" : ""}>Ask Ember for ideas</button></div>`;
+  } else if (!x && work && !S.checkin_due) {
+    const ask = S.suggestions.length ? "Pick one of its ideas above, or" : S.knows_enough ? `Ready for ${S.past ? "the next" : "a first"} experiment?` : "Not sure what to try yet?";
+    const label = S.suggestions.length ? "Other ideas" : S.knows_enough ? "Ask Ember for ideas" : "Starter ideas";
+    html = `<div class="pill">${ask}<button class="btn" data-act="suggest" ${S.thinking ? "disabled" : ""}>${label}</button></div>`;
   }
   if (bar.dataset.html !== html) { bar.dataset.html = html; bar.innerHTML = html; }
   const pt = $("#pilltimer");
@@ -453,7 +491,8 @@ $("#sessionbar").addEventListener("click", async e => {
 let seenLines = 0, rating = 0;
 function cardHtml(x) {
   const st = x.status;
-  const based = x.based_on.map(id => esc(S.memory_notes[id] || "something you told it")).join("; ");
+  const based = x.based_on.length ? "Based on: " + x.based_on.map(id => esc(S.memory_notes[id] || "something you told it")).join("; ")
+    : "A starting point: Ember doesn't know you well yet";
   const foot = st === "suggested" ? `<div class="row"><button class="btn" data-pick="${esc(x.id)}" ${S.experiment ? "disabled" : ""}>Pick this</button></div>`
     : st === "active" ? `<div class="tag">Your experiment now</div>`
     : st === "done" || st === "dropped" ? `<div class="tag">${st === "done" ? "Finished" : "Dropped"}</div>` : `<div class="meta">Not picked</div>`;
@@ -461,13 +500,25 @@ function cardHtml(x) {
     <h4>${esc(x.title)}</h4><div class="q">${esc(x.question)}</div>
     <div class="meta">${x.days} days${x.steps.length ? " · first: " + esc(x.steps[0].text) : ""}</div>
     ${x.why ? `<div class="meta" style="margin-top:4px">${esc(x.why)}</div>` : ""}
-    <div class="meta" style="margin-top:4px">Based on: ${based}</div>${foot}</div>`;
+    <div class="meta" style="margin-top:4px">${based}</div>${foot}</div>`;
+}
+// what actually happened in an experiment, under Ember's look back at it
+function factsHtml(x) {
+  const f = x.facts;
+  if (!f) return "";
+  const avg = f.ratings.length ? (f.ratings.reduce((a, b) => a + b, 0) / f.ratings.length).toFixed(1) : null;
+  return `<div class="cards"><div class="xcard"><div class="tag">${x.status === "done" ? "Finished" : "Dropped"} on day ${f.days_lasted} of ${x.days}</div>
+    <h4>${esc(x.title)}</h4><div class="q">${esc(x.question)}</div>
+    <div class="meta">${f.sessions} session${f.sessions === 1 ? "" : "s"} on ${f.work_days} day${f.work_days === 1 ? "" : "s"} · ${fmtTotal(f.seconds)} · ${f.steps_done}/${f.steps} steps${avg ? ` · felt ${avg}/5` : ""}</div>
+    ${f.ratings.length > 1 ? `<div class="meta">Each session: ${f.ratings.join(" → ")}</div>` : ""}</div></div>`;
 }
 function renderTalk() {
   const box = $("#talk"), chat = $("#chat");
   const atBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 80;
   const typing = document.activeElement && document.activeElement.id === "cwords" ? document.activeElement.value : null;
   const lastCheckin = S.talk.map(l => !!l.checkin).lastIndexOf(true);
+  const lastTimeup = S.talk.map(l => !!l.timeup).lastIndexOf(true);
+  const x = S.experiment;
   let html = "", day = "";
   S.talk.forEach((l, i) => {
     const d = fmtDay(l.t);
@@ -479,6 +530,10 @@ function renderTalk() {
       html += `<div class="checkin"><div class="rate">${[1, 2, 3, 4, 5].map(n => `<button class="btn ghost${n === rating ? " on" : ""}" data-rate="${n}">${n}</button>`).join("")}</div>
         <input type="text" id="cwords" placeholder="A few words (optional)" maxlength="2000"><button class="btn" id="csend" ${rating ? "" : "disabled"}>Send</button></div>`;
     }
+    if (l.timeup && i === lastTimeup && x && x.id === l.timeup && x.time_up) {
+      html += `<div class="checkin"><button class="btn" id="tfinish">Finish and look back</button><button class="btn ghost" id="textend">3 more days</button></div>`;
+    }
+    if (l.review && S.exps[l.review]) html += factsHtml(S.exps[l.review]);
   });
   if (S.thinking) html += `<div class="msg ember typing"><i></i><i></i><i></i></div>`;
   if (!S.talk.length && !S.thinking) html = `<div class="empty">Ember will greet you in a moment.</div>`;
@@ -502,7 +557,12 @@ $("#talk").addEventListener("click", async e => {
     rating = 0; poll();
   } else if (t.dataset.pick) {
     t.disabled = true;
-    await post("/experiment/pick", {id: t.dataset.pick}); poll();
+    await post("/experiment/pick", {id: t.dataset.pick});
+    setMode("experiment"); poll();
+  } else if ((t.id === "tfinish" || t.id === "textend") && S.experiment) {
+    t.disabled = true;
+    await post(t.id === "tfinish" ? "/experiment/end" : "/experiment/extend", {id: S.experiment.id, how: "done"});
+    expKey = ""; poll();
   }
 });
 $("#talk").addEventListener("keydown", e => { if (e.target.id === "cwords" && e.key === "Enter" && rating) $("#csend").click(); });
@@ -584,12 +644,13 @@ $("#expcard").addEventListener("click", async e => {
 const ta = $("#text");
 ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 160) + "px"; });
 ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#form").requestSubmit(); } });
+setMode(mode);
 $("#form").onsubmit = async e => {
   e.preventDefault();
   const text = ta.value.trim();
   if (!text || offline) return;
   ta.value = ""; ta.style.height = "auto";
-  const r = await post("/talk", {text});
+  const r = await post("/talk", {text, mode});
   if (!r) ta.value = text;
   poll();
 };

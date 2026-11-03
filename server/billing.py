@@ -46,7 +46,8 @@ class Billing:
         fields = {"mode": "subscription", "line_items[0][price]": self.price, "line_items[0][quantity]": "1",
                   "success_url": f"{base_url}/?plus=success", "cancel_url": f"{base_url}/?plus=cancel",
                   "client_reference_id": uid, "subscription_data[metadata][user_id]": uid,
-                  "allow_promotion_codes": "true"}
+                  "allow_promotion_codes": "true",
+                  "payment_method_types[0]": "card"}           # cards (Apple Pay and Google Pay included), nothing else
         if customer:
             fields["customer"] = customer
         elif email:

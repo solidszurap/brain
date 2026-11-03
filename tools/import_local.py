@@ -3,13 +3,16 @@ Move your local Ember (ember_state/) into your online account, so it keeps its
 memories, experiments and your whole conversation.
 
 1. Log in to the online Ember once with Google (that creates your account).
-2. Run this on your PC with the Supabase settings in the environment:
+2. In Render, Suspend the service. (Not a restart: on the way down the server saves the
+   Ember it holds in memory, which would undo the import.)
+3. Run this on your PC with the Supabase settings in the environment:
        set SUPABASE_URL=https://xxxx.supabase.co
        set SUPABASE_SERVICE_KEY=...        (the service_role key; never share it)
        python tools/import_local.py you@gmail.com
-3. In Render, press "Manual Deploy -> Restart" (so the server reloads your Ember).
+4. In Render, Resume the service.
 
-It replaces the fresh online Ember with your local one; the local files are not changed.
+It replaces the online Ember with your local one, so only use it while the online one is
+still fresh: anything said to it online is lost. The local files are not changed.
 """
 import json
 import os

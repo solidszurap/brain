@@ -50,7 +50,9 @@ python -m server                      # online mode (Render); needs the env vars
 - `mind/llm.py`: `LLMConfig` (`EMBER_VOICE`; Claude first in auto), `call_llm`, `LLMError(retryable)`, and `_call_claude` (`anthropic` SDK, `claude-haiku-5-5`, effort low, records `cfg.last_usage`).
 - `web/index.html`:
   - Boot reads `/config`. Online, it loads supabase-js (pinned 2.118.0 from jsdelivr; supports Supabase's new publishable keys) for Google login. `api()` adds the bearer token; a 401 shows the login cover and a 403 shows "not invited".
+  - The top switch is Chat | Experiment (`mode`, kept in localStorage, sent with `/talk`, which tells the mind). Experiment mode shows `#sessionbar` (always while a session runs). Ideas are there from the start: before `knows_enough()` (3 memories) they are `starter` experiments (`STARTERS` for the template mind) that need no memory; after it, each must cite memories.
   - The canvas face (`EXPR`) sits above the conversation. Experiment cards render under an Ember line's `exps`; the check-in renders under the last `checkin` line while `checkin_due`. The experiment line is `#sessionbar`, with its pop-up `#expcard`.
+  - The look is "liquid glass": see-through surfaces with backdrop blur and a lit top edge (`--glass*`, `--edge`, `--shine`, `--blur`), over a warm glow. The model's name is never shown.
   - The menu (⋯): install guide, privacy, export, log out, delete. Confirmations are a second click (`sure`), because `confirm()` is blocked in the app's browser.
 - `web/privacy.html`, `manifest.webmanifest`, `sw.js` (no caching; an offline note), `icons/` (`tools/make_icons.py`).
 - The grid-world Ember (v3 brain, survival, trials, voice checker) was removed from the repo on 2026-11-03; it's the git tag `grid-ember-final` (`git show grid-ember-final:README.md` is its full record). Local leftovers: `trials/` (an 85 MB cache, safe to delete) and `ember_state/archive/` (its life; keep).
@@ -85,7 +87,7 @@ python -m server                      # online mode (Render); needs the env vars
   - Supabase project `afkhnskxmfplablmfvtl` (Ireland). Its Site URL and redirect point to the Render address.
   - Google OAuth client "Ember" in Google Cloud project `ember-513617`, in testing; test users are added under Audience.
   - Szilard logged in on his iPhone on 2026-11-03 and Ember greeted him.
-  - Stripe is not set up yet, so payments are off and the paywall says "coming soon".
+  - Stripe is set up in **test mode** (2026-11-03) on his account "Solid Results Marketing": product Ember Plus €4.99/month (`price_1UXn8gG7FBneCrtjMlHk8vWe`), webhook "ember" to `/stripe/webhook` (4 events, API version 2023-10-16), and the customer portal (cancel at the end of the period). The three `STRIPE_*` values are in Render, and its log says "payments: on". A test payment and a cancel both reached the `plans` table. Live mode needs his business and ÁSZF first (DEPLOY.md step 6.8).
 
 - **Slices 1 and 2 are built:** the face, chat, memories with quotes, the memory page, wants, the greeting on return, experiments and work sessions in the conversation.
 - **The online version is built and checked locally, but not deployed:**
@@ -98,8 +100,9 @@ python -m server                      # online mode (Render); needs the env vars
 
 ## Next (in order)
 
-1. Go live together, following DEPLOY.md. Then: log in on his iPhone, add to the home screen, import his local Ember, and check the real token costs.
-2. **Nudges:** phone notifications via Web Push (VAPID, `sw.js`), rare, and they can be turned off. Plus **honest end-of-experiment reviews**.
+1. Go live together, following DEPLOY.md (done 2026-11-03). Left: add to the home screen on his iPhone and check the service worker there. His local Ember is **not** imported: on 2026-11-03 he chose to keep the online one only (it already had his words); `ember_state/` stays on his PC as an archive. Measured cost: 2 replies = 2,589 tokens in / 555 out, about $0.00027 a reply.
+2. **Nudges:** phone notifications via Web Push (VAPID, `sw.js`), rare, and they can be turned off. Needs a decision first: VAPID signing is ES256 (not in Python's standard library), so either a small pure-Python P-256 signer or a new dependency (`cryptography`/`pywebpush`, against rule 5). iPhone push only works once Ember is added to the home screen.
+   - **End-of-experiment reviews are built (2026-11-03).** `update` says once when an experiment's days are up (`timeup` line; the window shows "Finish and look back" / "3 more days" → `/experiment/extend`). `end_experiment` stores `facts` (each session's day, length, rating, words). `/experiment/end` queues a `review` event, which isn't a free message. The reply is kept as `x["review"]` on a `review` line, shown with a facts card, and goes into later prompts.
 3. **Becoming someone:** its character and story grow from your shared history.
 4. **Later:** open sign-up, App Store wrappers.
 - **The mind's model:** Haiku 5.5 was kept on purpose (2026-11-03; Szilard chose it over a mixed setup or Sonnet).

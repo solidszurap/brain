@@ -50,21 +50,21 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
    - Its wants, moved by real time apart and together.
    - A greeting when you come back after an hour or more.
 2. **Experiments (done).**
-   - **Suggestions, in the conversation.** Once it knows at least 3 things about you, ask it what you could try (or press "Ask Ember for ideas"). Its ideas appear as cards under its message: small experiments, 3 to 14 days each, each with one question. Every suggestion names the memories it rests on; one that rests on none isn't shown.
-   - **Picking one.** "Pick this" on a card makes it your active experiment. It shows as one line above the input (title, day, steps done, Start/Stop); click the title for the steps, Finish and Drop.
+   - **Chat | Experiment.** A switch at the top, there from the start. Chat is just the conversation. Experiment shows the experiment line above the input and tells Ember's mind you want to work on it (or find one).
+   - **Suggestions, in the conversation.** Ask it what you could try (or press the button in Experiment mode). Its ideas appear as cards under its message: small experiments, 3 to 14 days each, each with one question. Before it knows 3 things about you, they're starter experiments for finding out what you enjoy, things you can do on your own, and the card says so. After that, every suggestion names the memories it rests on; one that rests on none isn't shown.
+   - **Picking one.** "Pick this" on a card makes it your active experiment and switches to Experiment mode. It shows as one line above the input (title, day, steps done, Start/Stop); click the title for the steps, Finish and Drop. A running work session shows in Chat mode too.
    - **Work sessions.** "Start working on it" shows a timer, and its face goes focused while real time is counted. A session ends by itself after 8 hours.
    - **Check-in, in the conversation.** When you stop a session, Ember asks how it went; you answer under its question with 1–5 and a few words. Its mind answers, agrees the next step (added to the checklist), and ticks off steps you say you finished.
    - **Help with the work.** During a session, its mind knows the experiment, the steps and the time so far.
-3. **Online (built, not yet deployed).**
+   - **The end, honestly.** When its days are up, Ember asks once: finish and look back, or 3 more days. When an experiment ends (finished or dropped), Ember looks back on what actually happened: each session's day, length and feeling, and your own words after it. It says what that suggests about the experiment's question, or that there's too little to tell, then asks your own answer. A card under its words shows the numbers. Its mind remembers this look back later.
+3. **Online (live since 2026-11-03).**
    - A web app with Google login, one Ember per person.
    - Phone layout, installable to the home screen.
    - Retries, and honesty when the mind is down.
    - The daily limit.
    - Privacy, export and delete.
    - The safety rule.
-4. **Nudges and reviews.**
-   - Phone notifications when you drift (Web Push).
-   - An honest end-of-experiment review: hours, sessions started without a nudge, how they felt.
+4. **Nudges.** Phone notifications when you drift (Web Push), rare, and they can be turned off.
 5. **Becoming someone.** Its character and its story of the two of you grow from your shared history.
 
 **Making money:** 5 free messages a day, then Ember Plus at €4.99 a month through Stripe (built; needs a Stripe account and a registered business to take real money). No ads, no selling data.
