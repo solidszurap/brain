@@ -49,7 +49,7 @@ python -m server                      # online mode (Render); needs the env vars
   - the safety rule in `SYSTEM`.
 - `mind/llm.py`: `LLMConfig` (`EMBER_VOICE`; Claude first in auto), `call_llm`, `LLMError(retryable)`, and `_call_claude` (`anthropic` SDK, `claude-haiku-5-5`, effort low, records `cfg.last_usage`).
 - `web/index.html`:
-  - Boot reads `/config`. Online, it loads supabase-js (pinned 2.45.4 from jsdelivr) for Google login. `api()` adds the bearer token; a 401 shows the login cover and a 403 shows "not invited".
+  - Boot reads `/config`. Online, it loads supabase-js (pinned 2.118.0 from jsdelivr; supports Supabase's new publishable keys) for Google login. `api()` adds the bearer token; a 401 shows the login cover and a 403 shows "not invited".
   - The canvas face (`EXPR`) sits above the conversation. Experiment cards render under an Ember line's `exps`; the check-in renders under the last `checkin` line while `checkin_due`. The experiment line is `#sessionbar`, with its pop-up `#expcard`.
   - The menu (⋯): install guide, privacy, export, log out, delete. Confirmations are a second click (`sure`), because `confirm()` is blocked in the app's browser.
 - `web/privacy.html`, `manifest.webmanifest`, `sw.js` (no caching; an offline note), `icons/` (`tools/make_icons.py`).

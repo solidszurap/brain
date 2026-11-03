@@ -4,7 +4,7 @@ A small being with a face that helps you find what to work towards, then works a
 
 ## Ember online
 
-- **Where it runs:** on a server at Render (Frankfurt). Your Ember (its memories, experiments, the whole conversation) is kept in a Supabase database (Frankfurt).
+- **Where it runs:** on a server at Render (Frankfurt). Your Ember (its memories, experiments, the whole conversation) is kept in a Supabase database (Ireland, eu-west-1).
 - **Its mind:** Claude Haiku 5.5, through Anthropic's API.
 - **Who can use it:** it's invite-only while being tested (`EMBER_ALLOWED_EMAILS`).
 - **Setting it up:** **[DEPLOY.md](DEPLOY.md)**, step by step.

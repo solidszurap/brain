@@ -9,11 +9,12 @@ Never put any key in the code or send it in a chat. Keys only go into Render's s
 ## 1. Supabase: logins and the database (free)
 
 1. Go to **supabase.com**, sign up (with GitHub is easiest), then **New project**:
-   - Name: `ember`. Region: **Frankfurt (eu-central-1)**. Make up a strong database password (you won't need it again).
-2. When the project is ready, open **Project Settings → API** (or "Data API" / "API Keys"). **Copy** three values:
-   - **Project URL**, like `https://abcdxyz.supabase.co`, which becomes `SUPABASE_URL`;
-   - **anon public** key, which becomes `SUPABASE_ANON_KEY`;
-   - **service_role** key, which becomes `SUPABASE_SERVICE_KEY` (secret!).
+   - Name: `ember`. Region: the EU option (Ember's runs in Ireland, eu-west-1; Frankfurt is fine too). Make up a strong database password (you won't need it again).
+2. When the project is ready, **copy** three values:
+   - **Project URL**, on the project's home page, like `https://abcdxyz.supabase.co`, which becomes `SUPABASE_URL`;
+   - **Project Settings → API Keys → Publishable key** (`sb_publishable_...`), which becomes `SUPABASE_ANON_KEY`;
+   - **Secret key** on the same page (`sb_secret_...`; create one named `ember-server` if there isn't one), which becomes `SUPABASE_SERVICE_KEY` (secret!).
+   - Older projects show "anon" and "service_role" keys instead. Those work too.
 3. Open **SQL Editor → New query**, paste the whole content of `server/schema.sql` from this repo, and press **Run**. You should see "Success".
 
 ## 2. Google: the "Continue with Google" button (free)

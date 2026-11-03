@@ -282,7 +282,7 @@ async function boot() {
     NOTE = `Your Ember lives on Ember's server in the EU. To think, it sends what it remembers and your recent conversation to Claude. <a href="/privacy">Privacy</a>`;
     await new Promise((ok, fail) => {
       const s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js";
+      s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js";
       s.onload = ok; s.onerror = fail; document.head.appendChild(s);
     }).catch(() => { $("#note").innerHTML = `<span class="problem">Couldn't load the login. Check your internet and reload.</span>`; });
     if (!window.supabase) return;

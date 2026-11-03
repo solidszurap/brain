@@ -25,7 +25,7 @@ def find_user(url, key, email):
     page = 1
     while True:
         req = urllib.request.Request(f"{url}/auth/v1/admin/users?page={page}&per_page=200",
-                                     headers={"apikey": key, "Authorization": f"Bearer {key}"})
+                                     headers={"apikey": key, **({"Authorization": f"Bearer {key}"} if key.startswith("eyJ") else {})})
         with urllib.request.urlopen(req, timeout=15) as r:
             users = json.loads(r.read()).get("users", [])
         for u in users:

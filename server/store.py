@@ -155,7 +155,11 @@ class SupabaseStore:
         self.lock = threading.Lock()         # one server process: counts are read, added to, written
 
     def _req(self, method, path, body=None, prefer=None, headers=None):
-        h = {"apikey": self.key, "Authorization": f"Bearer {self.key}", "Content-Type": "application/json"}
+        # Supabase's new secret keys (sb_secret_...) go only in the apikey header; the older
+        # service_role keys are JWTs (eyJ...) and are also sent as a Bearer token
+        h = {"apikey": self.key, "Content-Type": "application/json"}
+        if self.key.startswith("eyJ"):
+            h["Authorization"] = f"Bearer {self.key}"
         if prefer:
             h["Prefer"] = prefer
         h.update(headers or {})
