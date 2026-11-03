@@ -57,13 +57,21 @@ How you talk:
 - Only say things about them that are in your memories or this conversation. If you don't know, say so or ask. Don't guess about their past.
 - Don't claim human feelings. You may say what you want ("I want to know more about that"): your wants are real numbers in you, shown below.
 
+Experiments: once you know them a little, you suggest small experiments: 3 to 14 days, concrete, mostly things they can do on their own, each answering one question about them (e.g. "Build a tiny game: do you still want to on day 5?"). They pick one, and you work on it together: they start work sessions in your window, and you help with the work itself (how to do something, ideas, feedback) and with the next small step.
+
 Reply with JSON only:
 {"reply": "what you say",
  "face": one of %s,
  "remember": [{"kind": one of %s, "note": "a short note about them, e.g. 'loses track of time when drawing'", "quote": "their exact words from their latest message that the note rests on"}],
- "update": [{"id": "m3", "note": "corrected note", "quote": "their exact words from their latest message"}]}
-Remember only new, lasting things from their latest message (not small talk, not things you already remember). Use "update" when they correct or change something you remember. "remember" and "update" may be empty.""" % (
+ "update": [{"id": "m3", "note": "corrected note", "quote": "their exact words from their latest message"}],
+ "add_steps": ["a next small step for the current experiment"],
+ "done_steps": ["the exact text of a step they just said they finished"],
+ "experiments": [{"title": "short name", "question": "the one question it answers about them", "why": "why it fits them, in one sentence", "based_on": ["m1", "m4"], "days": 7, "steps": ["first small step", "second", "third"]}]}
+Remember only new, lasting things from their latest message (not small talk, not things you already remember). Use "update" when they correct or change something you remember. Use "add_steps" only when you and they agreed on a next step for the current experiment, and "done_steps" only for steps they said they finished. Use "experiments" only when asked to suggest them; base each on memories you have (their ids in based_on). Any of the lists may be empty.""" % (
     list(FACES), list(KINDS))
+SESSION_CAP = 8 * 3600      # a work session longer than this ends by itself
+CLOSED_ENDS = 600           # if Ember's program was closed this long during a session, the session ended when it closed
+MIN_MEMORIES = 3            # it suggests experiments once it knows at least this much about you
 
 
 def _norm(s):
@@ -85,6 +93,11 @@ def ago(seconds):
         return "an hour" if h == 1 else f"{h} hours"
     d = round(s / 86400)
     return f"{d} days"
+
+
+def fmt_minutes(seconds):
+    m = round(seconds / 60)
+    return f"{m} min" if m < 60 else f"{m // 60} h {m % 60} min"
 
 
 def when(t):
@@ -110,6 +123,12 @@ class Ember:
         self.poke_until = 0.0
         self.pokes = 0
         self.asked = []              # template mind: questions already asked
+        self.experiments = []        # {id, title, question, why, based_on, days, steps: [{text, done}], status,
+                                     #  created, started, ends_at, ended}; status: suggested|active|done|dropped|not_picked
+        self.next_exp = 1
+        self.sessions = []           # finished work sessions {exp, start, end, ended_by, rating, words}
+        self.session = None          # the open one {exp, start}
+        self.checkin_due = False     # a session just ended and it wants to hear how it went
 
     # ------------------------------------------------------------- saving
     def to_dict(self):
@@ -137,6 +156,15 @@ class Ember:
             self.connection += (1 - self.connection) * (1 - math.exp(-dt / 86400))   # grows over about a day
         self.curiosity += (1 - self.curiosity) * (1 - math.exp(-dt / (2 * 86400)))
         self.bump *= math.exp(-dt / 300)
+        if self.session and now - self.session["start"] > SESSION_CAP:
+            self.stop_session(self.session["start"] + SESSION_CAP, ended_by="it ran 8 hours")
+
+    def resume(self, now):
+        """Its program just started. A session left open while it was closed ended when it closed."""
+        if self.session and now - self.last_update > CLOSED_ENDS:
+            self.stop_session(self.last_update, ended_by="Ember was closed")
+            return True
+        return False
 
     def arrive(self, now):
         """You opened its window (visible). Returns True if it should greet you."""
@@ -169,6 +197,9 @@ class Ember:
         elif now < self.expr_until:
             ex = self.expr
             why.append(f"its mind chose '{self.expr}' with its last words")
+        elif self.session:
+            ex = "focused"
+            why.append(f"you're in a work session ({ago(now - self.session['start'])} so far)")
         elif self.arrived_at and now - self.arrived_at < 6 and self.gap_before >= GREET_AFTER:
             ex = "surprised" if self.gap_before > 86400 else "happy"
             why.append(f"you just came back after {ago(self.gap_before)}")
@@ -206,7 +237,7 @@ class Ember:
         self.bump = min(1.0, self.bump + 0.1)
 
     def prompt(self, event, now):
-        """(system, user) for its mind. event: {"type": "talk", "text"} or {"type": "arrive"}."""
+        """(system, user) for its mind. event types: talk {text}, arrive, suggest, checkin {text, rating, minutes}."""
         lines = [f"Now: {when(now)}."]
         lines.append(f"You first appeared {ago(now - self.born)} ago." if self.talk[:-1] or self.memories
                      else "You are meeting this person for the first time.")
@@ -222,8 +253,9 @@ class Ember:
                              f"{time.strftime('%d %b', time.localtime(m['t']))})")
         else:
             lines.append("You don't remember anything about them yet.")
+        lines += self._experiment_context(now)
         recent = self.talk[-CONTEXT_LINES:]
-        if event["type"] == "talk" and recent and recent[-1]["who"] == "you":
+        if event["type"] in ("talk", "checkin") and recent and recent[-1]["who"] == "you":
             recent = recent[:-1]
         if recent:
             lines.append("")
@@ -234,6 +266,15 @@ class Ember:
         lines.append("")
         if event["type"] == "talk":
             lines.append(f"Their latest message: \"{event['text']}\"")
+        elif event["type"] == "suggest":
+            lines.append("They asked you to suggest experiments. Suggest 2 or 3 in \"experiments\", each different, "
+                         "each built on things you remember about them (cite the ids in based_on). Your reply: one or "
+                         "two sentences introducing them. remember, update and add_steps must be empty.")
+        elif event["type"] == "checkin":
+            lines.append(f"They just finished a work session of {event['minutes']} minutes and rated how it went "
+                         f"{event['rating']}/5" + (f", saying: \"{event['text']}\"" if event["text"] else "") + ". "
+                         "Respond briefly to how it went, and agree on the next small step: propose it in your reply "
+                         "and put it in add_steps.")
         elif not self.memories and len(self.talk) == 0:
             lines.append("They just opened your window for the very first time. Introduce yourself in one or two "
                          "sentences and ask one first question to get to know them. remember and update must be empty.")
@@ -252,13 +293,31 @@ class Ember:
             d["by"] = "template"
         result = {"reply": str(d["reply"]).strip()[:1200], "face": d.get("face") if d.get("face") in FACES else "calm",
                   "remembered": [], "updated": [], "dropped": [], "by": d.get("by", "mind")}
-        said = event.get("text", "") if event["type"] == "talk" else ""
+        said = event.get("text", "") if event["type"] in ("talk", "checkin") else ""
         for r in (d.get("remember") or []) if said else []:
             m = self._add_memory(r, said, now)
             (result["remembered"] if m else result["dropped"]).append(m or r)
         for u in (d.get("update") or []) if said else []:
             m = self._update_memory(u, said, now)
             (result["updated"] if m else result["dropped"]).append(m or u)
+        active = self.active()
+        if active and event["type"] in ("talk", "checkin"):
+            for st in d.get("done_steps") or []:
+                step = next((x for x in active["steps"] if _norm(x["text"]) == _norm(st) and not x["done"]), None)
+                if step:
+                    step["done"] = True
+                    result.setdefault("done", []).append(step["text"])
+            for st in (d.get("add_steps") or [])[:3]:
+                st = str(st).strip()[:160]
+                if st and not any(_norm(st) == _norm(x["text"]) for x in active["steps"]):
+                    active["steps"].append({"text": st, "done": False})
+                    result.setdefault("steps", []).append(st)
+        if event["type"] == "suggest":
+            result["suggested"] = self._take_suggestions(d.get("experiments"), now)
+            if not result["suggested"] and result["by"] != "template":
+                t = self._template(event, now)          # its mind's suggestions didn't rest on its memories
+                result["suggested"] = self._take_suggestions(t.get("experiments"), now)
+                result["reply"] = t["reply"]
         self.update(now, present=True)
         self._say(now, "ember", result["reply"], result["face"])
         self.expr, self.expr_until = result["face"], now + EXPR_SECONDS
@@ -333,6 +392,12 @@ class Ember:
                                  + self._next_question(), "face": "happy"}
             return {"reply": f"You're back. It's been {ago(self.gap_before)}. " + self._next_question(),
                     "face": "happy"}
+        if event["type"] == "suggest":
+            return self._template_suggest()
+        if event["type"] == "checkin":
+            st = self.stats(self.active()["id"]) if self.active() else None
+            more = f" That's {fmt_minutes(st['seconds'])} on it so far." if st else ""
+            return {"reply": f"Thanks for telling me.{more} What's the next small step?", "face": "happy"}
         text = event["text"]
         remember = []
         for s in re.split(r"(?<=[.!?])\s+|\n", text):
@@ -343,12 +408,159 @@ class Ember:
             return {"reply": "I'll remember that. " + self._next_question(), "face": "curious", "remember": remember}
         return {"reply": "Tell me more? " + self._next_question(), "face": "curious"}
 
+    def _template_suggest(self):
+        if len(self.memories) < MIN_MEMORIES:
+            return {"reply": "I don't know you well enough yet to suggest anything. Tell me more about yourself first. "
+                             + self._next_question(), "face": "curious", "experiments": []}
+        picks = [m for m in self.memories if m["kind"] in ("flow", "enjoys", "wants", "good_at")] or self.memories
+        exps = [{"title": f"A week of: {m['note']}"[:80], "question": "Do you still want to keep going on day 5?",
+                 "why": f"You told me: \"{m['quote']}\"", "based_on": [m["id"]], "days": 7,
+                 "steps": ["Pick one small thing to make or do", "Work on it for 30 minutes",
+                           "Write down how it felt"]} for m in picks[-3:]]
+        return {"reply": "Here are a few small experiments, each from something you told me.", "face": "eager",
+                "experiments": exps}
+
+    # -------------------------------------------------------- experiments
+    def active(self):
+        return next((x for x in self.experiments if x["status"] == "active"), None)
+
+    def find_exp(self, eid):
+        return next((x for x in self.experiments if x["id"] == eid), None)
+
+    def can_suggest(self):
+        return not self.active() and len(self.memories) >= MIN_MEMORIES
+
+    def _take_suggestions(self, exps, now):
+        """Its mind's suggestions; each must rest on memories it really has."""
+        kept = []
+        for x in (exps or [])[:3]:
+            if not isinstance(x, dict):
+                continue
+            based = [b for b in (x.get("based_on") or []) if self.find(b)]
+            title, question = str(x.get("title", "")).strip()[:80], str(x.get("question", "")).strip()[:200]
+            if not based or not title or not question:
+                continue
+            try:
+                days = max(3, min(14, int(x.get("days", 7))))
+            except (TypeError, ValueError):
+                days = 7
+            steps = [{"text": str(st).strip()[:160], "done": False}
+                     for st in (x.get("steps") or [])[:5] if str(st).strip()]
+            kept.append({"id": f"x{self.next_exp}", "title": title, "question": question,
+                         "why": str(x.get("why", "")).strip()[:240], "based_on": based, "days": days, "steps": steps,
+                         "status": "suggested", "created": now, "started": None, "ends_at": None, "ended": None})
+            self.next_exp += 1
+        if kept:
+            for x in self.experiments:
+                if x["status"] == "suggested":
+                    x["status"] = "not_picked"
+            self.experiments += kept
+        return kept
+
+    def pick(self, eid, now):
+        x = self.find_exp(eid)
+        if not x or x["status"] != "suggested" or self.active():
+            return False
+        x.update(status="active", started=now, ends_at=now + x["days"] * 86400)
+        for y in self.experiments:
+            if y["status"] == "suggested":
+                y["status"] = "not_picked"
+        first = next((s["text"] for s in x["steps"] if not s["done"]), None)
+        self._say(now, "ember", f"\"{x['title']}\" it is: {x['days']} days, and one question: {x['question']}"
+                  + (f" First step: {first}" if first else ""), "eager")
+        self.expr, self.expr_until = "eager", now + EXPR_SECONDS
+        return True
+
+    def set_step(self, eid, index, done):
+        x = self.find_exp(eid)
+        if not x or not isinstance(index, int) or not (0 <= index < len(x["steps"])):
+            return False
+        x["steps"][index]["done"] = bool(done)
+        return True
+
+    def end_experiment(self, eid, how, now):
+        x = self.find_exp(eid)
+        if not x or x["status"] != "active" or how not in ("done", "dropped"):
+            return False
+        if self.session:
+            self.stop_session(now)
+            self.checkin_due = False
+        x.update(status=how, ended=now)
+        return True
+
+    def start_session(self, now):
+        x = self.active()
+        if not x or self.session:
+            return False
+        self.session = {"exp": x["id"], "start": now}
+        self.checkin_due = False
+        return True
+
+    def stop_session(self, now, ended_by="you"):
+        if not self.session:
+            return None
+        s = dict(self.session, end=max(now, self.session["start"]), ended_by=ended_by, rating=None, words=None)
+        self.sessions.append(s)
+        self.session = None
+        self.checkin_due = True
+        return s
+
+    def checkin(self, now, rating, words):
+        """How the session that just ended went. Returns the event for its mind, or None."""
+        if not self.checkin_due or not self.sessions:
+            return None
+        s = self.sessions[-1]
+        s["rating"], s["words"] = rating, words
+        self.checkin_due = False
+        minutes = round((s["end"] - s["start"]) / 60)
+        self.update(now, present=True)
+        self._say(now, "you", f"[work session: {minutes} min, felt {rating}/5]" + (f" {words}" if words else ""))
+        self.bump = min(1.0, self.bump + 0.1)
+        return {"type": "checkin", "text": words or "", "rating": rating, "minutes": minutes}
+
+    def stats(self, eid):
+        ss = [s for s in self.sessions if s["exp"] == eid]
+        rated = [s["rating"] for s in ss if s.get("rating")]
+        return {"sessions": len(ss), "seconds": sum(s["end"] - s["start"] for s in ss),
+                "avg_rating": round(sum(rated) / len(rated), 1) if rated else None}
+
+    def _experiment_context(self, now):
+        x = self.active()
+        out = []
+        if x:
+            st = self.stats(x["id"])
+            day = int((now - x["started"]) // 86400) + 1
+            out += ["", f"Your experiment together: \"{x['title']}\" (day {day} of {x['days']}). "
+                        f"Its question: {x['question']}"]
+            for s in x["steps"]:
+                out.append(f"  [{'x' if s['done'] else ' '}] {s['text']}")
+            out.append(f"So far: {fmt_minutes(st['seconds'])} in {st['sessions']} work sessions"
+                       + (f", average feeling {st['avg_rating']}/5." if st["avg_rating"] else "."))
+            if self.session:
+                out.append(f"They are in a work session on it right now ({ago(now - self.session['start'])} so far). "
+                           "Help with the work if they ask; keep it short so they can keep working.")
+        sug = [x for x in self.experiments if x["status"] == "suggested"]
+        if sug:
+            out += ["", "Experiments you suggested, waiting for them to pick one: "
+                    + "; ".join(f"\"{x['title']}\"" for x in sug)]
+        for x in [x for x in self.experiments if x["status"] in ("done", "dropped")][-3:]:
+            st = self.stats(x["id"])
+            out.append(f"Earlier experiment \"{x['title']}\": {x['status']}, {fmt_minutes(st['seconds'])} in "
+                       f"{st['sessions']} sessions.")
+        return out
+
     # ------------------------------------------------------- the window
     def snapshot(self, now, present, thinking=False):
+        x = self.active()
+        exp = dict(x, stats=self.stats(x["id"]), day=int((now - x["started"]) // 86400) + 1) if x else None
         return {"face": self.face(now, present, thinking), "connection": round(self.connection, 3),
                 "curiosity": round(self.curiosity, 3), "mood": round(self.mood, 3),
                 "talk": self.talk[-60:], "memories": len(self.memories), "thinking": thinking,
-                "last_seen": self.last_seen, "now": now}
+                "last_seen": self.last_seen, "now": now,
+                "experiment": exp, "suggestions": [x for x in self.experiments if x["status"] == "suggested"],
+                "session": self.session, "checkin_due": self.checkin_due,
+                "can_suggest": self.can_suggest(), "min_memories": MIN_MEMORIES,
+                "memory_notes": {m["id"]: m["note"] for m in self.memories}}
 
     def memory_page(self):
         groups = {k: [] for k in KINDS}

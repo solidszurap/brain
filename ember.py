@@ -25,7 +25,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from mind import llm
-from mind.core import Ember, dumps
+from mind.core import MIN_MEMORIES, Ember, dumps
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATE_DIR = os.path.join(HERE, "ember_state")
@@ -34,6 +34,8 @@ TALK_FILE = os.path.join(STATE_DIR, "conversation.jsonl")
 WINDOW_FILE = os.path.join(HERE, "ember_window.html")
 PRESENT_FOR = 3.0      # you're here if the visible window polled within this many seconds
 MAX_TEXT = 2000
+POST_PATHS = ("/talk", "/poke", "/memory/edit", "/memory/forget", "/experiment/suggest", "/experiment/pick",
+              "/experiment/step", "/experiment/end", "/session/start", "/session/stop", "/session/checkin")
 
 
 # ------------------------------------------------------------------ saving
@@ -162,7 +164,7 @@ class Window(BaseHTTPRequestHandler):
         # server never answers)
         origin = self.headers.get("Origin")
         port = self.server.server_address[1]
-        if self.path not in ("/talk", "/poke", "/memory/edit", "/memory/forget") or \
+        if self.path not in POST_PATHS or \
                 self.headers.get("X-Ember") != "1" or \
                 (origin and origin not in (f"http://localhost:{port}", f"http://127.0.0.1:{port}")):
             self.send_error(403)
@@ -191,8 +193,32 @@ class Window(BaseHTTPRequestHandler):
                 ok = True
             elif self.path == "/memory/edit":
                 ok = e.edit_memory(data.get("id"), data.get("note", ""), now)
-            else:
+            elif self.path == "/memory/forget":
                 ok = e.forget(data.get("id"))
+            elif self.path == "/experiment/suggest":
+                ok = e.can_suggest() or len(e.memories) < MIN_MEMORIES
+                if ok:
+                    Mind.events.put({"type": "suggest"})
+            elif self.path == "/experiment/pick":
+                ok = e.pick(data.get("id"), now)
+            elif self.path == "/experiment/step":
+                ok = e.set_step(data.get("id"), data.get("index"), data.get("done"))
+            elif self.path == "/experiment/end":
+                ok = e.end_experiment(data.get("id"), data.get("how"), now)
+            elif self.path == "/session/start":
+                ok = e.start_session(now)
+            elif self.path == "/session/stop":
+                ok = e.stop_session(now) is not None
+            else:                                       # /session/checkin
+                try:
+                    rating = max(1, min(5, int(data.get("rating"))))
+                except (TypeError, ValueError):
+                    self.send_error(400)
+                    return
+                event = e.checkin(now, rating, str(data.get("words", "")).strip()[:MAX_TEXT])
+                ok = event is not None
+                if ok:
+                    Mind.events.put(event)
             save(e)
         self._send({"ok": bool(ok)})
 
@@ -224,6 +250,8 @@ def main():
         print("A new Ember. It hasn't met you yet.")
     else:
         print(f"Ember is here. It remembers {len(ember.memories)} things about you.")
+        if ember.resume(time.time()):
+            print("  A work session was still open; it ended when Ember was closed.")
     print(f"Its mind: {Mind.cfg.describe()}" + (f"  (problem: {Mind.cfg.problem})" if Mind.cfg.problem else ""))
     Window.ember = ember
     threading.Thread(target=Mind.work, args=(ember, Window.lock), daemon=True).start()

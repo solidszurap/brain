@@ -14,7 +14,7 @@ python check_ember.py                 # quick checks, about a second, no LLM; ru
 
 ## Map
 
-- `ember.py`: the window server (`/state?v=1` = presence, `/talk`, `/poke`, `/memory`, `/memory/edit`, `/memory/forget`, with a same-origin and `X-Ember` guard), the `Mind` thread (one LLM call at a time), the presence loop, saving (`ember.json` with a `.bak`; `conversation.jsonl` append only), and `archive_old_life`.
+- `ember.py`: the window server (`/state?v=1` = presence, `/talk`, `/poke`, `/memory`, `/memory/edit`, `/memory/forget`, `/experiment/suggest|pick|step|end`, `/session/start|stop|checkin`, all POSTs in `POST_PATHS` with a same-origin and `X-Ember` guard), the `Mind` thread (one LLM call at a time), the presence loop, saving (`ember.json` with a `.bak`; `conversation.jsonl` append only), and `archive_old_life`.
 - `mind/core.py`, `Ember`:
   - wants: `connection` and `curiosity`, moved by real time in `update`;
   - `mood`;
@@ -41,17 +41,17 @@ python check_ember.py                 # quick checks, about a second, no LLM; ru
 
 ## Where things stand (2026-11-03)
 
-- Slice 1 (core) is built: the face, chat (Gemini 3.5 Flash-Lite, with the template fallback), memories with quotes, the memory page, wants, and the greeting on return.
-- Tried on a scratch Ember in the browser: Gemini greeted, replied in character, and stored 2 memories with correct quotes. `check_ember.py`: all checks pass.
-- The real Ember hasn't been started on the new code yet. Its first start archives the grid-world life automatically.
+- **Slice 1 (core) is built:** the face, chat (Gemini 3.5 Flash-Lite, with the template fallback), memories with quotes, the memory page, wants, and the greeting on return.
+- **Slice 2 (experiments) is built:**
+  - Suggestions after 3 memories (each must cite real memory ids in `based_on`), then pick one.
+  - Steps (the mind can add them with `add_steps` and tick them with `done_steps`).
+  - Work sessions (8 h cap; a session open while the program was closed ends at `last_update`, via `resume`).
+  - The check-in (1–5 plus words) goes to the mind.
+- **Tried on a scratch Ember in the browser:** Gemini suggested 2 fitting experiments; pick, the session timer, stop and the check-in all worked. `check_ember.py`: 54 checks pass.
+- **Gemini's free tier is slow** (about 20 s per call, 2026-11-03). Thinking settings don't change it; `thinkingBudget` is rejected (HTTP 400).
+- **The real Ember hasn't been started on the new code yet.** Its first start archives the grid-world life automatically.
 
 ## Next (in order)
 
-2. **Experiments:**
-   - Ember suggests 2–3 from its memories.
-   - You pick one.
-   - Work sessions ("Working on: X", a focused face, real time counted).
-   - Help with next steps.
-   - An end check-in.
 3. **Nudges** (a Windows toast via PowerShell, rare, can be turned off) and **honest end-of-experiment reviews**.
 4. **Becoming someone:** its character and story grow from your shared history.

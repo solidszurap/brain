@@ -14,7 +14,9 @@ EMBER_VOICE=gemini
 GEMINI_API_KEY=...         # the free tier is enough: it only thinks when you talk or come back
 ```
 
-Without a key, a simple template mind answers instead. It asks questions and keeps what you say about yourself.
+Without a key, a simple template mind answers instead. It asks questions, keeps what you say about yourself, and suggests simple experiments from it.
+
+Gemini's free tier can be slow: about 20 seconds per answer on 2026-11-03, even for one line. Turning its "thinking" off made no difference.
 
 ## What it is
 
@@ -36,11 +38,12 @@ Without a key, a simple template mind answers instead. It asks questions and kee
    - The memory page.
    - Its wants, moved by real time apart and together.
    - A greeting when you come back after an hour or more.
-2. **Experiments.**
-   - From what it knows, it suggests 2–3 small experiments, from a few days to two weeks each, each with one question. You pick one.
-   - Work sessions: "Working on: X", with a focused face and real time counted.
-   - It helps with the work: next steps, questions, feedback.
-   - An end check-in after each session.
+2. **Experiments (done).**
+   - **Suggestions.** Once it knows at least 3 things about you, it suggests 2–3 small experiments, from 3 to 14 days each, each with one question. Every suggestion names the memories it rests on; one that rests on none isn't shown.
+   - **Picking one.** You pick one, and it becomes your active experiment, with a checklist of steps.
+   - **Work sessions.** "Start working on it" shows a timer, and its face goes focused while real time is counted. A session ends by itself after 8 hours. If Ember's program was closed during a session, the session ends at the moment it closed.
+   - **Check-in.** After a session you rate how it went (1–5) and add a few words. Its mind answers, agrees the next step (added to the checklist), and ticks off steps you say you finished.
+   - **Help with the work.** During a session, its mind knows the experiment, the steps and the time so far.
 3. **Nudges and reviews.**
    - Rare Windows notifications when you drift.
    - An honest end-of-experiment review: hours, sessions started without a nudge, how they felt.

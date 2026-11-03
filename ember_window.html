@@ -24,8 +24,26 @@ main { flex: 1; min-height: 0; display: flex; }
 
 /* the face */
 #home { gap: 0; }
-.facecol { flex: 1.1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; position: relative; }
-#face { width: min(100%, 460px); aspect-ratio: 1; cursor: pointer; touch-action: manipulation; }
+.facecol { flex: 1.1; min-width: 0; display: flex; flex-direction: column; align-items: center; padding: 20px; position: relative; overflow-y: auto; }
+#face { width: min(100%, 360px); aspect-ratio: 1; cursor: pointer; touch-action: manipulation; flex: none; margin-top: auto; }
+#exp { width: min(100%, 460px); margin: 14px 0 auto; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+.panel h3 { margin: 0 0 2px; font-size: 16px; }
+.panel .q { color: var(--ember2); margin: 4px 0; }
+.panel .meta, .panel .why2 { color: var(--dim); font-size: 13px; }
+.panel .why2 { margin-top: 6px; }
+.btn { background: var(--accent); color: #2a1a0c; border: 0; border-radius: 10px; padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+.btn.ghost { background: none; color: var(--dim); border: 1px solid var(--line); font-weight: 500; }
+.btn:disabled { opacity: .45; cursor: default; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.steps { list-style: none; padding: 0; margin: 10px 0 0; }
+.steps li { display: flex; gap: 8px; align-items: flex-start; padding: 3px 0; cursor: pointer; }
+.steps li.done span { color: var(--faint); text-decoration: line-through; }
+.steps input { margin-top: 4px; accent-color: var(--accent); }
+.timer { font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 650; color: var(--ember2); }
+.rate button { width: 38px; }
+.rate button.on { background: var(--accent); color: #2a1a0c; }
+.panel input[type=text] { flex: 1; min-width: 140px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font: inherit; }
 .whybtn { background: none; border: 1px solid var(--line); color: var(--dim); border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 13px; cursor: pointer; margin-top: 6px; }
 #why { display: none; margin-top: 12px; width: min(100%, 460px); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--dim); }
 #why.on { display: block; }
@@ -68,8 +86,8 @@ form button { background: var(--accent); color: #2a1a0c; border: 0; border-radiu
 @media (max-width: 760px) {
   main { flex-direction: column; }
   #home { flex-direction: column; }
-  .facecol { flex: none; padding: 8px 16px; }
-  #face { width: min(60vw, 30vh, 260px); }
+  .facecol { flex: none; padding: 8px 16px; max-height: 58vh; }
+  #face { width: min(45vw, 22vh, 200px); }
   #why { max-height: 26vh; overflow-y: auto; }
   .chatcol { flex: 1; min-height: 0; border-left: 0; border-top: 1px solid var(--line); }
   header { padding: 10px 16px; gap: 10px; }
@@ -92,6 +110,7 @@ form button { background: var(--accent); color: #2a1a0c; border: 0; border-radiu
       <canvas id="face" title="Poke Ember"></canvas>
       <button class="whybtn" id="whybtn">Why this face?</button>
       <div id="why"></div>
+      <div id="exp"></div>
     </div>
     <div class="chatcol">
       <div id="talk"></div>
@@ -141,6 +160,7 @@ function render() {
   const key = S.talk.length + ":" + (S.talk.length ? S.talk[S.talk.length - 1].t : 0);
   if (key !== lastTalkKey) { lastTalkKey = key; renderTalk(); }
   if ($("#why").classList.contains("on")) renderWhy();
+  renderExp();
 }
 
 function renderTalk() {
@@ -167,6 +187,81 @@ function renderWhy() {
     + `<div style="margin-top:8px">These are numbers in Ember's program, moved by real events and real time. They are not feelings, and nothing shows Ember feels anything.</div>`;
 }
 $("#whybtn").onclick = () => { $("#why").classList.toggle("on"); if (S) renderWhy(); };
+
+// ------------------------------------------------------------------ experiments
+let expKey = "", rating = 0;
+function fmtDur(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
+}
+function fmtTotal(sec) { const m = Math.round(sec / 60); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`; }
+
+function renderExp() {
+  const key = JSON.stringify([S.experiment, S.suggestions, S.session, S.checkin_due, S.can_suggest, S.memories, S.thinking]);
+  if (key !== expKey) { expKey = key; $("#exp").innerHTML = expHtml(); }
+  const tm = $("#timer");
+  if (tm && S.session) tm.textContent = fmtDur(S.now - S.session.start);
+}
+
+function expHtml() {
+  const x = S.experiment;
+  if (S.checkin_due) {
+    return `<div class="panel"><h3>How did it go?</h3><div class="meta">Tell Ember how that work session felt.</div>
+      <div class="row rate">${[1, 2, 3, 4, 5].map(i => `<button class="btn ghost${i === rating ? " on" : ""}" data-rate="${i}">${i}</button>`).join("")}</div>
+      <div class="row"><input type="text" id="cwords" placeholder="A few words (optional)" maxlength="2000">
+      <button class="btn" id="csend" ${rating ? "" : "disabled"}>Send</button></div></div>`;
+  }
+  if (x) {
+    const st = x.stats, left = Math.max(0, Math.ceil((x.ends_at - S.now) / 86400));
+    const steps = x.steps.map((s, i) => `<li class="${s.done ? "done" : ""}" data-step="${i}"><input type="checkbox" ${s.done ? "checked" : ""}><span>${esc(s.text)}</span></li>`).join("");
+    const work = S.session
+      ? `<div class="row"><span class="timer" id="timer"></span><button class="btn" id="stop">Stop working</button></div>`
+      : `<div class="row"><button class="btn" id="start">Start working on it</button></div>`;
+    return `<div class="panel"><div class="meta">Experiment · day ${Math.min(x.day, x.days)} of ${x.days}${left ? "" : " · its time is up"}</div>
+      <h3>${esc(x.title)}</h3><div class="q">${esc(x.question)}</div>
+      ${steps ? `<ul class="steps">${steps}</ul>` : ""}
+      <div class="meta" style="margin-top:8px">${fmtTotal(st.seconds)} in ${st.sessions} session${st.sessions === 1 ? "" : "s"}${st.avg_rating ? ` · felt ${st.avg_rating}/5 on average` : ""}</div>
+      ${work}
+      <div class="row"><button class="btn ghost" id="enddone">Finish it</button><button class="btn ghost" id="enddrop">Drop it</button></div></div>`;
+  }
+  if (S.suggestions.length) {
+    return `<div class="meta" style="margin:0 0 8px">Pick one to try:</div>` + S.suggestions.map(s => `<div class="panel">
+      <h3>${esc(s.title)}</h3><div class="q">${esc(s.question)}</div>
+      <div class="meta">${s.days} days${s.steps.length ? " · first: " + esc(s.steps[0].text) : ""}</div>
+      ${s.why ? `<div class="why2">${esc(s.why)}</div>` : ""}
+      <div class="why2">Based on: ${s.based_on.map(id => esc(S.memory_notes[id] || id)).join("; ")}</div>
+      <div class="row"><button class="btn" data-pick="${esc(s.id)}">Pick this</button></div></div>`).join("")
+      + `<div class="row"><button class="btn ghost" id="suggest" ${S.thinking ? "disabled" : ""}>Suggest others</button></div>`;
+  }
+  if (S.can_suggest) {
+    return `<div class="panel"><h3>Ready for a first experiment?</h3><div class="meta">Ember knows ${S.memories} things about you. It can suggest small experiments to find out what pulls you.</div>
+      <div class="row"><button class="btn" id="suggest" ${S.thinking ? "disabled" : ""}>Suggest experiments</button></div></div>`;
+  }
+  return `<div class="panel"><div class="meta">Once Ember knows you a little (${Math.min(S.memories, S.min_memories)} of ${S.min_memories} things so far), it can suggest small experiments to find what you want to work towards.</div></div>`;
+}
+
+$("#exp").addEventListener("click", async e => {
+  const t = e.target, x = S && S.experiment;
+  const act = async (path, data) => { t.disabled = true; await post(path, data); expKey = ""; poll(); };
+  if (t.dataset.rate) {
+    rating = +t.dataset.rate;
+    document.querySelectorAll(".rate button").forEach(b => b.classList.toggle("on", +b.dataset.rate === rating));
+    $("#csend").disabled = false;
+  } else if (t.id === "csend") {
+    await act("/session/checkin", {rating, words: $("#cwords").value.trim()}); rating = 0;
+  } else if (t.id === "suggest") act("/experiment/suggest");
+  else if (t.dataset.pick) act("/experiment/pick", {id: t.dataset.pick});
+  else if (t.id === "start") act("/session/start");
+  else if (t.id === "stop") act("/session/stop");
+  else if (t.id === "enddone" && confirm("Finish this experiment?")) act("/experiment/end", {id: x.id, how: "done"});
+  else if (t.id === "enddrop" && confirm("Drop this experiment?")) act("/experiment/end", {id: x.id, how: "dropped"});
+  else {
+    const li = t.closest("li[data-step]");
+    if (li && x) act("/experiment/step", {id: x.id, index: +li.dataset.step, done: !x.steps[+li.dataset.step].done});
+  }
+});
+$("#exp").addEventListener("keydown", e => { if (e.target.id === "cwords" && e.key === "Enter" && rating) $("#csend").click(); });
 
 // ------------------------------------------------------------------ talking
 const ta = $("#text");
