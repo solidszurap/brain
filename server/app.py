@@ -23,6 +23,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from mind import llm
 from mind.core import MIN_MEMORIES, Ember
 from .auth import NotInvited, NotLoggedIn
+from .billing import PLUS_STATUSES, BillingError
 from .store import StoreError
 
 log = logging.getLogger("ember")
@@ -35,11 +36,20 @@ UNREACHABLE = "My mind can't be reached right now. I'll answer as soon as it's b
 FAILED = "Something went wrong when I tried to think about that, so I couldn't answer it. Could you say it another way?"
 CAPPED = ("I've reached today's limit for thinking (it keeps Ember affordable). "
           "Everything you write is saved, and I'll answer it tomorrow.")
+LAST_FREE = ("That was your last free message for today. With Ember Plus we can keep going without a daily "
+             "limit; otherwise I'll be here tomorrow.")
+COUNTED = ("talk", "suggest", "checkin")      # what you send that makes Ember think; its greetings are free
+
+
+def today(t):
+    return time.strftime("%Y-%m-%d", time.gmtime(t))
 
 
 class User:
     def __init__(self, uid, ember):
         self.uid, self.ember = uid, ember
+        self.email = None
+        self.plan = False            # Ember Plus as Stripe last reported it (False: not loaded yet)
         self.lock = threading.RLock()
         self.seen_at = 0.0           # last poll from a visible window
         self.saved_at = 0.0
@@ -51,7 +61,7 @@ class Users:
         self.store, self.clock = store, clock
         self.cache, self.lock = {}, threading.Lock()
 
-    def get(self, uid):
+    def get(self, uid, email=None):
         with self.lock:
             u = self.cache.get(uid)
             if u is None:
@@ -60,7 +70,18 @@ class Users:
                 self.cache[uid] = u
                 if d is None:
                     self.save(u)
+            if email:
+                u.email = email
             return u
+
+    def plan(self, u):
+        if u.plan is False:
+            try:
+                u.plan = self.store.get_plan(u.uid)
+            except StoreError as e:
+                log.error("plan load failed for %s: %s", u.uid, e)
+                return None
+        return u.plan
 
     def save(self, u):
         """Lines first (append only), then the self. A failed save keeps the lines for next time."""
@@ -81,8 +102,8 @@ class MindWorker:
     """One thought at a time. If the mind is busy or unreachable, Ember says so once and
     the thought is tried again every `retry_every` seconds until it works."""
 
-    def __init__(self, users, cfg, call, clock, daily_cap, retry_delay=10.0, retry_every=60.0):
-        self.users, self.cfg, self.call, self.clock = users, cfg, call, clock
+    def __init__(self, users, cfg, call, clock, daily_cap, retry_delay=10.0, retry_every=60.0, after=None):
+        self.users, self.cfg, self.call, self.clock, self.after = users, cfg, call, clock, after
         self.daily_cap, self.retry_delay, self.retry_every = daily_cap, retry_delay, retry_every
         self.q, self.pending, self.plock = queue.Queue(), [], threading.Lock()
 
@@ -173,13 +194,50 @@ class MindWorker:
                 log.error("usage count failed for %s: %s", u.uid, e)
         with u.lock:
             u.ember.respond(event, raw, self.clock())
+            if self.after:
+                self.after(u, event)
             self.users.save(u)
 
 
 def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=150,
-               retry_delay=10.0, retry_every=60.0, public_config=None, web_dir=WEB):
+               retry_delay=10.0, retry_every=60.0, public_config=None, web_dir=WEB,
+               billing=None, free_per_day=5, plus_emails=()):
     users = Users(store, clock)
-    worker = MindWorker(users, cfg, call, clock, daily_cap, retry_delay, retry_every)
+    plus_emails = {e.strip().lower() for e in plus_emails if e.strip()}
+
+    # ------------------------------------------------------------ Ember Plus
+    def is_plus(u):
+        if auth.mode == "local" or (u.email and u.email in plus_emails):
+            return True
+        plan = users.plan(u)
+        return bool(plan and plan.get("status") in PLUS_STATUSES)
+
+    def free_left(u, now):
+        if is_plus(u):
+            return None
+        try:
+            return max(0, free_per_day - store.messages_today(u.uid, today(now)))
+        except StoreError:
+            return free_per_day                     # can't count right now: don't punish anyone for it
+
+    def spend_free(u, now):
+        """A message that makes Ember think. Free people get free_per_day a day; past that, 402."""
+        left = free_left(u, now)
+        if left is None:
+            return
+        if left <= 0:
+            raise HTTPException(402, "out of free messages for today")
+        try:
+            store.add_message(u.uid, today(now))
+        except StoreError as e:
+            log.error("message count failed for %s: %s", u.uid, e)
+
+    def after_reply(u, event):
+        """Right after its answer to your last free message, Ember says so."""
+        if event["type"] in COUNTED and free_left(u, clock()) == 0:
+            u.ember.say(clock(), LAST_FREE, "calm", paywall=True)
+
+    worker = MindWorker(users, cfg, call, clock, daily_cap, retry_delay, retry_every, after=after_reply)
 
     @asynccontextmanager
     async def lifespan(_app):
@@ -195,7 +253,10 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
 
     @app.middleware("http")
     async def _headers(request: Request, call_next):
-        if request.method == "POST":
+        if request.method == "POST" and request.url.path == "/stripe/webhook":
+            if int(request.headers.get("content-length") or 0) > 512 * 1024:
+                return JSONResponse({"error": "too large"}, status_code=413)
+        elif request.method == "POST":
             if int(request.headers.get("content-length") or 0) > MAX_BODY:
                 return JSONResponse({"error": "too large"}, status_code=413)
             # only Ember's own window may act: a custom header (forces a CORS preflight this
@@ -215,7 +276,8 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         h = request.headers.get("authorization", "")
         token = h[7:] if h.lower().startswith("bearer ") else None
         try:
-            return users.get(auth.user(token)["id"])
+            me = auth.user(token)
+            return users.get(me["id"], me.get("email"))
         except NotLoggedIn:
             raise HTTPException(401, "log in") from None
         except NotInvited:
@@ -273,7 +335,12 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
             s = e.snapshot(now, present, u.jobs > 0)
             if now - u.saved_at > SAVE_EVERY:
                 users.save(u)
+        plan = users.plan(u) if auth.mode != "local" else None
         s["mind"] = cfg.describe()
+        s["plan"] = {"plus": is_plus(u), "free_left": free_left(u, now), "free_per_day": free_per_day,
+                     "price": billing.price_label if billing else None,
+                     "payments": bool(billing and billing.enabled),
+                     "manage": bool(billing and billing.enabled and plan and plan.get("customer"))}
         return s
 
     @app.get("/memory")
@@ -296,6 +363,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
             raise HTTPException(400, "empty")
 
         def f(u, now):
+            spend_free(u, now)
             u.ember.hear(now, text)
             worker.put(u.uid, {"type": "talk", "text": text})
             return True
@@ -318,6 +386,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         def f(u, now):
             ok = u.ember.can_suggest() or len(u.ember.memories) < MIN_MEMORIES
             if ok:
+                spend_free(u, now)
                 worker.put(u.uid, {"type": "suggest"})
             return ok
         return act(request, f)
@@ -350,6 +419,8 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
             raise HTTPException(400, "rating") from None
 
         def f(u, now):
+            if u.ember.checkin_due:
+                spend_free(u, now)
             event = u.ember.checkin(now, rating, str(body.get("words", "")).strip()[:MAX_TEXT])
             if event:
                 worker.put(u.uid, event)
@@ -369,6 +440,13 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
     def delete(request: Request):
         u = who(request)
         with u.lock:
+            plan = users.plan(u)
+            if billing and billing.enabled and plan and plan.get("subscription") and plan.get("status") in PLUS_STATUSES:
+                try:                                # deleting your Ember also stops the payments
+                    billing.cancel(plan["subscription"])
+                except BillingError as e:
+                    log.error("cancel failed for %s: %s", u.uid, e)
+                    raise HTTPException(503, "couldn't cancel your Ember Plus right now; nothing was deleted, try again") from None
             try:
                 users.store.delete_user(u.uid)
             except StoreError as e:
@@ -376,5 +454,57 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
                 raise HTTPException(503, "couldn't delete right now; nothing was half-deleted on purpose, try again") from None
             users.drop(u.uid)
         return {"ok": True}
+
+    # ------------------------------------------------------------ paying
+    def base_url(request):
+        return str(request.base_url).rstrip("/")
+
+    @app.post("/plus/checkout")
+    def plus_checkout(request: Request):
+        u = who(request)
+        if not (billing and billing.enabled):
+            raise HTTPException(503, "payments aren't set up yet")
+        plan = users.plan(u)
+        try:
+            return {"url": billing.checkout(u.uid, u.email, plan and plan.get("customer"), base_url(request))}
+        except BillingError as e:
+            log.error("checkout failed for %s: %s", u.uid, e)
+            raise HTTPException(503, "couldn't reach the payment page, try again") from None
+
+    @app.post("/plus/portal")
+    def plus_portal(request: Request):
+        u = who(request)
+        plan = users.plan(u)
+        if not (billing and billing.enabled and plan and plan.get("customer")):
+            raise HTTPException(404, "no subscription")
+        try:
+            return {"url": billing.portal(plan["customer"], base_url(request))}
+        except BillingError as e:
+            log.error("portal failed for %s: %s", u.uid, e)
+            raise HTTPException(503, "couldn't reach the payment page, try again") from None
+
+    @app.post("/stripe/webhook")
+    async def stripe_webhook(request: Request):
+        if not (billing and billing.enabled):
+            raise HTTPException(404)
+        payload = await request.body()
+        try:
+            event = billing.verify(payload, request.headers.get("stripe-signature", ""), clock())
+        except (BillingError, ValueError) as e:
+            log.warning("webhook refused: %s", e)
+            raise HTTPException(400, "bad signature") from None
+        found = billing.plan_from_event(event)
+        if found:
+            uid, plan = found
+            try:
+                store.set_plan(uid, plan)
+            except StoreError as e:
+                log.error("plan save failed for %s: %s", uid, e)
+                raise HTTPException(503, "try again") from None        # Stripe retries
+            cached = users.cache.get(uid)
+            if cached:
+                cached.plan = plan
+            log.info("plan for %s is now %s", uid, plan.get("status"))
+        return {"received": True}
 
     return app

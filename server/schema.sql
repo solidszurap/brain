@@ -21,12 +21,24 @@ create index if not exists lines_user_t on public.lines (user_id, t);
 create table if not exists public.usage (
   user_id    uuid not null references auth.users(id) on delete cascade,
   day        date not null,
-  calls      integer not null default 0,
+  calls      integer not null default 0,        -- times Ember's mind ran (cost)
+  messages   integer not null default 0,        -- messages that count against the free limit
   tokens_in  bigint not null default 0,
   tokens_out bigint not null default 0,
   primary key (user_id, day)
+);
+alter table public.usage add column if not exists messages integer not null default 0;
+
+-- Ember Plus, as Stripe last reported it
+create table if not exists public.plans (
+  user_id      uuid primary key references auth.users(id) on delete cascade,
+  status       text,
+  customer     text,
+  subscription text,
+  updated_at   timestamptz not null default now()
 );
 
 alter table public.embers enable row level security;
 alter table public.lines  enable row level security;
 alter table public.usage  enable row level security;
+alter table public.plans  enable row level security;

@@ -6,11 +6,13 @@ Where each person's Ember lives. One small interface, two places:
                  server with the service key, through Supabase's REST API (urllib)
 
 Per user: the Ember's self (one JSON document), every conversation line (append
-only), and a count of mind calls per day (the cost guard).
+only), counts per day (mind calls, the cost guard; messages, the free limit), and
+their plan (Ember Plus, as Stripe last reported it).
 """
 import json
 import os
 import shutil
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -39,6 +41,7 @@ class FileStore:
 
     def __init__(self, root, fixed=None):
         self.root, self.fixed = root, fixed
+        self.lock = threading.Lock()
 
     def _dir(self, uid):
         d = self.fixed or os.path.join(self.root, uid)
@@ -91,14 +94,34 @@ class FileStore:
     def calls_today(self, uid, day):
         return self._usage(uid).get(day, {}).get("calls", 0)
 
+    def messages_today(self, uid, day):
+        return self._usage(uid).get(day, {}).get("messages", 0)
+
+    def _bump(self, uid, day, **add):
+        with self.lock:
+            u = self._usage(uid)
+            d = u.setdefault(day, {})
+            for k, v in add.items():
+                d[k] = d.get(k, 0) + (v or 0)
+            with open(os.path.join(self._dir(uid), "usage.json"), "w", encoding="utf-8") as f:
+                json.dump(u, f)
+
     def add_call(self, uid, day, tokens_in=0, tokens_out=0):
-        u = self._usage(uid)
-        d = u.setdefault(day, {"calls": 0, "tokens_in": 0, "tokens_out": 0})
-        d["calls"] += 1
-        d["tokens_in"] += tokens_in or 0
-        d["tokens_out"] += tokens_out or 0
-        with open(os.path.join(self._dir(uid), "usage.json"), "w", encoding="utf-8") as f:
-            json.dump(u, f)
+        self._bump(uid, day, calls=1, tokens_in=tokens_in, tokens_out=tokens_out)
+
+    def add_message(self, uid, day):
+        self._bump(uid, day, messages=1)
+
+    def get_plan(self, uid):
+        try:
+            with open(os.path.join(self._dir(uid), "plan.json"), encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return None
+
+    def set_plan(self, uid, plan):
+        with open(os.path.join(self._dir(uid), "plan.json"), "w", encoding="utf-8") as f:
+            json.dump(plan, f)
 
     def all_uids(self):
         if self.fixed:
@@ -109,7 +132,8 @@ class FileStore:
                 if d != "archive" and os.path.exists(os.path.join(self.root, d, "ember.json"))]
 
     def export(self, uid):
-        return {"ember": self.load_self(uid), "conversation": self.lines(uid), "usage": self._usage(uid)}
+        return {"ember": self.load_self(uid), "conversation": self.lines(uid), "usage": self._usage(uid),
+                "plan": self.get_plan(uid)}
 
     def delete_user(self, uid):
         """On this computer nothing is destroyed: the folder moves to archive/ (local rule: never destroy a life)."""
@@ -128,6 +152,7 @@ class SupabaseStore:
 
     def __init__(self, url, service_key, timeout=15):
         self.url, self.key, self.timeout = url.rstrip("/"), service_key, timeout
+        self.lock = threading.Lock()         # one server process: counts are read, added to, written
 
     def _req(self, method, path, body=None, prefer=None, headers=None):
         h = {"apikey": self.key, "Authorization": f"Bearer {self.key}", "Content-Type": "application/json"}
@@ -180,23 +205,47 @@ class SupabaseStore:
         row = self._usage_row(uid, day)
         return row["calls"] if row else 0
 
+    def messages_today(self, uid, day):
+        row = self._usage_row(uid, day)
+        return (row.get("messages") or 0) if row else 0
+
+    def _bump(self, uid, day, **add):
+        with self.lock:
+            row = self._usage_row(uid, day) or {}
+            body = {"user_id": uid, "day": day}
+            for k in ("calls", "messages", "tokens_in", "tokens_out"):
+                body[k] = (row.get(k) or 0) + (add.get(k) or 0)
+            self._req("POST", "/rest/v1/usage?on_conflict=user_id,day", body,
+                      prefer="resolution=merge-duplicates,return=minimal")
+
     def add_call(self, uid, day, tokens_in=0, tokens_out=0):
-        row = self._usage_row(uid, day) or {"calls": 0, "tokens_in": 0, "tokens_out": 0}
-        self._req("POST", "/rest/v1/usage?on_conflict=user_id,day",
-                  {"user_id": uid, "day": day, "calls": row["calls"] + 1,
-                   "tokens_in": (row["tokens_in"] or 0) + (tokens_in or 0),
-                   "tokens_out": (row["tokens_out"] or 0) + (tokens_out or 0)},
+        self._bump(uid, day, calls=1, tokens_in=tokens_in, tokens_out=tokens_out)
+
+    def add_message(self, uid, day):
+        self._bump(uid, day, messages=1)
+
+    def get_plan(self, uid):
+        rows = self._req("GET", "/rest/v1/plans" + self._q(user_id=f"eq.{uid}", select="status,customer,subscription"))
+        return rows[0] if rows else None
+
+    def set_plan(self, uid, plan):
+        self._req("POST", "/rest/v1/plans?on_conflict=user_id",
+                  {"user_id": uid, "status": plan.get("status"), "customer": plan.get("customer"),
+                   "subscription": plan.get("subscription"),
+                   "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())},
                   prefer="resolution=merge-duplicates,return=minimal")
 
     def all_uids(self):
         return [r["user_id"] for r in self._req("GET", "/rest/v1/embers?select=user_id") or []]
 
     def export(self, uid):
-        usage = self._req("GET", "/rest/v1/usage" + self._q(user_id=f"eq.{uid}", select="day,calls,tokens_in,tokens_out"))
-        return {"ember": self.load_self(uid), "conversation": self.lines(uid), "usage": usage or []}
+        usage = self._req("GET", "/rest/v1/usage" + self._q(user_id=f"eq.{uid}",
+                                                             select="day,calls,messages,tokens_in,tokens_out"))
+        return {"ember": self.load_self(uid), "conversation": self.lines(uid), "usage": usage or [],
+                "plan": self.get_plan(uid)}
 
     def delete_user(self, uid):
         """Everything about this person, then their login itself. Online, deleting means deleting (GDPR)."""
-        for table in ("lines", "usage", "embers"):
+        for table in ("lines", "usage", "plans", "embers"):
             self._req("DELETE", f"/rest/v1/{table}" + self._q(user_id=f"eq.{uid}"), prefer="return=minimal")
         self._req("DELETE", f"/auth/v1/admin/users/{urllib.parse.quote(uid)}")

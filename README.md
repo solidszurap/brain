@@ -10,7 +10,12 @@ A small being with a face that helps you find what to work towards, then works a
 - **Setting it up:** **[DEPLOY.md](DEPLOY.md)**, step by step.
 - **What it costs:** Render Starter about $7 a month; Claude Haiku about $0.0005 per reply ($0.10/$0.50 per million tokens in/out), so $5 of credit is roughly 8,000–10,000 replies; Supabase free to start.
 - **When the mind is busy or down:** Ember says so honestly and answers once it's back. It never fakes an answer.
-- **A daily limit per person** (`EMBER_DAILY_CAP`, 150 replies) keeps costs in check.
+- **Free and Plus.** Everyone gets **5 free messages a day** (`EMBER_FREE_PER_DAY`). A message is anything you send that makes Ember think; its greetings are free.
+  - After its answer to your last free one, Ember says so, and the input becomes an **Ember Plus** card: **€4.99 / month**, no daily limit, cancel anytime.
+  - Payment goes through **Stripe**: its checkout page to subscribe, its portal ("Manage Ember Plus") to cancel. A signed webhook tells the server, and Ember never sees card details.
+  - Deleting your Ember also cancels the subscription.
+  - Comped Plus by email: `EMBER_PLUS_EMAILS`.
+- **A safety cap per person** (`EMBER_DAILY_CAP`, 150 replies a day, Plus included) keeps costs in check.
 - **Your data:** the menu (⋯) has Privacy ([web/privacy.html](web/privacy.html)), "Download my data" (everything, as JSON), and "Delete my Ember", which deletes everything and the account, for good. Logs hold ids and errors only, never what anyone said.
 
 ## Run it on your own computer
@@ -62,7 +67,7 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
    - An honest end-of-experiment review: hours, sessions started without a nudge, how they felt.
 5. **Becoming someone.** Its character and its story of the two of you grow from your shared history.
 
-**Later: making money.** A free plan with a daily limit, plus Ember Plus (about €3–5 a month) through Stripe on the website. No ads, no selling data.
+**Making money:** 5 free messages a day, then Ember Plus at €4.99 a month through Stripe (built; needs a Stripe account and a registered business to take real money). No ads, no selling data.
 
 ## Files
 
@@ -72,9 +77,10 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
   - The mind worker: one thought at a time, retries, the honest "can't think" line, the daily limit.
   - The routes and the pages.
 - `server/store.py`: where Embers live. `FileStore` (a folder: local mode and checks) and `SupabaseStore` (Postgres through Supabase's REST API).
+- `server/billing.py`: Ember Plus through Stripe. Checkout, the customer portal, cancel, webhook signature check (HMAC), and the plan from each event.
 - `server/auth.py`: who's asking. Supabase login tokens (cached), the invite list, local mode.
 - `server/__main__.py`: `python -m server` (online, on Render), and `run_local` for `ember.py`.
-- `server/schema.sql`: the tables, with row level security on.
+- `server/schema.sql`: the tables (`embers`, `lines`, `usage`, `plans`), with row level security on.
 - `render.yaml`: the Render setup.
 - `mind/core.py`: Ember's self. Its wants, memory, conversation, experiments, sessions, face, the prompt for its mind, and the template mind. Standard library only.
 - `mind/llm.py`: which LLM, and the call itself. Claude goes through the `anthropic` SDK at low effort; Gemini, OpenAI-compatible and Ollama go through urllib.

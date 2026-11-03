@@ -124,7 +124,7 @@ tmp = tempfile.mkdtemp(prefix="ember_check_")
 store = FileStore(os.path.join(tmp, "users"))
 mind = FakeMind()
 base, srv = serve(create_app(store, FakeAuth(), FakeCfg(), call=mind, clock=clock,
-                             retry_delay=0.01, retry_every=0.3))
+                             retry_delay=0.01, retry_every=0.3, plus_emails=("a@x.hu", "b@x.hu")))
 
 
 def state(tok, v=1):
@@ -182,7 +182,7 @@ check("enough memories to suggest", st["can_suggest"], str(st["memories"]))
 print("The daily limit")
 store2 = FileStore(os.path.join(tmp, "users2"))
 base2, srv2 = serve(create_app(store2, FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock, daily_cap=2,
-                               retry_delay=0.01, retry_every=0.3))
+                               retry_delay=0.01, retry_every=0.3, plus_emails=("a@x.hu", "b@x.hu")))
 call(base2, "/state?v=1", "tok-b")
 for s in ("one", "two", "three"):
     call(base2, "/talk", "tok-b", {"text": s})
@@ -208,7 +208,7 @@ e = Ember(now=T[0])
 e.hear(T[0], "hello before the restart")
 store3.save_self("user-b", e.to_dict())
 base3, srv3 = serve(create_app(store3, FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock,
-                               retry_delay=0.01, retry_every=0.3))
+                               retry_delay=0.01, retry_every=0.3, plus_emails=("a@x.hu", "b@x.hu")))
 check("it answers what was left unanswered",
       wait(lambda: any(l["text"] == "I heard: hello before the restart" for l in call(base3, "/state", "tok-b")[1]["talk"])))
 srv3.should_exit = True
@@ -216,8 +216,8 @@ srv3.should_exit = True
 
 # ------------------------------------------------------------------ fake Supabase
 class Fake(BaseHTTPRequestHandler):
-    tables = {"embers": [], "lines": [], "usage": []}
-    keys = {"embers": ("user_id",), "usage": ("user_id", "day")}
+    tables = {"embers": [], "lines": [], "usage": [], "plans": []}
+    keys = {"embers": ("user_id",), "usage": ("user_id", "day"), "plans": ("user_id",)}
     deleted_users = []
 
     def log_message(self, *a):
@@ -280,6 +280,101 @@ class Fake(BaseHTTPRequestHandler):
         self._send(204)
 
 
+print("Free messages, the paywall and Ember Plus (against a fake Stripe)")
+
+
+class FakeStripe(BaseHTTPRequestHandler):
+    seen = []
+
+    def log_message(self, *a):
+        pass
+
+    def _send(self, body):
+        raw = json.dumps(body).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(raw)))
+        self.end_headers()
+        self.wfile.write(raw)
+
+    def do_POST(self):
+        fields = dict(urllib.parse.parse_qsl(self.rfile.read(int(self.headers["Content-Length"])).decode()))
+        self.seen.append(("POST", self.path, fields, self.headers.get("Authorization")))
+        self._send({"url": "https://pay.test/checkout" if "checkout" in self.path else "https://pay.test/portal"})
+
+    def do_DELETE(self):
+        self.seen.append(("DELETE", self.path, {}, self.headers.get("Authorization")))
+        self._send({"status": "canceled"})
+
+
+import hashlib
+import hmac
+from server.billing import Billing
+from server.app import LAST_FREE
+
+st = ThreadingHTTPServer(("127.0.0.1", 0), FakeStripe)
+threading.Thread(target=st.serve_forever, daemon=True).start()
+billing = Billing("sk_test_x", "price_plus", "whsec_x", "€4.99 / month", api=f"http://127.0.0.1:{st.server_address[1]}")
+store4 = FileStore(os.path.join(tmp, "users4"))
+base4, srv4 = serve(create_app(store4, FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock, retry_delay=0.01,
+                               retry_every=0.3, billing=billing, free_per_day=2, plus_emails=("a@x.hu",)))
+plan4 = lambda tok="tok-b": call(base4, "/state", tok)[1]["plan"]
+lines4 = lambda tok="tok-b": call(base4, "/state", tok)[1]["talk"]
+check("a new person starts with today's free messages", plan4() == {"plus": False, "free_left": 2, "free_per_day": 2,
+                                                                  "price": "€4.99 / month", "payments": True, "manage": False})
+check("first free message: answered", call(base4, "/talk", "tok-b", {"text": "hello"})[0] == 200
+      and wait(lambda: lines4()[-1]["text"] == "I heard: hello"))
+call(base4, "/talk", "tok-b", {"text": "second"})
+check("after its answer to the last free one, Ember says so",
+      wait(lambda: lines4()[-1]["text"] == LAST_FREE and lines4()[-2]["text"] == "I heard: second"))
+check("...the line is marked for the paywall card", lines4()[-1].get("paywall") is True)
+check("no free messages left", plan4()["free_left"] == 0)
+check("a third message today is refused (402) and not stored",
+      call(base4, "/talk", "tok-b", {"text": "third"})[0] == 402 and not any(l["text"] == "third" for l in lines4()))
+check("asking for ideas counts too", call(base4, "/experiment/suggest", "tok-b", {})[0] in (200, 402))
+check("greetings are free", (call(base4, "/state?v=1", "tok-b") and True))
+check("a comped tester (Plus by email) has no limit", plan4("tok-a")["plus"] and plan4("tok-a")["free_left"] is None)
+T[0] += 86400
+check("the next day, free messages are back", plan4()["free_left"] == 2)
+T[0] -= 86400
+status, out = call(base4, "/plus/checkout", "tok-b", {})
+sent = FakeStripe.seen[-1]
+check("Get Ember Plus opens a Stripe checkout page for this person",
+      status == 200 and out["url"] == "https://pay.test/checkout" and sent[2]["client_reference_id"] == "user-b"
+      and sent[2]["line_items[0][price]"] == "price_plus" and sent[2]["mode"] == "subscription"
+      and sent[3] == "Bearer sk_test_x")
+
+
+def hook(event, secret="whsec_x", t=None):
+    raw = json.dumps(event).encode()
+    t = int(clock()) if t is None else t
+    sig = hmac.new(secret.encode(), f"{t}.".encode() + raw, hashlib.sha256).hexdigest()
+    req = urllib.request.Request(base4 + "/stripe/webhook", data=raw, method="POST",
+                                 headers={"Stripe-Signature": f"t={t},v1={sig}", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return r.status
+    except urllib.error.HTTPError as e:
+        return e.code
+
+
+paid = {"type": "checkout.session.completed", "data": {"object": {"mode": "subscription", "client_reference_id": "user-b",
+                                                                  "customer": "cus_b", "subscription": "sub_b"}}}
+check("a webhook with a wrong signature is refused", hook(paid, secret="whsec_wrong") == 400)
+check("an old webhook (replayed) is refused", hook(paid, t=int(clock()) - 3600) == 400)
+check("Stripe says paid: Ember Plus is on", hook(paid) == 200 and plan4()["plus"] and plan4()["manage"])
+check("with Plus, you can talk again", call(base4, "/talk", "tok-b", {"text": "now plus"})[0] == 200)
+check("Manage Ember Plus opens Stripe's portal", call(base4, "/plus/portal", "tok-b", {})[1]["url"] == "https://pay.test/portal")
+ended = {"type": "customer.subscription.deleted", "data": {"object": {"id": "sub_b", "customer": "cus_b",
+                                                                      "status": "canceled", "metadata": {"user_id": "user-b"}}}}
+check("Stripe says canceled: back to free", hook(ended) == 200 and not plan4()["plus"])
+hook(paid)
+call(base4, "/me/delete", "tok-b", {})
+check("deleting your Ember also cancels the subscription",
+      any(m == "DELETE" and p == "/v1/subscriptions/sub_b" for m, p, _, _ in FakeStripe.seen))
+srv4.should_exit = True
+st.shutdown()
+
 print("SupabaseStore and SupabaseAuth (against a fake Supabase)")
 fs = ThreadingHTTPServer(("127.0.0.1", 0), Fake)
 threading.Thread(target=fs.serve_forever, daemon=True).start()
@@ -296,6 +391,11 @@ sb.add_call("u1", "2026-11-03", 3000, 200)
 sb.add_call("u1", "2026-11-03", 1000, 100)
 check("usage adds up per day", sb.calls_today("u1", "2026-11-03") == 2 and Fake.tables["usage"][0]["tokens_in"] == 4000)
 check("all users listed", sb.all_uids() == ["u1"])
+sb.add_message("u1", "2026-11-03")
+check("free messages are counted per day", sb.messages_today("u1", "2026-11-03") == 1 and sb.calls_today("u1", "2026-11-03") == 2)
+sb.set_plan("u1", {"status": "active", "customer": "cus_1", "subscription": "sub_1"})
+sb.set_plan("u1", {"status": "canceled", "customer": "cus_1", "subscription": "sub_1"})
+check("the plan is one row, updated", sb.get_plan("u1")["status"] == "canceled" and len(Fake.tables["plans"]) == 1)
 check("export has everything", sb.export("u1")["ember"] == {"memories": [1, 2]} and len(sb.export("u1")["conversation"]) == 2)
 sb.delete_user("u1")
 check("delete removes every row and the login", not any(Fake.tables.values()) and Fake.deleted_users == ["u1"])

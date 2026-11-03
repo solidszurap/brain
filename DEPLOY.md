@@ -1,6 +1,6 @@
 # Putting Ember online
 
-About 45 minutes, done once. You create four accounts; nothing here costs money except Render (about $7 a month) and the Anthropic credit you add. Keep this page open and go top to bottom. Wherever it says **copy**, paste the value into a private note for a moment. You'll need it a few steps later.
+About an hour, done once. You create five accounts; nothing here costs money except Render (about $7 a month) and the Anthropic credit you add. Stripe takes its fee only when someone pays. Keep this page open and go top to bottom. Wherever it says **copy**, paste the value into a private note for a moment. You'll need it a few steps later.
 
 Never put any key in the code or send it in a chat. Keys only go into Render's settings.
 
@@ -50,6 +50,8 @@ Never put any key in the code or send it in a chat. Keys only go into Render's s
    | `SUPABASE_ANON_KEY` | from step 1 |
    | `SUPABASE_SERVICE_KEY` | from step 1 |
    | `EMBER_ALLOWED_EMAILS` | your Gmail, plus testers', separated by commas (e.g. `you@gmail.com,friend@gmail.com`) |
+   | `EMBER_PLUS_EMAILS` | who gets Ember Plus for free: at least your own Gmail |
+   | `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET` | leave empty for now; step 6 fills them. Until then, the paywall says Plus is "coming soon". |
 
 4. Press **Apply** and wait for "Live" (a few minutes). Your address is at the top, like `https://ember-xxxx.onrender.com`. **Copy** it.
 
@@ -59,7 +61,28 @@ In Supabase, go to **Authentication → URL Configuration**:
 - **Site URL**: your Render address from step 4.4.
 - **Redirect URLs**: add the same address.
 
-## 6. Try it
+## 6. Stripe: Ember Plus payments (€4.99 / month)
+
+Taking real money needs a registered business (for example egyéni vállalkozó) and, for a Hungarian online service, terms of service (ÁSZF) with a refund/cancellation section and your contact details on the site. Get those from an accountant or lawyer; Ember's code doesn't write them. You can do everything below in **test mode** first: test mode moves no money.
+
+1. Go to **stripe.com** and sign up, with your business's details when you go live.
+2. **Product catalog → Add product**:
+   - Name: `Ember Plus`.
+   - Price: **€4.99**, **Recurring**, **Monthly**.
+   - Save, then open the price and **copy** its id (`price_...`). That's `STRIPE_PRICE_ID`.
+3. **Developers → API keys**. **Copy** the **Secret key** (`sk_test_...` in test mode, `sk_live_...` later). That's `STRIPE_SECRET_KEY`.
+4. **Developers → Webhooks → Add endpoint**:
+   - URL: your Render address + `/stripe/webhook` (e.g. `https://ember-xxxx.onrender.com/stripe/webhook`).
+   - Events: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`.
+   - After saving, **copy** the **Signing secret** (`whsec_...`). That's `STRIPE_WEBHOOK_SECRET`.
+5. **Settings → Billing → Customer portal**: turn it on, and allow customers to cancel and to update their payment method. ("Manage Ember Plus" opens this.)
+6. In Render, under **Environment**, fill in the three `STRIPE_...` values and save. Render restarts by itself.
+7. Test it with a free account that isn't in `EMBER_PLUS_EMAILS`:
+   - Use up today's free messages, press **Get Ember Plus**, and pay with Stripe's test card (Stripe shows it on its test checkout page). Ember Plus should switch on within seconds.
+   - Then cancel via the menu → **Manage Ember Plus**.
+8. **Going live:** switch Stripe to live mode, then redo steps 2–4 there (live mode has its own product, price, keys and webhook secret), and put the live values in Render.
+
+## 7. Try it
 
 1. On your iPhone, open the Render address in **Safari**, then tap **Continue with Google**.
 2. Ember greets you. Say something.
@@ -68,6 +91,7 @@ In Supabase, go to **Authentication → URL Configuration**:
 
 ## Afterwards
 
+- **Free messages:** `EMBER_FREE_PER_DAY` (5) per day for people without Plus. Comped Plus: `EMBER_PLUS_EMAILS`.
 - **New tester:** add their Gmail to `EMBER_ALLOWED_EMAILS` in Render (Environment). Render restarts by itself. Also add them as a test user in Google (step 2.2).
 - **Changes:** every `git push` to `main` redeploys Ember automatically.
 - **Costs:** see Anthropic's console (Usage) and Render's billing. The `usage` table in Supabase shows calls and tokens per person per day.

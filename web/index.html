@@ -103,6 +103,15 @@ form.say { display: flex; gap: 8px; padding: 10px 16px 4px; width: min(760px, 10
 .note { font-size: 12px; color: var(--faint); padding: 2px 16px max(12px, env(safe-area-inset-bottom)); text-align: center; }
 .note a { color: var(--dim); }
 
+/* free messages and Ember Plus */
+#freehint { font-size: 12.5px; color: var(--dim); text-align: center; padding: 2px 16px 0; min-height: 0; }
+#paywall { display: none; width: min(760px, calc(100% - 32px)); margin: 10px auto 4px; background: var(--panel2); border: 1px solid var(--accent); border-radius: 16px; padding: 14px 16px; text-align: center; }
+#paywall.on { display: block; }
+#paywall h3 { margin: 0 0 4px; font-size: 16px; }
+#paywall p { margin: 0 0 10px; color: var(--dim); font-size: 14px; }
+#paywall .btn { font-size: 15px; padding: 10px 18px; }
+#paywall small { display: block; color: var(--faint); margin-top: 8px; }
+
 /* the menu (⋯) */
 .menuwrap { position: relative; }
 .menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 230px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 6px; box-shadow: 0 12px 34px rgba(0,0,0,.45); }
@@ -189,6 +198,7 @@ form.say { display: flex; gap: 8px; padding: 10px 16px 4px; width: min(760px, 10
       <div class="who" id="whoami"></div>
       <button data-menu="install">Add Ember to your home screen</button>
       <a href="/privacy">Privacy</a>
+      <button data-menu="plus" id="plusItem" style="display:none"></button>
       <button data-menu="export">Download my data</button>
       <hr>
       <button data-menu="logout" id="logoutBtn">Log out</button>
@@ -209,6 +219,13 @@ form.say { display: flex; gap: 8px; padding: 10px 16px 4px; width: min(760px, 10
   <textarea id="text" rows="1" placeholder="Say something to Ember…" maxlength="2000"></textarea>
   <button class="btn" type="submit">Send</button>
 </form>
+<div id="paywall">
+  <h3 id="pwTitle">That's today's free messages</h3>
+  <p id="pwText"></p>
+  <button class="btn" data-plus>Get Ember Plus</button>
+  <small>or come back tomorrow, when your free messages are back</small>
+</div>
+<div id="freehint"></div>
 <div class="note" id="note"></div>
 
 <div class="cover" id="login">
@@ -327,6 +344,9 @@ document.addEventListener("click", async e => {
       ? "<li>Open Ember in <b>Safari</b>.</li><li>Tap the <b>Share</b> button (the square with an arrow).</li><li>Tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>"
       : "<li>Open the browser's menu (⋮).</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li>";
     $("#menu").classList.remove("on"); showCover("install");
+  } else if (what === "plus") {
+    $("#menu").classList.remove("on");
+    goPlus(!!t.dataset.manage, null);
   } else if (what === "export") {
     const r = await api("/me/export").catch(() => null);
     if (!r || !r.ok) return;
@@ -357,7 +377,45 @@ function render() {
   if ($("#why").classList.contains("on")) renderWhy();
   renderExpCard();
   renderSessionBar();
+  renderPlan();
 }
+
+// ------------------------------------------------------------------ free messages and Ember Plus
+function renderPlan() {
+  const P = S.plan || {plus: true};
+  const out = !P.plus && P.free_left === 0;
+  $("#form").style.display = out ? "none" : "";
+  $("#paywall").classList.toggle("on", out);
+  if (out) {
+    $("#pwTitle").textContent = `That's today's ${P.free_per_day} free messages`;
+    $("#pwText").textContent = P.payments
+      ? `With Ember Plus there's no daily limit: ${P.price}, cancel anytime.`
+      : "Ember Plus (no daily limit) is coming soon.";
+    $("#paywall [data-plus]").style.display = P.payments ? "" : "none";
+  }
+  $("#freehint").textContent = !P.plus && P.free_left > 0 && P.free_left <= 2
+    ? `${P.free_left} free message${P.free_left === 1 ? "" : "s"} left today` : "";
+  const item = $("#plusItem");
+  item.style.display = P.payments && (!P.plus || P.manage) ? "" : "none";
+  item.textContent = P.plus ? "Manage Ember Plus" : `Get Ember Plus · ${P.price}`;
+  item.dataset.manage = P.plus ? "1" : "";
+}
+async function goPlus(manage, btn) {
+  if (btn) btn.disabled = true;
+  const r = await post(manage ? "/plus/portal" : "/plus/checkout");
+  if (r && r.url) location.href = r.url;
+  else if (btn) { btn.disabled = false; $("#note").innerHTML = `<span class="problem">Couldn't open the payment page. Try again in a moment.</span>`; }
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-plus]");
+  if (b) goPlus(false, b);
+});
+(function () {
+  const q = new URLSearchParams(location.search).get("plus");
+  if (!q) return;
+  history.replaceState(null, "", "/");
+  if (q === "success") setTimeout(() => { $("#note").textContent = "Thank you! Ember Plus is on (it can take a few seconds to show)."; }, 1500);
+})();
 
 // ------------------------------------------------------------------ the conversation
 // the one line above the input: what's going on with your experiment
@@ -528,7 +586,8 @@ $("#form").onsubmit = async e => {
   const text = ta.value.trim();
   if (!text || offline) return;
   ta.value = ""; ta.style.height = "auto";
-  await post("/talk", {text});
+  const r = await post("/talk", {text});
+  if (!r) ta.value = text;
   poll();
 };
 

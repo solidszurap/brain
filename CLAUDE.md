@@ -26,8 +26,15 @@ python -m server                      # online mode (Render); needs the env vars
     - A non-retryable error gives the `FAILED` line.
     - The daily cap gives the `CAPPED` line.
     - After a restart, unanswered last lines are re-queued.
-  - The POST guard: `X-Ember` header and same host. Plus `/me/export` and `/me/delete`.
+  - The POST guard: `X-Ember` header and same host. `/stripe/webhook` is exempt: it checks Stripe's signature instead. Plus `/me/export` and `/me/delete`; delete cancels an active subscription first.
+  - Ember Plus:
+    - `is_plus`: local mode, `EMBER_PLUS_EMAILS`, or the plan status in `PLUS_STATUSES`.
+    - `spend_free`: `free_per_day` counted messages (talk, suggest, checkin), then 402.
+    - `after_reply`: the `LAST_FREE` line, marked `paywall`.
+    - `/plus/checkout`, `/plus/portal`, `/stripe/webhook`.
+    - `/state` returns `plan`.
 - `server/store.py`: `FileStore` (a folder; `fixed=` for local mode; delete = archive) and `SupabaseStore` (PostgREST via urllib with the service key; delete = rows plus the auth user).
+- `server/billing.py`: `Billing` (Stripe via urllib: `checkout`, `portal`, `cancel`, `verify` with a 5-minute tolerance, `plan_from_event`). The stores have `get_plan`/`set_plan` and `add_message`/`messages_today`.
 - `server/auth.py`: `SupabaseAuth` (`/auth/v1/user`, 5-minute cache, `EMBER_ALLOWED_EMAILS` or `*`) and `LocalAuth`.
 - `server/__main__.py`: `run_online` (env, refuses to start without a usable mind) and `run_local` (used by `ember.py`).
 - `mind/core.py`, `Ember`:
@@ -67,9 +74,10 @@ python -m server                      # online mode (Render); needs the env vars
    - The server uses FastAPI, uvicorn and `anthropic` only.
    - Secrets only in `.env` (local) or Render's environment (online). Never print or log keys, or anything users say: logs hold ids and errors only.
 6. **Invite-only** (`EMBER_ALLOWED_EMAILS`) until Szilard decides otherwise.
-7. **No long runs.** Verify with `check_ember.py`, `check_server.py`, and by trying it in the browser (phone size 375 px and desktop) on a scratch Ember.
-8. **Saved selves must keep loading.** `Ember.from_dict` only copies known fields, so new fields get their defaults; keep it that way.
-9. **Commits:** small, straight to main, only when Szilard asks (don't ask him whether to commit). He pushes. Update README.md in the same change.
+7. **Free and Plus:** 5 free messages a day, then Ember Plus at €4.99 a month (Stripe). Never sell data and never show ads. Taking real money needs his registered business and terms of service (ÁSZF); we don't write legal text.
+8. **No long runs.** Verify with `check_ember.py`, `check_server.py`, and by trying it in the browser (phone size 375 px and desktop) on a scratch Ember.
+9. **Saved selves must keep loading.** `Ember.from_dict` only copies known fields, so new fields get their defaults; keep it that way.
+10. **Commits:** small, straight to main, only when Szilard asks (don't ask him whether to commit). He pushes. Update README.md in the same change.
 
 ## Where things stand (2026-11-03)
 
@@ -79,6 +87,7 @@ python -m server                      # online mode (Render); needs the env vars
   - The phone layout was tried at 375 px.
   - The service worker can't register in the app's built-in browser; check it on a real phone.
   - Real Supabase and Google login are untested until Szilard creates the accounts (DEPLOY.md).
+- **Ember Plus is built** (free limit, paywall, Stripe checkout, portal and webhook). It's checked against a fake Stripe in `check_server.py` and previewed in the browser at 375 px; real Stripe is untested until his account exists.
 - **The mind is Claude Haiku 5.5** ($0.10/$0.50 per million tokens; about $0.0005 per reply, estimated). Szilard funds $5 to start. The real cost per reply is logged in the `usage` table.
 
 ## Next (in order)
@@ -86,4 +95,8 @@ python -m server                      # online mode (Render); needs the env vars
 1. Go live together, following DEPLOY.md. Then: log in on his iPhone, add to the home screen, import his local Ember, and check the real token costs.
 2. **Nudges:** phone notifications via Web Push (VAPID, `sw.js`), rare, and they can be turned off. Plus **honest end-of-experiment reviews**.
 3. **Becoming someone:** its character and story grow from your shared history.
-4. **Later:** Ember Plus (Stripe), open sign-up, App Store wrappers.
+4. **Later:** open sign-up, App Store wrappers.
+- **The mind's model:** Haiku 5.5 was kept on purpose (2026-11-03; Szilard chose it over a mixed setup or Sonnet).
+  - Switching is one Render setting: `EMBER_VOICE_MODEL`.
+  - If it ever moves to Sonnet or Opus, add prompt caching first. Move the volatile "Now: …" line to the end of the prompt so the instructions and memories form a stable, cacheable start.
+  - With Haiku, caching isn't worth it (about $0.0005 a reply, and the prefix may be under the minimum).
