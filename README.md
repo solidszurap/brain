@@ -8,7 +8,7 @@ A small being with a face that helps you find what to work towards, then works a
 - **Its mind:** Claude Haiku 5.5, through Anthropic's API.
 - **Who can use it:** it's invite-only while being tested (`EMBER_ALLOWED_EMAILS`).
 - **Setting it up:** **[DEPLOY.md](DEPLOY.md)**, step by step.
-- **What it costs:** Render Starter about $7 a month; Claude Haiku about $0.0005 per reply ($0.10/$0.50 per million tokens in/out), so $5 of credit is roughly 8,000–10,000 replies; Supabase free to start.
+- **What it costs:** Render Starter about $7 a month; Claude Haiku about $0.0003 per reply, measured ($0.10/$0.50 per million tokens in/out), so $5 of credit is roughly 15,000 replies; Supabase free to start (a free project pauses after a week unused, so the server reads it once a day).
 - **When the mind is busy or down:** Ember says so honestly and answers once it's back. It never fakes an answer.
 - **Free and Plus.** Everyone gets **5 free messages a day** (`EMBER_FREE_PER_DAY`). A message is anything you send that makes Ember think; its greetings are free.
   - After its answer to your last free one, Ember says so, and the input becomes an **Ember Plus** card: **€4.99 / month**, no daily limit, cancel anytime.

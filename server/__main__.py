@@ -12,6 +12,8 @@ Local (your PC):   python ember.py   (one Ember, yours, in ember_state/, no logi
 import logging
 import os
 import sys
+import threading
+import time
 
 import uvicorn
 
@@ -32,6 +34,16 @@ def run_local(state_dir, port):
     print(f"Its mind: {cfg.describe()}" + (f"  (problem: {cfg.problem})" if cfg.problem else ""))
     print(f"Its window: http://localhost:{port}   (Ctrl+C to close)")
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
+
+
+def keep_awake(store, every=86400):
+    """Supabase pauses a free project after a week without use; one small read a day keeps it awake."""
+    while True:
+        time.sleep(every)
+        try:
+            store.all_uids()
+        except Exception as e:
+            logging.getLogger("ember").warning("keep-awake read failed: %s", type(e).__name__)
 
 
 def run_online():
@@ -56,6 +68,7 @@ def run_online():
     logging.getLogger("ember").info("mind: %s; invite list: %s; payments: %s", cfg.describe(),
                                     "everyone" if auth.everyone else f"{len(auth.allowed)} people",
                                     "on" if billing.enabled else "off (Plus coming soon)")
+    threading.Thread(target=keep_awake, args=(store,), daemon=True).start()
     # access logs off: request paths are harmless, but keep logs to ids and errors
     uvicorn.run(app, host="0.0.0.0", port=int(env.get("PORT", "8000")), access_log=False,
                 proxy_headers=True, forwarded_allow_ips="*")

@@ -442,6 +442,28 @@ except NotLoggedIn:
 check("invite list * lets everyone in", SupabaseAuth(url, "anon", allowed="*").user("good")["email"] == "me@x.hu")
 fs.shutdown()
 
+print("keeping Supabase awake")
+from server.__main__ import keep_awake
+
+
+class Reads:
+    def __init__(self, fail=False):
+        self.n, self.fail = 0, fail
+
+    def all_uids(self):
+        self.n += 1
+        if self.fail:
+            raise OSError("down")
+        return []
+
+
+ok_store, bad_store = Reads(), Reads(fail=True)
+threading.Thread(target=keep_awake, args=(ok_store, 0.05), daemon=True).start()
+threading.Thread(target=keep_awake, args=(bad_store, 0.05), daemon=True).start()
+time.sleep(0.4)
+check("it reads the store again and again", ok_store.n >= 3)
+check("a failed read doesn't stop it", bad_store.n >= 3)
+
 print()
 print("All checks passed." if not failed else f"{len(failed)} FAILED: {failed}")
 sys.stdout.flush()

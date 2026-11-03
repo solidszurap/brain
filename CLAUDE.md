@@ -36,7 +36,7 @@ python -m server                      # online mode (Render); needs the env vars
 - `server/store.py`: `FileStore` (a folder; `fixed=` for local mode; delete = archive) and `SupabaseStore` (PostgREST via urllib with the service key; delete = rows plus the auth user).
 - `server/billing.py`: `Billing` (Stripe via urllib: `checkout`, `portal`, `cancel`, `verify` with a 5-minute tolerance, `plan_from_event`). The stores have `get_plan`/`set_plan` and `add_message`/`messages_today`.
 - `server/auth.py`: `SupabaseAuth` (`/auth/v1/user`, 5-minute cache, `EMBER_ALLOWED_EMAILS` or `*`) and `LocalAuth`.
-- `server/__main__.py`: `run_online` (env, refuses to start without a usable mind) and `run_local` (used by `ember.py`).
+- `server/__main__.py`: `run_online` (env, refuses to start without a usable mind; starts `keep_awake`, one Supabase read a day) and `run_local` (used by `ember.py`).
 - `mind/core.py`, `Ember`:
   - wants: `connection` and `curiosity`, moved by real time in `update`;
   - `mood`;
@@ -52,7 +52,7 @@ python -m server                      # online mode (Render); needs the env vars
   - Boot reads `/config`. Online, it loads supabase-js (pinned 2.118.0 from jsdelivr; supports Supabase's new publishable keys) for Google login. `api()` adds the bearer token; a 401 shows the login cover and a 403 shows "not invited".
   - The top switch is Chat | Experiment (`mode`, kept in localStorage, sent with `/talk`, which tells the mind). Experiment mode shows `#sessionbar` (always while a session runs). Ideas are there from the start: before `knows_enough()` (3 memories) they are `starter` experiments (`STARTERS` for the template mind) that need no memory; after it, each must cite memories.
   - The canvas face (`EXPR`) sits above the conversation. Experiment cards render under an Ember line's `exps`; the check-in renders under the last `checkin` line while `checkin_due`. The experiment line is `#sessionbar`, with its pop-up `#expcard`.
-  - The look: solid surfaces with a thin lit edge (`--surface`, `--raised`, `--overlay`, `--edge`, `--shine`), soft shadows (`--lift`) and a warm glow behind (`--glow1-3`). No backdrop blur: it looked fuzzy on the iPhone (Szilard, 2026-11-03). Colour versions (Ember, Night, Plum, Forest, Day) are `[data-theme]` token overrides, picked in the menu and kept in localStorage `ember.theme`; Ember and the buttons stay orange in all of them. On the home-screen app, `fitHeight` sizes the page to the screen, since 100dvh came out short there. The model's name is never shown.
+  - The look: solid surfaces with a thin edge (`--surface`, `--raised`, `--overlay`, `--edge`), soft shadows (`--lift`), a warm glow behind (`--glow1-3`) and flat orange buttons (`--btn`). No glass: no backdrop blur, gloss or lit edges (Szilard, 2026-11-03). The body is `position: fixed; inset: 0`, so the page is exactly the screen. iOS 26 draws its own blur under the clock in home-screen web apps; the top bar has extra top padding to stay clear of it. Colour versions (Ember, Night, Plum, Forest, Day) are `[data-theme]` token overrides, picked in the menu and kept in localStorage `ember.theme`; Ember and the buttons stay orange in all of them. The model's name is never shown.
   - The menu (⋯): install guide, privacy, export, colour, log out, delete. Confirmations are a second click (`sure`), because `confirm()` is blocked in the app's browser.
 - `web/privacy.html`, `manifest.webmanifest`, `sw.js` (no caching; an offline note), `icons/` (`tools/make_icons.py`).
 - The grid-world Ember (v3 brain, survival, trials, voice checker) was removed from the repo on 2026-11-03; it's the git tag `grid-ember-final` (`git show grid-ember-final:README.md` is its full record). Local leftovers: `trials/` (an 85 MB cache, safe to delete) and `ember_state/archive/` (its life; keep).
@@ -89,14 +89,12 @@ python -m server                      # online mode (Render); needs the env vars
   - Szilard logged in on his iPhone on 2026-11-03 and Ember greeted him.
   - Stripe is set up in **test mode** (2026-11-03) on his account "Solid Results Marketing": product Ember Plus €4.99/month (`price_1UXn8gG7FBneCrtjMlHk8vWe`), webhook "ember" to `/stripe/webhook` (4 events, API version 2023-10-16), and the customer portal (cancel at the end of the period). The three `STRIPE_*` values are in Render, and its log says "payments: on". A test payment and a cancel both reached the `plans` table. Live mode needs his business and ÁSZF first (DEPLOY.md step 6.8).
 
-- **Slices 1 and 2 are built:** the face, chat, memories with quotes, the memory page, wants, the greeting on return, experiments and work sessions in the conversation.
-- **The online version is built and checked locally, but not deployed:**
-  - `check_server.py`: all checks pass, including SupabaseStore and SupabaseAuth against a fake Supabase.
-  - The phone layout was tried at 375 px.
-  - The service worker can't register in the app's built-in browser; check it on a real phone.
-  - Real Supabase and Google login are untested until Szilard creates the accounts (DEPLOY.md).
-- **Ember Plus is built** (free limit, paywall, Stripe checkout, portal and webhook). It's checked against a fake Stripe in `check_server.py` and previewed in the browser at 375 px; real Stripe is untested until his account exists.
-- **The mind is Claude Haiku 5.5** ($0.10/$0.50 per million tokens; about $0.0005 per reply, estimated). Szilard funds $5 to start. The real cost per reply is logged in the `usage` table.
+- **Built and live:** the face, chat, memories with quotes, the memory page, wants, the greeting on return, Chat | Experiment, experiments, work sessions, check-ins, end-of-experiment reviews, Ember Plus, privacy/export/delete, five colour versions.
+- **Checked on 2026-11-03:** both checks pass; the live pages load; `/state` without a login is refused (401) and an unsigned webhook is refused (400); Render's logs show no errors (mind: Claude Haiku, invite list 1 person, payments on); with the public key, all four Supabase tables show 0 rows (RLS on, no policies, as intended); Stripe's webhook has 4 deliveries and 0 failures.
+- **Supabase hardened (2026-11-03, with Szilard's OK):** the Email sign-in provider is off (only Google is on); `public.rls_auto_enable()` (Supabase's own event-trigger function) can no longer be executed by `public`, `anon` or `authenticated`.
+- **Supabase free projects pause after a week with no activity,** so the online server reads it once a day (`keep_awake` in `server/__main__.py`).
+- **The mind is Claude Haiku 5.5** ($0.10/$0.50 per million tokens; measured about $0.0003 a reply). The real cost per reply is logged in the `usage` table.
+- **iPhone:** iOS 26 draws its own blur under the clock in home-screen web apps, and 26.1+ has a WebKit bug with the status bar area (WebKit bug 301994). Neither is Ember's CSS.
 
 ## Next (in order)
 

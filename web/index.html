@@ -17,10 +17,10 @@
 :root {
   --bg: #17130f; --panel: #211b16; --panel2: #2a221c; --line: #3a3029; --text: #f1e7dc; --dim: #a8988a; --faint: #6f6156;
   --ember: #ff9a4d; --ember2: #ffcf8a; --accent: #ffb36b; --danger: #e5776b;
-  /* solid surfaces with a thin lit edge and soft shadows, over a warm glow (no see-through blur: it looked fuzzy on the iPhone) */
+  /* solid surfaces with a thin edge and soft shadows, over a warm glow; flat orange buttons (no glass, no gloss) */
   --surface: #211b16; --raised: #2a231d; --overlay: #251e19;
   --edge: rgba(255, 245, 235, .1); --edge2: rgba(255, 245, 235, .2);
-  --shine: inset 0 1px 0 rgba(255, 255, 255, .07);
+  --btn: #ffa862;
   --lift: 0 10px 30px rgba(0, 0, 0, .28);
   --glow1: rgba(255, 138, 58, .2); --glow2: rgba(255, 190, 125, .09); --glow3: rgba(214, 88, 48, .11);
 }
@@ -36,7 +36,7 @@
   --glow1: rgba(255, 150, 60, .16); --glow2: rgba(120, 200, 140, .08); --glow3: rgba(60, 140, 100, .1); }
 [data-theme="day"] { --bg: #f6eee5; --line: #e4d5c6; --text: #2a1d14; --dim: #7a6656; --faint: #a8968a; --ember2: #c46a1c; --accent: #e8893a;
   --surface: #fffaf5; --raised: #fffdf9; --overlay: #fffaf5; --edge: rgba(80, 45, 20, .12); --edge2: rgba(80, 45, 20, .24);
-  --shine: inset 0 1px 0 rgba(255, 255, 255, .9); --lift: 0 8px 24px rgba(90, 50, 20, .12);
+  --lift: 0 8px 24px rgba(90, 50, 20, .12);
   --glow1: rgba(255, 150, 70, .22); --glow2: rgba(255, 200, 140, .2); --glow3: rgba(240, 120, 70, .12); }
 * { box-sizing: border-box; }
 @supports (-moz-appearance: none) { * { scrollbar-width: thin; scrollbar-color: var(--line) transparent; } }
@@ -46,28 +46,25 @@
 ::-webkit-scrollbar-thumb:hover { background: var(--faint); }
 ::-webkit-scrollbar-button { display: none; }
 html { background: var(--bg); }
-html, body { margin: 0; height: 100%; height: var(--app-h, 100dvh); }
-body { background: radial-gradient(55% 34% at 50% 27%, var(--glow1), transparent 72%),
+html, body { margin: 0; }
+body { position: fixed; inset: 0; background: radial-gradient(55% 34% at 50% 27%, var(--glow1), transparent 72%),
   radial-gradient(45% 35% at 92% 78%, var(--glow2), transparent 70%),
   radial-gradient(42% 32% at 6% 62%, var(--glow3), transparent 70%), var(--bg); color: var(--text);
   font: 15px/1.5 system-ui, "Segoe UI", sans-serif; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; overflow: hidden;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) max(8px, calc(env(safe-area-inset-bottom) - 16px)) env(safe-area-inset-left); box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 button { font: inherit; }
 
-/* a solid strip under the iPhone's status bar: without one, iOS 26 blurs whatever is behind it */
-#topcap { position: fixed; top: 0; left: 0; right: 0; height: max(1px, env(safe-area-inset-top)); background: var(--bg); z-index: 9; pointer-events: none; }
-
 /* top bar */
-.top { display: flex; align-items: center; gap: 8px; padding: 10px 14px; }
+.top { display: flex; align-items: center; gap: 8px; padding: 16px 14px 10px; }
 .top .title { flex: 1; text-align: center; font-weight: 650; letter-spacing: .03em; min-width: 0; }
-.tbtn { background: var(--raised); border: 1px solid var(--edge); box-shadow: var(--shine);
+.tbtn { background: var(--raised); border: 1px solid var(--edge);
   color: var(--text); border-radius: 999px; padding: 7px 14px; cursor: pointer; position: relative; white-space: nowrap; }
 .tbtn:hover { border-color: var(--edge2); }
 /* the switch between chatting and working on an experiment */
-.modes { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--raised); border: 1px solid var(--edge); box-shadow: var(--shine); }
+.modes { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--raised); border: 1px solid var(--edge); }
 .modes button { background: none; border: 0; color: var(--dim); padding: 6px 15px; border-radius: 999px; font-weight: 600; cursor: pointer; transition: color .2s, background .2s, box-shadow .2s; }
 .modes button:hover { color: var(--text); }
-.modes button.on { color: #2a1a0c; background: linear-gradient(180deg, #ffc690, #ff9e55); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 2px 10px rgba(255, 140, 60, .3); }
+.modes button.on { color: #2a1a0c; background: var(--btn); box-shadow: 0 2px 10px rgba(255, 140, 60, .3); }
 .tbtn .dot { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: none; box-shadow: 0 0 8px var(--accent); }
 .tbtn .dot.on { display: block; }
 
@@ -75,10 +72,10 @@ button { font: inherit; }
 .stage { min-height: 0; display: flex; flex-direction: column; align-items: center; padding: 0 16px; }
 .facewrap { position: relative; flex: none; }
 #face { display: block; width: min(26vh, 60vw, 240px); aspect-ratio: 1; cursor: pointer; touch-action: manipulation; }
-.whybtn { position: absolute; top: 8%; right: -8%; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--edge); background: var(--raised); box-shadow: var(--shine); color: var(--dim); cursor: pointer; }
+.whybtn { position: absolute; top: 8%; right: -8%; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--edge); background: var(--raised); color: var(--dim); cursor: pointer; }
 .whybtn:hover { color: var(--text); }
 .pop { display: none; position: absolute; top: 22%; left: 50%; transform: translateX(-50%); width: min(340px, 86vw); z-index: 5; background: var(--overlay); border: 1px solid var(--edge); border-radius: 20px; padding: 12px 14px; font-size: 13px; color: var(--dim);
-  box-shadow: var(--shine), var(--lift); }
+  box-shadow: var(--lift); }
 .pop.on { display: block; }
 .pop ul { margin: 6px 0 10px; padding-left: 18px; }
 .meter { display: grid; grid-template-columns: 82px 1fr 34px; align-items: center; gap: 8px; margin: 4px 0; }
@@ -87,9 +84,9 @@ button { font: inherit; }
 
 #chat { flex: 1; min-height: 0; width: min(760px, 100%); overflow-y: auto; padding: 8px 4px 12px; }
 #talk { display: flex; flex-direction: column; gap: 10px; }
-.msg { max-width: 82%; padding: 9px 14px; border-radius: 20px; white-space: pre-wrap; word-wrap: break-word; border: 1px solid var(--edge); box-shadow: var(--shine); }
+.msg { max-width: 82%; padding: 9px 14px; border-radius: 20px; white-space: pre-wrap; word-wrap: break-word; border: 1px solid var(--edge); }
 .msg.ember { background: var(--surface); align-self: flex-start; border-top-left-radius: 6px; font-size: 16px; }
-.msg.you { background: linear-gradient(180deg, rgba(255, 168, 98, .2), rgba(255, 140, 70, .12)); border-color: rgba(255, 190, 140, .2); align-self: flex-end; border-bottom-right-radius: 6px; }
+.msg.you { background: rgba(255, 150, 80, .15); border-color: rgba(255, 190, 140, .2); align-self: flex-end; border-bottom-right-radius: 6px; }
 .msg .t { display: block; font-size: 11px; color: var(--faint); margin-top: 2px; }
 .msg.new { animation: rise .45s ease-out; }
 .msg.typing { color: var(--dim); }
@@ -102,7 +99,7 @@ button { font: inherit; }
 
 /* experiment cards and the check-in, inside the conversation */
 .cards { display: flex; flex-direction: column; gap: 8px; align-self: flex-start; width: min(560px, 92%); margin-top: -2px; }
-.xcard { background: var(--raised); border: 1px solid var(--edge); box-shadow: var(--shine); border-radius: 20px; padding: 12px 14px; }
+.xcard { background: var(--raised); border: 1px solid var(--edge); border-radius: 20px; padding: 12px 14px; }
 .xcard h4 { margin: 0; font-size: 15px; }
 .xcard .q { color: var(--ember2); margin: 3px 0; }
 .xcard .meta { color: var(--dim); font-size: 13px; }
@@ -118,10 +115,10 @@ button { font: inherit; }
 /* the experiment line above the input */
 .dock { flex: none; position: relative; width: min(760px, 100%); display: flex; justify-content: center; }
 #expcard { position: absolute; bottom: calc(100% + 2px); left: 0; right: 0; z-index: 4; }
-#expcard .panel { margin: 0; max-height: 46vh; overflow-y: auto; background: var(--overlay); box-shadow: var(--shine), 0 -8px 30px rgba(0,0,0,.4); }
+#expcard .panel { margin: 0; max-height: 46vh; overflow-y: auto; background: var(--overlay); box-shadow: 0 -8px 30px rgba(0,0,0,.4); }
 #sessionbar { flex: none; min-width: 0; max-width: 100%; }
 #sessionbar:not(:empty) { padding-top: 6px; }
-.pill { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; background: var(--raised); border: 1px solid var(--edge); box-shadow: var(--shine), var(--lift); border-radius: 999px; padding: 6px 6px 6px 16px; font-size: 14px; color: var(--dim); max-width: 100%; }
+.pill { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; background: var(--raised); border: 1px solid var(--edge); box-shadow: var(--lift); border-radius: 999px; padding: 6px 6px 6px 16px; font-size: 14px; color: var(--dim); max-width: 100%; }
 .pill b { color: var(--text); font-weight: 600; }
 .pill .open { background: none; border: 0; color: inherit; padding: 0; cursor: pointer; text-align: left; }
 .pill .open:hover b { text-decoration: underline; }
@@ -130,7 +127,7 @@ button { font: inherit; }
 
 /* saying something */
 form.say { display: flex; gap: 6px; align-items: flex-end; padding: 5px; width: min(760px, calc(100% - 24px)); margin: 8px auto 0; border-radius: 26px;
-  background: var(--raised); border: 1px solid var(--edge); box-shadow: var(--shine), var(--lift); transition: border-color .2s; }
+  background: var(--raised); border: 1px solid var(--edge); box-shadow: var(--lift); transition: border-color .2s; }
 form.say:focus-within { border-color: rgba(255, 179, 107, .45); }
 #text { flex: 1; resize: none; background: none; color: var(--text); border: 0; padding: 9px 12px; font: inherit; font-size: 16px; min-height: 42px; max-height: 160px; }
 #text:focus { outline: none; }
@@ -143,7 +140,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 /* free messages and Ember Plus */
 #freehint { font-size: 12.5px; color: var(--dim); text-align: center; padding: 2px 16px 0; min-height: 0; }
 #paywall { display: none; width: min(760px, calc(100% - 24px)); margin: 10px auto 4px; background: var(--raised); border: 1px solid rgba(255, 179, 107, .45); border-radius: 26px; padding: 14px 16px; text-align: center;
-  box-shadow: var(--shine), var(--lift); }
+  box-shadow: var(--lift); }
 #paywall.on { display: block; }
 #paywall h3 { margin: 0 0 4px; font-size: 16px; }
 #paywall p { margin: 0 0 10px; color: var(--dim); font-size: 14px; }
@@ -153,7 +150,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 /* the menu (⋯) */
 .menuwrap { position: relative; }
 .menu { display: none; position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; min-width: 240px; background: var(--overlay); border: 1px solid var(--edge); border-radius: 22px; padding: 6px;
-  box-shadow: var(--shine), 0 16px 40px rgba(0,0,0,.45); }
+  box-shadow: 0 16px 40px rgba(0,0,0,.45); }
 .menu.on { display: block; animation: pop .18s ease-out; }
 @keyframes pop { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: none; } }
 .menu button, .menu a { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--text); padding: 10px 14px; border-radius: 16px; font: inherit; font-size: 15px; cursor: pointer; text-decoration: none; }
@@ -178,9 +175,9 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .steps-ios { text-align: left; color: var(--text); max-width: 340px; padding-left: 22px; margin: 0; }
 .problem { color: var(--danger); }
 
-.btn { background: linear-gradient(180deg, #ffc690, #ff9e55); color: #2a1a0c; border: 0; border-radius: 999px; padding: 8px 16px; font-weight: 600; cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -1px 0 rgba(150, 60, 10, .25), 0 4px 14px rgba(255, 140, 60, .28); }
-.btn.ghost { background: var(--raised); color: var(--text); border: 1px solid var(--edge); box-shadow: var(--shine); font-weight: 500; }
+.btn { background: var(--btn); color: #2a1a0c; border: 0; border-radius: 999px; padding: 8px 16px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(255, 140, 60, .28); }
+.btn.ghost { background: var(--raised); color: var(--text); border: 1px solid var(--edge); font-weight: 500; }
 .btn:disabled { opacity: .45; cursor: default; }
 .armed { color: var(--danger) !important; border-color: var(--danger) !important; }
 
@@ -198,7 +195,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .drawer .body { flex: 1; overflow-y: auto; padding: 16px; }
 
 /* experiment */
-.panel { background: var(--raised); border: 1px solid var(--edge); box-shadow: var(--shine); border-radius: 22px; padding: 14px 16px; margin-bottom: 10px; }
+.panel { background: var(--raised); border: 1px solid var(--edge); border-radius: 22px; padding: 14px 16px; margin-bottom: 10px; }
 .panel h3 { margin: 0 0 2px; font-size: 16px; }
 .panel .q { color: var(--ember2); margin: 4px 0; }
 .panel .meta, .panel .why2 { color: var(--dim); font-size: 13px; }
@@ -216,7 +213,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 /* what it knows */
 .sub { color: var(--dim); margin: 0 0 18px; }
 .kind { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin: 20px 0 8px; }
-.card { background: var(--surface); border: 1px solid var(--edge); box-shadow: var(--shine); border-radius: 18px; padding: 11px 14px; margin-bottom: 8px; display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+.card { background: var(--surface); border: 1px solid var(--edge); border-radius: 18px; padding: 11px 14px; margin-bottom: 8px; display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
 .card .cbody { flex: 1; min-width: 200px; }
 .card .src { font-size: 13px; color: var(--dim); margin-top: 3px; }
 .card .src q { font-style: italic; }
@@ -224,7 +221,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .card input { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--accent); border-radius: 8px; padding: 6px 8px; font: inherit; }
 
 @media (max-width: 560px) {
-  .top { padding: 8px 10px; gap: 6px; }
+  .top { padding: 14px 10px 8px; gap: 6px; }
   .tbtn { padding: 7px 12px; font-size: 14px; }
   .modes button { padding: 6px 11px; font-size: 14px; }
   #face { width: min(22vh, 50vw); }
@@ -234,7 +231,6 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 </style>
 </head>
 <body>
-<div id="topcap"></div>
 <div class="top">
   <button class="tbtn" id="openKnows">What it knows</button>
   <div class="title"><div class="modes" id="modes"><button data-mode="chat">Chat</button><button data-mode="experiment">Experiment</button></div></div>
@@ -357,16 +353,6 @@ function setSession(session) {
 }
 $("#googleBtn").onclick = () => sb && sb.auth.signInWithOAuth({provider: "google", options: {redirectTo: location.origin}});
 
-// opened from the iPhone's home screen, 100dvh can come out shorter than the screen (a gap under the input):
-// there the page takes the screen's own height
-function fitHeight() {
-  if (!navigator.standalone && !matchMedia("(display-mode: standalone)").matches) return;
-  const tall = innerHeight >= innerWidth, a = screen.width, b = screen.height;
-  document.documentElement.style.setProperty("--app-h", Math.max(innerHeight, tall ? Math.max(a, b) : Math.min(a, b)) + "px");
-}
-fitHeight();
-addEventListener("resize", fitHeight);
-
 let started = false;
 function start() {
   if (started) return;
@@ -444,7 +430,8 @@ function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": 
 
 function render() {
   $("#note").innerHTML = S.problem
-    ? `<span class="problem">Its mind had a problem: ${esc(S.problem)}. The simple template mind answered instead.</span>` : "";
+    ? `<span class="problem">Its mind had a problem: ${esc(S.problem)}. The simple template mind answered instead.</span>`
+    : Date.now() < flash.until ? flash.html : "";
   const key = JSON.stringify([S.talk.length, S.talk.length && S.talk[S.talk.length - 1].t, S.thinking, S.checkin_due,
     Object.values(S.exps).map(x => x.status), !!S.experiment, !!(S.experiment && S.experiment.time_up)]);
   if (key !== lastTalkKey) { lastTalkKey = key; renderTalk(); }
@@ -474,11 +461,12 @@ function renderPlan() {
   item.textContent = P.plus ? "Manage Ember Plus" : `Get Ember Plus · ${P.price}`;
   item.dataset.manage = P.plus ? "1" : "";
 }
+let flash = {html: "", until: 0};      // a short note under the input that outlives the next poll
 async function goPlus(manage, btn) {
   if (btn) btn.disabled = true;
   const r = await post(manage ? "/plus/portal" : "/plus/checkout");
   if (r && r.url) location.href = r.url;
-  else if (btn) { btn.disabled = false; $("#note").innerHTML = `<span class="problem">Couldn't open the payment page. Try again in a moment.</span>`; }
+  else if (btn) { btn.disabled = false; flash = {html: `<span class="problem">Couldn't open the payment page. Try again in a moment.</span>`, until: Date.now() + 8000}; }
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-plus]");
