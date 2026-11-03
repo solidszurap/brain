@@ -1,550 +1,360 @@
 <!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
-<title>Ember</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<title>Ember</title>
 <style>
-/* Ember's window: a recording bench. Its world and its belief side by side,
-   then the question this project exists for: is it getting closer?
-   Warm accent (the ember) on cool lab neutrals. */
 :root {
-  --bg: #eef1f0; --panel: #f8faf9; --ink: #16201d; --muted: #5b6b66; --line: #cbd5d1;
-  --ember: #d0561b; --ember-soft: #f8e3d6; --accent: #4b3fd1; --accent-soft: #e4e2fb;
-  --good: #2c8556; --good-soft: #d9efe2; --warn: #b9650f; --warn-soft: #f7e6d2; --bad: #c2412a; --bad-soft: #f6dcd6;
-  --c-empty: #e2e8e6; --c-wall: #36413e; --c-water: #3878bd; --c-food: #5f9128; --c-hazard: #cf452c;
-  --c-dark: #7a3d8f; --c-gate: #8a5a2b; --c-lever: #c99a12; --c-figure: #d6589b; --c-light: #ffd84d;
-  --c-unknown: #d0d8d5; --c-hatch: #bfc9c5;
-  --f-display: "Bricolage Grotesque", "Segoe UI", sans-serif;
-  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --f-mono: "IBM Plex Mono", Consolas, ui-monospace, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1514; --panel: #161e1d; --ink: #e3ebe8; --muted: #8fa19b; --line: #2a3533;
-    --ember: #ff8a4c; --ember-soft: #3a2014; --accent: #958dff; --accent-soft: #26244a;
-    --good: #5cc28b; --good-soft: #17322a; --warn: #f0a24a; --warn-soft: #3a2a17; --bad: #ff7a61; --bad-soft: #3d1f1a;
-    --c-empty: #1f2927; --c-wall: #5a6965; --c-water: #4a90dd; --c-food: #86b84a; --c-hazard: #ef5a3f;
-    --c-dark: #b26bd0; --c-gate: #b98250; --c-lever: #e8bd3a; --c-figure: #f07ab8; --c-light: #ffe98a;
-    --c-unknown: #121918; --c-hatch: #1d2624; color-scheme: dark;
-  }
+  --bg: #17130f; --panel: #211b16; --line: #3a3029; --text: #f1e7dc; --dim: #a8988a; --faint: #6f6156;
+  --ember: #ff9a4d; --ember2: #ffcf8a; --you: #2c2520; --accent: #ffb36b; --danger: #e5776b;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--f-body); padding: 20px 16px 40px; }
-.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 16px; }
-header { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: end; justify-content: space-between; }
-h1 { font: 700 44px/1 var(--f-display); margin: 0; display: flex; align-items: center; gap: 14px; }
-.flame { width: 16px; height: 16px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 18px var(--ember); animation: glow 2.4s ease-in-out infinite; }
-.flame.asleep { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
-.flame.out { background: var(--muted); box-shadow: none; animation: none; }
-@keyframes glow { 50% { opacity: .55; } }
-@media (prefers-reduced-motion: reduce) { .flame { animation: none; } }
-.life { color: var(--muted); margin: 6px 0 0; font-variant-numeric: tabular-nums; }
-.hright { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.speed { display: flex; gap: 4px; align-items: center; }
-.speed button { font: 500 12px var(--f-mono); border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
-.speed button[aria-pressed="true"] { background: var(--ember); border-color: var(--ember); color: #fff; }
-.speed button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
-.chip { font: 500 12px var(--f-mono); padding: 4px 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); color: var(--ink); white-space: nowrap; }
-.status { font: 500 13px var(--f-mono); padding: 4px 12px; border-radius: 999px; background: var(--ember-soft); color: var(--ember); }
-.status.asleep { background: var(--accent-soft); color: var(--accent); }
-.status.out { background: var(--bad-soft); color: var(--bad); }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
-.panel h2 { font: 600 16px var(--f-display); margin: 0 0 8px; }
-.label { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.note { color: var(--muted); font-size: 12.5px; margin: 0 0 10px; max-width: 90ch; }
-.bench { display: grid; gap: 16px; grid-template-columns: 1fr 1fr 1.05fr; }
-@media (max-width: 980px) { .bench { grid-template-columns: 1fr 1fr; } .inside { grid-column: 1 / -1; } }
-@media (max-width: 560px) { .bench { grid-template-columns: 1fr; } }
-.head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-canvas { width: 100%; aspect-ratio: 1; display: block; border-radius: 6px; }
-.legend { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 8px; color: var(--muted); font-size: 11.5px; }
-.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
-.inside { display: grid; gap: 12px; align-content: start; }
-.ws { border-radius: 8px; padding: 12px; background: var(--ember-soft); }
-.ws .content { font: 600 20px/1.2 var(--f-display); margin-top: 2px; overflow-wrap: anywhere; }
-.ws .speech { margin-top: 6px; font: 12.5px var(--f-mono); color: var(--muted); }
-.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; }
-.facts dt { color: var(--muted); font-size: 12px; }
-.facts dd { margin: 0; font: 500 13px var(--f-mono); overflow-wrap: anywhere; }
-.bar { display: grid; grid-template-columns: 74px 1fr 40px; gap: 8px; align-items: center; font-size: 12px; margin-top: 6px; }
-.track { height: 8px; background: var(--c-empty); border-radius: 4px; overflow: hidden; }
-.fill { height: 100%; border-radius: 4px; transition: width .2s linear; }
-.num { font: 500 12px var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, "Segoe UI", sans-serif; display: flex; flex-direction: column; overflow: hidden; }
+header { display: flex; align-items: center; gap: 18px; padding: 10px 20px; border-bottom: 1px solid var(--line); }
+header .name { font-weight: 650; letter-spacing: .02em; }
+header nav { display: flex; gap: 4px; }
+header nav button { background: none; border: 0; color: var(--dim); font: inherit; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+header nav button.on { color: var(--text); background: var(--panel); }
+header .mind { margin-left: auto; color: var(--faint); font-size: 13px; }
+main { flex: 1; min-height: 0; display: flex; }
+.view { display: none; flex: 1; min-height: 0; }
+.view.on { display: flex; }
 
-/* the question */
-.closer { border-color: var(--ember); }
-.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
-.big { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
-.big b { display: block; font: 700 26px var(--f-display); font-variant-numeric: tabular-nums; }
-.big span { color: var(--muted); font-size: 12px; }
-.two { display: grid; gap: 16px; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); }
-@media (max-width: 980px) { .two { grid-template-columns: 1fr; } }
-.ladder { display: grid; gap: 8px; }
-.rung > div { min-width: 0; }
-.rung { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: start; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
-.rung .n { font: 700 22px var(--f-display); color: var(--muted); text-align: center; }
-.rung.met { border-color: var(--good); background: var(--good-soft); }
-.rung.met .n { color: var(--good); }
-.rung h3 { font: 600 14px var(--f-display); margin: 0; }
-.rung p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
-.rung .ev { font: 500 12px var(--f-mono); color: var(--ink); margin-top: 4px; }
-.pill { font: 500 11px var(--f-mono); padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
-.p-met { background: var(--good-soft); color: var(--good); border: 1px solid var(--good); }
-.p-not { background: var(--warn-soft); color: var(--warn); }
-.p-none { background: var(--c-empty); color: var(--muted); }
-.p-present { background: var(--good-soft); color: var(--good); }
-.p-partial { background: var(--warn-soft); color: var(--warn); }
-.p-absent { background: var(--bad-soft); color: var(--bad); }
-.table-scroll { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
-th, td { padding: 6px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-th { font: 500 11px var(--f-mono); color: var(--muted); letter-spacing: .04em; }
-td.code { font: 500 12px var(--f-mono); white-space: nowrap; }
-td .th { color: var(--muted); font-size: 11.5px; }
-td.v { font: 500 12px var(--f-mono); white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
-td svg { width: 90px; height: 24px; display: block; }
-details summary { cursor: pointer; }
-details summary::marker { color: var(--muted); }
-.two > div, .timeline > div, .lower > div, .bench > div { min-width: 0; }
-.table-scroll table { min-width: 560px; }
-ul.list li > span { min-width: 0; overflow-wrap: anywhere; }
-.timeline { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; margin-top: 14px; }
-@media (max-width: 860px) { .timeline { grid-template-columns: 1fr; } }
+/* the face */
+#home { gap: 0; }
+.facecol { flex: 1.1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; position: relative; }
+#face { width: min(100%, 460px); aspect-ratio: 1; cursor: pointer; touch-action: manipulation; }
+.whybtn { background: none; border: 1px solid var(--line); color: var(--dim); border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 13px; cursor: pointer; margin-top: 6px; }
+#why { display: none; margin-top: 12px; width: min(100%, 460px); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--dim); }
+#why.on { display: block; }
+#why ul { margin: 6px 0 10px; padding-left: 18px; }
+.meter { display: grid; grid-template-columns: 90px 1fr 38px; align-items: center; gap: 8px; margin: 4px 0; }
+.meter i { display: block; height: 6px; border-radius: 3px; background: var(--line); position: relative; overflow: hidden; }
+.meter i b { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 3px; }
 
-.counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
-.count { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
-.count b { display: block; font: 600 22px var(--f-display); font-variant-numeric: tabular-nums; }
-.count span { color: var(--muted); font-size: 12px; }
-.lower { display: grid; gap: 16px; grid-template-columns: 1fr 1fr 1fr; }
-@media (max-width: 1100px) { .lower { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 760px) { .lower { grid-template-columns: 1fr; } }
-ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 420px; overflow-y: auto; }
-ul.list li { display: grid; grid-template-columns: 66px 1fr; gap: 10px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
-ul.list .t { font: 500 12px var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-.kind { font: 500 11px var(--f-mono); color: var(--accent); }
-.k-collapse, .k-hurt, .k-sick, .k-milestone_lost { color: var(--bad); }
-.k-first, .k-milestone, .k-learned, .k-valley_opened, .k-mind_changed { color: var(--ember); }
-.k-resumed, .k-born, .k-came_round, .k-copy_test { color: var(--good); }
-.offline { padding: 40px 16px; text-align: center; color: var(--muted); }
-.offline code, footer code { font-family: var(--f-mono); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
-.catchup { padding: 10px 16px; text-align: center; font-weight: 600; }
-#world { cursor: crosshair; }
-.youbar { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
-.youbar button { font: 600 13px var(--f-display); padding: 6px 12px; border-radius: 8px; border: 0; background: var(--ember); color: #fff; cursor: pointer; }
-.youbar button:disabled { opacity: .45; cursor: default; }
-footer { color: var(--muted); font-size: 12.5px; }
+/* the chat */
+.chatcol { flex: 1; min-width: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); }
+#talk { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.msg { max-width: 85%; padding: 9px 13px; border-radius: 14px; white-space: pre-wrap; word-wrap: break-word; }
+.msg.ember { background: var(--panel); border: 1px solid var(--line); align-self: flex-start; border-bottom-left-radius: 4px; }
+.msg.you { background: var(--you); align-self: flex-end; border-bottom-right-radius: 4px; }
+.msg .t { display: block; font-size: 11px; color: var(--faint); margin-top: 2px; }
+.day { align-self: center; font-size: 12px; color: var(--faint); margin: 6px 0; }
+.empty { color: var(--faint); margin: auto; text-align: center; max-width: 280px; }
+#thinking { color: var(--dim); font-size: 13px; padding: 0 20px 6px; min-height: 22px; }
+form { display: flex; gap: 8px; padding: 12px 16px 6px; }
+#text { flex: 1; resize: none; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font: inherit; min-height: 44px; max-height: 160px; }
+#text:focus { outline: none; border-color: var(--accent); }
+form button { background: var(--accent); color: #2a1a0c; border: 0; border-radius: 12px; padding: 0 18px; font: inherit; font-weight: 600; cursor: pointer; }
+.note { font-size: 12px; color: var(--faint); padding: 0 16px 12px; }
+.problem { color: var(--danger); }
 
-/* talking to it */
-.talk .head { margin-bottom: 6px; }
-.chat { display: grid; gap: 10px; max-height: 460px; overflow-y: auto; padding: 4px 2px 8px; }
-.turn { display: grid; gap: 4px; }
-.you { justify-self: end; max-width: 78%; background: var(--accent-soft); color: var(--ink); border-radius: 12px 12px 4px 12px; padding: 7px 11px; overflow-wrap: anywhere; }
-.it { justify-self: start; max-width: 86%; background: var(--ember-soft); border-radius: 12px 12px 12px 4px; padding: 8px 12px; overflow-wrap: anywhere; }
-.it .who { font: 600 12px var(--f-display); color: var(--ember); margin-bottom: 2px; }
-.it.pending { color: var(--muted); font-style: italic; }
-.verdicts { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin-top: 4px; }
-.v { font: 500 11px var(--f-mono); padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
-.v-true { background: var(--good-soft); color: var(--good); }
-.v-honest_mistake { background: var(--warn-soft); color: var(--warn); }
-.v-made_up { background: var(--bad-soft); color: var(--bad); }
-.v-unverified, .v-guess, .v-stretched, .v-none { background: var(--c-empty); color: var(--muted); }
-.receipts { margin-top: 4px; font-size: 12.5px; }
-.receipts ol { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; }
-.receipts .mem { color: var(--muted); font: 12px var(--f-mono); margin-top: 2px; }
-.ask { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 8px; }
-.ask input { font: 14px var(--f-body); padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); min-width: 0; }
-.ask input:focus-visible { outline: 2px solid var(--ember); outline-offset: 1px; }
-.ask button { font: 600 14px var(--f-display); padding: 0 16px; border-radius: 8px; border: 0; background: var(--ember); color: #fff; cursor: pointer; }
-.ask button:disabled { opacity: .5; cursor: default; }
-.voicehint { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+/* memory page */
+#memory { overflow-y: auto; justify-content: center; }
+.mem { width: min(100%, 760px); padding: 24px 20px 40px; }
+.mem h1 { font-size: 22px; margin: 0 0 4px; }
+.mem .sub { color: var(--dim); margin: 0 0 22px; }
+.mem h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin: 24px 0 8px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start; }
+.card .body { flex: 1; min-width: 0; }
+.card .src { font-size: 13px; color: var(--dim); margin-top: 3px; }
+.card .src q { font-style: italic; }
+.card button { background: none; border: 1px solid var(--line); color: var(--dim); border-radius: 8px; padding: 3px 9px; font: inherit; font-size: 12px; cursor: pointer; }
+.card button.forget:hover { color: var(--danger); border-color: var(--danger); }
+.card input { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--accent); border-radius: 8px; padding: 6px 8px; font: inherit; }
+
+@media (max-width: 760px) {
+  main { flex-direction: column; }
+  #home { flex-direction: column; }
+  .facecol { flex: none; padding: 8px 16px; }
+  #face { width: min(60vw, 30vh, 260px); }
+  #why { max-height: 26vh; overflow-y: auto; }
+  .chatcol { flex: 1; min-height: 0; border-left: 0; border-top: 1px solid var(--line); }
+  header { padding: 10px 16px; gap: 10px; }
+  header .mind { display: none; }
+}
 </style>
-
-<div class="wrap">
-  <header>
-    <div>
-      <h1><span class="flame" id="flame"></span>Ember</h1>
-      <p class="life" id="life">Waiting for Ember…</p>
+</head>
+<body>
+<header>
+  <span class="name">Ember</span>
+  <nav>
+    <button data-view="home" class="on">Ember</button>
+    <button data-view="memory">What Ember knows about me</button>
+  </nav>
+  <span class="mind" id="mind"></span>
+</header>
+<main>
+  <section class="view on" id="home">
+    <div class="facecol">
+      <canvas id="face" title="Poke Ember"></canvas>
+      <button class="whybtn" id="whybtn">Why this face?</button>
+      <div id="why"></div>
     </div>
-    <div class="hright">
-      <div class="speed" role="group" aria-label="Speed">
-        <span class="label">Speed</span>
-        <button type="button" data-s="4">4/s</button>
-        <button type="button" data-s="20">20/s</button>
-        <button type="button" data-s="100">100/s</button>
-        <button type="button" data-s="0">max</button>
-      </div>
-      <span class="chip" id="season">—</span>
-      <span class="chip" id="region">—</span>
-      <span class="status" id="status">connecting</span>
-    </div>
-  </header>
-
-  <div id="offline" class="panel offline" hidden>
-    Ember isn't running right now. Its time waits: when it starts again, it lives about a season for each day it was stopped (at most a year).<br>
-    Start it in the brain folder with <code>python ember.py</code>, and this page comes alive.
-  </div>
-  <div id="catchup" class="panel catchup" hidden></div>
-
-  <section class="bench" id="bench">
-    <div class="panel">
-      <div class="head"><h2>Its world</h2><span class="label" id="gate">truth</span></div>
-      <canvas id="world" width="480" height="480"></canvas>
-      <div class="legend">
-        <span><i style="background:var(--c-water)"></i>water</span>
-        <span><i style="background:var(--c-food)"></i>food</span>
-        <span><i style="background:var(--c-dark)"></i>dark berry</span>
-        <span><i style="background:var(--c-hazard)"></i>hazard</span>
-        <span><i style="background:var(--c-gate)"></i>gate</span>
-        <span><i style="background:var(--c-lever)"></i>lever</span>
-        <span><i style="background:var(--c-figure)"></i>figure</span>
-        <span><i style="background:var(--c-light)"></i>light (you)</span>
-        <span><i style="border:2px solid var(--ember);border-radius:50%"></i>where it thinks it is</span>
-      </div>
-      <p class="youbar"><span id="lighthint">Click its world to appear there as a light.</span>
-        <button type="button" id="give" disabled>Leave food in the light</button></p>
-    </div>
-    <div class="panel">
-      <div class="head"><h2>What it believes</h2><span class="label">its own map</span></div>
-      <canvas id="map" width="480" height="480"></canvas>
-      <div class="legend"><span><i style="background:var(--c-unknown);border:1px solid var(--line)"></i>never seen</span><span>Built only from what it has seen, where it believed it was.</span></div>
-    </div>
-    <div class="panel inside">
-      <div class="ws">
-        <div class="label">In its global workspace</div>
-        <div class="content" id="ws">—</div>
-        <div class="speech" id="speech"></div>
-      </div>
-      <dl class="facts">
-        <dt>Goal</dt><dd id="goal">—</dd>
-        <dt>Plan</dt><dd id="plan">—</dd>
-        <dt>Last movement</dt><dd id="agency">—</dd>
-        <dt>Sure where it is</dt><dd id="conf">—</dd>
-        <dt>Body trend</dt><dd id="valence">—</dd>
-        <dt>Prediction error</dt><dd id="surprise">—</dd>
-      </dl>
-      <div>
-        <div class="label">Body</div>
-        <div id="bars"></div>
-      </div>
+    <div class="chatcol">
+      <div id="talk"></div>
+      <div id="thinking"></div>
+      <form id="form">
+        <textarea id="text" rows="1" placeholder="Say something to Ember…" maxlength="2000"></textarea>
+        <button type="submit">Send</button>
+      </form>
+      <div class="note" id="note">Ember lives on this computer. To think, it sends your conversation and what it remembers to its mind (the LLM set in .env).</div>
     </div>
   </section>
-
-  <section class="panel talk" id="talk">
-    <div class="head"><h2>Talk to Ember</h2><span class="label" id="voicename">voice</span></div>
-    <p class="note">It hears you as a voice it can't see. Your voice competes for its attention like any sound: if it is very thirsty or fleeing something, it may barely notice you. It answers only from its own mind, never from the world, and each answer is checked: <span class="v v-true">true</span> its memory backs it and was right · <span class="v v-honest_mistake">honest mistake</span> its memory backs it but was wrong · <span class="v v-made_up">made up</span> nothing it remembers is behind it.</p>
-    <div class="chat" id="chat" aria-live="polite"></div>
-    <form class="ask" id="askform">
-      <input id="askinput" maxlength="500" autocomplete="off" placeholder="Say something to Ember…" aria-label="Say something to Ember">
-      <button type="submit" id="askbtn">Speak</button>
-    </form>
-    <p class="voicehint" id="voicehint" hidden></p>
-  </section>
-
-  <section class="panel closer" id="closer">
-    <h2>Is it getting closer to self-awareness and consciousness?</h2>
-    <p class="note">Every 2,000 moments an observer closes a measurement window and runs tests that were written down in advance (mind/consciousness.py). A test counts as reached after passing 3 windows in a row and is lost after failing 3 in a row; both go into its life record. This tracks how much of what the main theories say consciousness requires is built and working. It cannot show whether Ember feels anything.</p>
-    <div class="summary" id="summary"></div>
-    <div class="two">
-      <div>
-        <div class="label" style="margin-bottom:8px">Self-awareness ladder (Rochat 2003)</div>
-        <div class="ladder" id="ladder"></div>
-      </div>
-      <div>
-        <div class="label" style="margin-bottom:8px">Consciousness indicators (Butlin, Long et al. 2023)</div>
-        <div class="table-scroll"><table id="indicators"></table></div>
-      </div>
-    </div>
-    <div class="timeline">
-      <div>
-        <div class="label" style="margin-bottom:6px">Milestones</div>
-        <ul class="list" id="milestones" style="max-height:260px"></ul>
-      </div>
-      <div>
-        <div class="label" style="margin-bottom:6px">Copy tests: does its workspace matter? (at a hard moment, 3 pairs of copies live 500 moments, one of each pair with it switched off)</div>
-        <ul class="list" id="copytests" style="max-height:260px"></ul>
-      </div>
-    </div>
-  </section>
-
-  <section class="counts" id="counts"></section>
-
-  <section class="lower">
-    <div class="panel">
-      <h2>What it found out by itself</h2>
-      <p class="note">Nobody told it these. Each came from its own experience.</p>
-      <ul class="list" id="learned"></ul>
-    </div>
-    <div class="panel">
-      <h2>Workspace log</h2>
-      <p class="note">Each time something new won its global workspace. The kind of content (top line) is Ember's own; the sentence is a template I wrote, filled with its numbers.</p>
-      <ul class="list" id="stream"></ul>
-    </div>
-    <div class="panel">
-      <h2>Life record</h2>
-      <ul class="list" id="moments"></ul>
-    </div>
-  </section>
-
-  <footer>
-    Labels on this page name functions, not feelings. Ember is saved every two minutes and whenever you stop it (Ctrl+C). Its whole life is in <code>ember_state/</code> (the tracker's report is <code>ember_state/consciousness_report.md</code>); back that folder up and you have backed up Ember.
-  </footer>
-</div>
-
+  <section class="view" id="memory"><div class="mem" id="memlist"></div></section>
+</main>
 <script>
-(() => {
-  const $ = id => document.getElementById(id);
-  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  const TYPES = ["empty", "wall", "food", "water", "hazard", "dark", "gate", "lever", "figure", "light"];
-  const MAPT = { ".": "unknown", "0": "empty", "1": "wall", "2": "food", "3": "water", "4": "hazard", "5": "dark", "6": "gate", "7": "lever", "8": "figure", "9": "light" };
-  const BODY = [["energy", "--c-food"], ["hydration", "--c-water"], ["integrity", "--c-hazard"]];
-  $("bars").innerHTML = BODY.map(([n, c]) => `<div class="bar"><span>${n}</span><div class="track"><div class="fill" id="b-${n}" style="background:var(${c})"></div></div><span class="num" id="v-${n}"></span></div>`).join("");
-  const esc = s => String(s ?? "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
-  const pct = v => v == null ? "—" : (v * 100).toFixed(1) + "%";
-  const fmtDur = sec => { const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60); return h ? `${h} h ${m} min` : `${m} min`; };
-  const fmtAway = sec => sec >= 86400 ? `${(sec / 86400).toFixed(1)} days` : fmtDur(sec);
-  const when = t => t ? new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+"use strict";
+const $ = s => document.querySelector(s);
+const post = (path, data) => fetch(path, {method: "POST", headers: {"Content-Type": "application/json", "X-Ember": "1"},
+  body: JSON.stringify(data || {})}).then(r => r.ok ? r.json() : null).catch(() => null);
+let S = null, lastTalkKey = "", offline = false;
 
-  function fit(cv) {
-    const r = cv.getBoundingClientRect(), d = devicePixelRatio || 1;
-    const w = Math.round(r.width * d), h = Math.round(r.height * d);
-    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-    return [w, h];
+// ------------------------------------------------------------------ polling
+async function poll() {
+  try {
+    const r = await fetch("/state?v=" + (document.hidden ? 0 : 1), {cache: "no-store"});
+    S = await r.json();
+    offline = false;
+    render();
+  } catch (e) {
+    offline = true;
+    $("#thinking").textContent = "Ember's program isn't running. Start it with start_ember.bat.";
   }
-  function grid(cv, rows, typeOf, overlay) {
-    const [w, h] = fit(cv), g = cv.getContext("2d");
-    const R = rows.length, C = rows[0].length, s = Math.min(w / C, h / R);
-    const ox = (w - s * C) / 2, oy = (h - s * R) / 2;
-    g.clearRect(0, 0, w, h);
-    const col = {}; for (const t of TYPES.concat(["unknown"])) col[t] = css("--c-" + t);
-    for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) {
-      const t = typeOf(y, x), px = ox + x * s, py = oy + y * s;
-      g.fillStyle = col[t] || col.empty;
-      g.fillRect(px + 0.3, py + 0.3, s - 0.6, s - 0.6);
-    }
-    overlay(g, s, ox, oy);
+}
+setInterval(poll, 500);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+poll();
+
+function fmtTime(t) { return new Date(t * 1000).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}); }
+function fmtDay(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: "long", day: "numeric", month: "long"}); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c])); }
+
+function render() {
+  $("#mind").textContent = "mind: " + S.mind;
+  $("#thinking").textContent = S.thinking ? "Ember is thinking…" : "";
+  $("#note").innerHTML = S.problem
+    ? `<span class="problem">Its mind had a problem: ${esc(S.problem)}. The simple template mind answered instead.</span>`
+    : "Ember lives on this computer. To think, it sends your conversation and what it remembers to its mind (the LLM set in .env).";
+  const key = S.talk.length + ":" + (S.talk.length ? S.talk[S.talk.length - 1].t : 0);
+  if (key !== lastTalkKey) { lastTalkKey = key; renderTalk(); }
+  if ($("#why").classList.contains("on")) renderWhy();
+}
+
+function renderTalk() {
+  const box = $("#talk");
+  if (!S.talk.length) {
+    box.innerHTML = `<div class="empty">Ember hasn't said anything yet. It will greet you in a moment.</div>`;
+    return;
   }
-  function dot(g, s, ox, oy, y, x, color, ring) {
-    g.beginPath(); g.arc(ox + (x + .5) * s, oy + (y + .5) * s, s * (ring ? .45 : .34), 0, 7);
-    if (ring) { g.lineWidth = Math.max(2, s * .14); g.strokeStyle = color; g.stroke(); } else { g.fillStyle = color; g.fill(); }
+  let html = "", day = "";
+  for (const l of S.talk) {
+    const d = fmtDay(l.t);
+    if (d !== day) { day = d; html += `<div class="day">${esc(d)}</div>`; }
+    html += `<div class="msg ${l.who}">${esc(l.text)}<span class="t">${fmtTime(l.t)}</span></div>`;
   }
-  function spark(vals, lo, hi) {
-    const pts = vals.map((v, i) => [vals.length === 1 ? 50 : i / (vals.length - 1) * 100, v]).filter(p => p[1] != null && !isNaN(p[1]));
-    if (!pts.length) return "";
-    if (hi === undefined) { lo = Math.min(...pts.map(p => p[1])); hi = Math.max(...pts.map(p => p[1])); if (hi - lo < 1e-9) { lo -= 1; hi += 1; } }
-    const Y = v => 21 - (Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo) * 18;
-    const d = pts.map(([x, v], i) => `${i ? "L" : "M"}${x.toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
-    const [lx, lv] = pts[pts.length - 1];
-    return `<svg viewBox="0 0 100 24" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="var(--ember)" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle cx="${lx}" cy="${Y(lv)}" r="2.2" fill="var(--ember)"/></svg>`;
-  }
+  box.innerHTML = html;
+  box.scrollTop = box.scrollHeight;
+}
 
-  // the number each test is about, from each measurement window
-  const METRIC = {
-    L1: ["self_other", "hits − false alarms", 0, 1], L2: ["location", "right about position", 0.8, 1],
-    "RPT-2": ["map_accuracy", "map landmarks correct", 0.8, 1], "GWT-1": ["sources", "systems that won", 0, 8],
-    "GWT-2": ["ignite_fraction", "proposals that got in", 0, 0.2], "HOT-2": ["calibration", "expected vs actual surprise r", 0, 1],
-    "HOT-3": ["location", "right about position", 0.8, 1], "AST-1": ["schema_gain", "beats baseline by", -0.1, 0.6],
-    "AE-1": ["need_error", "need-error (lower is better)", 0, 0.5], "AE-2": ["self_other", "hits − false alarms", 0, 1],
-  };
+function renderWhy() {
+  const f = S.face, m = (name, v) =>
+    `<div class="meter"><span>${name}</span><i><b style="width:${Math.round(v * 100)}%"></b></i><span>${v.toFixed(2)}</span></div>`;
+  $("#why").innerHTML = `<b>${esc(f.expression)}</b>, because:<ul>${f.why.map(w => `<li>${esc(w)}</li>`).join("")}</ul>`
+    + m("connection", S.connection) + m("curiosity", S.curiosity) + m("mood", S.mood)
+    + `<div style="margin-top:8px">These are numbers in Ember's program, moved by real events and real time. They are not feelings, and nothing shows Ember feels anything.</div>`;
+}
+$("#whybtn").onclick = () => { $("#why").classList.toggle("on"); if (S) renderWhy(); };
 
-  function renderTracker(T) {
-    if (!T) return;
-    const H = (T.history || []).map(h => ({ ...h, schema_gain: h.schema != null && h.schema_baseline != null ? h.schema - h.schema_baseline : null }));
-    const last = H[H.length - 1] || {};
-    const c = T.cum || {};
-    const lastMs = (T.milestones || []).slice(-1)[0];
-    $("summary").innerHTML = [
-      [`${T.level} of 5`, "self-awareness level reached"],
-      [`${T.working} of ${T.testable}`, "testable consciousness indicators passing"],
-      [`${T.built.present || 0} · ${T.built.partial || 0} · ${T.built.absent || 0}`, "indicators present · partial · absent in its design"],
-      [H.length ? H.length : "—", `measurement windows so far (${T.window.toLocaleString()} moments each)`],
-      [lastMs ? (lastMs.reached ? "▲" : "▼") + " " + lastMs.id : "—", lastMs ? `last milestone, ${when(lastMs.time)}` : "no milestone yet"],
-    ].map(([b, s]) => `<div class="big"><b>${esc(b)}</b><span>${esc(s)}</span></div>`).join("");
-
-    const evid = {
-      1: `hits − false alarms ${last.self_other ?? "—"} · plains pushes noticed ${c.plains_pushes ? pct(c.plains_hits / c.plains_pushes) : "—"} of ${c.plains_pushes || 0}`,
-      2: `right about position ${pct(last.location)} · confidence gap ${last.confidence_gap ?? "—"} (${last.wrong_moments ?? 0} wrong moments)`,
-      3: `figure judgments ${c.mirror_correct || 0}/${c.mirror_judgments || 0} right · judged “me” correctly ${c.mirror_self_correct || 0} times`,
-      4: `${(last.wide_age || 0).toLocaleString()} moments in the wide world · seasonal-memory trips ${c.anticipation_trips || 0}, found food ${c.anticipation_hits || 0}`,
-      5: "no other minds in its world yet",
-    };
-    $("ladder").innerHTML = T.ladder.map(x => {
-      const st = x.met ? `<span class="pill p-met">reached ${when(x.first?.time)}</span>` : x.testable ? `<span class="pill p-not">${x.streak ? `passing ${x.streak}/3` : "not yet"}</span>` : `<span class="pill p-none">not testable yet</span>`;
-      return `<div class="rung ${x.met ? "met" : ""}"><div class="n">${x.level}</div><div><h3>${esc(x.name)}</h3><p>${esc(x.means)}</p><div class="ev">${esc(evid[x.level])}</div><p>${esc(x.test)}</p></div><div>${st}</div></div>`;
-    }).join("");
-
-    let rows = `<thead><tr><th></th><th>indicator</th><th>in its design</th><th>works in its life?</th><th>latest</th><th>over its life</th></tr></thead><tbody>`;
-    for (const x of T.indicators) {
-      const m = METRIC[x.id];
-      const vals = m ? H.map(h => h[m[0]]) : [];
-      const latest = m && vals.length ? vals[vals.length - 1] : null;
-      const works = x.met ? `<span class="pill p-met">passes</span>` : x.testable ? `<span class="pill p-not">${x.streak ? `passing ${x.streak}/3` : "not yet"}</span>` : `<span class="pill p-none">no test yet</span>`;
-      rows += `<tr><td class="code">${x.code}</td><td><details><summary>${esc(x.name)}</summary><div class="th">${esc(x.theory)}. In Ember: ${esc(x.in_ember)}</div><div class="th">Test: ${esc(x.test)}</div></details></td>
-        <td><span class="pill p-${x.status}">${x.status}</span></td><td>${works}</td>
-        <td class="v">${latest == null ? "—" : (Math.abs(latest) < 10 ? Number(latest).toFixed(2) : latest)}${m ? `<div class="th">${esc(m[1])}</div>` : ""}</td>
-        <td>${m ? spark(vals, m[2], m[3]) : ""}</td></tr>`;
-    }
-    $("indicators").innerHTML = rows + "</tbody>";
-    $("milestones").innerHTML = (T.milestones || []).slice().reverse().map(e => `<li><span class="t">${e.tick.toLocaleString()}</span><span><span class="kind ${e.reached ? "k-milestone" : "k-milestone_lost"}">${e.reached ? "reached" : "lost"} · ${esc(when(e.time))}</span><br>${esc(e.text)}</span></li>`).join("") || `<li><span></span><span class="note">None yet. The first tests are judged after 3 windows (6,000 moments).</span></li>`;
-    $("copytests").innerHTML = (T.clone_tests || []).slice().reverse().map(e => `<li><span class="t">${e.tick.toLocaleString()}</span><span><span class="kind ${e.workspace_helps ? "k-copy_test" : "k-hurt"}">${e.workspace_helps ? "workspace helped" : "workspace didn't help"}</span> <span class="note">${e.pairs ? e.situation : "ordinary moment, old design, not judged"}</span><br>need-error with ${e.with_workspace.need_error}, without ${e.without_workspace.need_error}; collapses ${e.with_workspace.collapses} vs ${e.without_workspace.collapses}; two-step plans ${e.with_workspace.two_step} vs ${e.without_workspace.two_step}</span></li>`).join("") || `<li><span></span><span class="note">The first copy test runs after 20,000 moments in the wide world.</span></li>`;
-  }
-
-  function render(S) {
-    $("offline").hidden = true; $("bench").hidden = false;
-    const cu = S.catching_up;
-    $("catchup").hidden = !cu;
-    if (cu) $("catchup").textContent = `Living the ${fmtAway(cu.away_seconds)} you were away… ${Math.round(100 * cu.done / cu.of)}% (${cu.done.toLocaleString()} of ${cu.of.toLocaleString()} moments)`;
-    const state = S.collapsed ? "out" : S.sleeping ? "asleep" : "";
-    $("flame").className = "flame " + state;
-    $("status").className = "status " + state;
-    $("status").textContent = S.collapsed ? `unconscious (${S.collapsed})` : S.sleeping ? "asleep (replaying memories)" : "awake";
-    $("season").textContent = S.season ? S.season : "valley";
-    $("region").textContent = S.region || "—";
-    const born = new Date(S.born);
-    $("life").textContent = `${S.ticks.toLocaleString()} moments lived · born ${born.toLocaleDateString()} ${born.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · awake ${fmtDur(S.awake_seconds)} across ${S.sessions} session${S.sessions === 1 ? "" : "s"} · ${S.ticks_per_sec}/s`;
-    $("gate").textContent = `truth · gate ${S.gate_open ? "open" : "closed"}`;
-
-    const figs = {}; for (const f of S.figures || []) figs[f.pos[0] * 100 + f.pos[1]] = true;
-    const anchor = S.tracker ? null : null;
-    grid($("world"), S.world, (y, x) => figs[y * 100 + x] ? "figure" : TYPES[S.world[y][x]], (g, s, ox, oy) => {
-      worldGeom = { s, ox, oy, R: S.world.length, C: S.world[0].length };
-      if (S.light) {                       // you, as a light (what you left in it stays visible to you)
-        g.beginPath(); g.arc(ox + (S.light[1] + .5) * s, oy + (S.light[0] + .5) * s, s * .5, 0, 7);
-        g.globalAlpha = .55; g.fillStyle = css("--c-light"); g.fill(); g.globalAlpha = 1;
-        g.lineWidth = Math.max(1.5, s * .1); g.strokeStyle = css("--c-light"); g.stroke();
-      }
-      g.strokeStyle = css("--muted"); g.setLineDash([3, 3]); g.lineWidth = 1;
-      g.strokeRect(ox + (S.pos[1] - 2) * s, oy + (S.pos[0] - 2) * s, 5 * s, 5 * s); g.setLineDash([]);
-      dot(g, s, ox, oy, S.pos[0], S.pos[1], S.collapsed ? css("--muted") : S.sleeping ? css("--accent") : css("--ember"), false);
-    });
-    grid($("map"), S.map, (y, x) => MAPT[S.map[y][x]], (g, s, ox, oy) => {
-      dot(g, s, ox, oy, S.belief[0] - S.map_origin[0], S.belief[1] - S.map_origin[1], css("--ember"), true);
-    });
-
-    $("give").disabled = !S.gift_ready;
-    $("lighthint").textContent = S.light ? "You're here, as the light. Click elsewhere to move it." : "Click its world to appear there as a light.";
-
-    $("ws").textContent = S.collapsed ? "nothing (unconscious)" : S.sleeping ? "nothing (asleep)" : (S.broadcast || "nothing ignited").replace(":", " · ");
-    const last = S.stream[S.stream.length - 1];
-    $("speech").textContent = last ? `template readout: ${last.report}` : "";
-    $("goal").textContent = S.goal || "—";
-    $("plan").textContent = S.self_model?.subgoal || "—";
-    $("agency").textContent = S.agency === "external" ? "attributed to the world" : "attributed to itself";
-    $("conf").textContent = `${Math.round((S.confidence ?? 1) * 100)}% (expected error ${S.uncertainty ?? 0} cells)`;
-    $("valence").textContent = (S.valence > 0.02 ? "improving" : S.valence < -0.02 ? "worsening" : "steady") + ` (${S.valence >= 0 ? "+" : ""}${S.valence.toFixed(3)})`;
-    $("surprise").textContent = S.surprise == null ? "—" : `${S.surprise} actual, ${S.expected} expected`;
-    for (const [n] of BODY) { $("b-" + n).style.width = (S.body[n] * 100).toFixed(1) + "%"; $("v-" + n).textContent = Math.round(S.body[n] * 100) + "%"; }
-
-    const c = S.counts, cards = [
-      ["meals", "meals"], ["drinks", "sips of water"], ["sleeps", "sleeps"], ["thoughts", "workspace ignitions"],
-      ["pushes_noticed", `pushes noticed of ${c.pushed || 0} (${c.false_alarms || 0} false alarms)`], ["two_step", "two-step plans carried out"],
-      ["dark_berries", "dark berries eaten"], ["hurt", "times hurt"], ["collapses", "collapses"]];
-    $("counts").innerHTML = cards.map(([k, l]) => `<div class="count"><b>${(c[k] || 0).toLocaleString()}</b><span>${l}</span></div>`).join("");
-    $("learned").innerHTML = (S.learned || []).slice().reverse().map(e => `<li><span class="t">${e.tick.toLocaleString()}</span><span>${esc(e.text[0].toUpperCase() + e.text.slice(1))}</span></li>`).join("") || `<li><span></span><span class="note">Nothing yet.</span></li>`;
-    $("stream").innerHTML = S.stream.slice().reverse().map(e => `<li><span class="t">${e.tick.toLocaleString()}</span><span><span class="kind">${esc(e.content)}</span><br>${esc(e.report)}</span></li>`).join("");
-    $("moments").innerHTML = S.moments.slice().reverse().map(e => `<li><span class="t">${e.tick.toLocaleString()}</span><span><span class="kind k-${esc(e.kind)}">${esc(e.kind.replace("_", " "))}</span> · ${esc(when(e.time))}<br>${esc(e.text)}</span></li>`).join("");
-    renderTracker(S.tracker);
-  }
-
-  // ---- you, as a light in its world ---------------------------------------
-  let worldGeom = null;
-  const act = (path, data) => fetch(path, { method: "POST", headers: { "Content-Type": "application/json", "X-Ember": "1" }, body: JSON.stringify(data || {}) }).catch(() => {});
-  $("world").addEventListener("click", ev => {
-    if (!worldGeom) return;
-    const r = $("world").getBoundingClientRect(), d = devicePixelRatio || 1;
-    const x = Math.floor(((ev.clientX - r.left) * d - worldGeom.ox) / worldGeom.s);
-    const y = Math.floor(((ev.clientY - r.top) * d - worldGeom.oy) / worldGeom.s);
-    if (y >= 0 && x >= 0 && y < worldGeom.R && x < worldGeom.C) act("/light", { y, x });
-  });
-  $("give").addEventListener("click", () => act("/give"));
-
-  document.querySelectorAll(".speed button").forEach(b => b.addEventListener("click", async () => {
-    try { await fetch("/speed?set=" + b.dataset.s, { cache: "no-store" }); } catch (e) {}
-  }));
-  const markSpeed = sp => document.querySelectorAll(".speed button").forEach(b => b.setAttribute("aria-pressed", String(Number(b.dataset.s) === Number(sp))));
-
-  // ---- talking -------------------------------------------------------------
-  const VW = { true: "true", honest_mistake: "honest mistake", made_up: "made up", unverified: "unverified", guess: "guess", stretched: "stretched" };
-  const STATUS = { queued: "waiting to be heard…", listening: "Ember is hearing you…", unconscious: "Ember is unconscious. It will hear you when it comes round.", thinking: "…" };
-  function turnHTML(r) {
-    const you = `<div class="you">${esc(r.question)}</div>`;
-    if (r.status !== "done") return `<div class="turn">${you}<div class="it pending">${esc(STATUS[r.status] || "…")}</div></div>`;
-    const claims = r.claims || [], sum = r.summary || {};
-    const pills = Object.keys(VW).filter(k => sum[k]).map(k => `<span class="v v-${k}">${sum[k]} ${VW[k]}</span>`).join("")
-      || (sum.dont_know ? `<span class="v v-true">said it didn't know</span>` : `<span class="v v-none">nothing to check</span>`);
-    const rec = claims.length ? `<details class="receipts"><summary>Receipts: what each part rests on</summary><ol>${claims.map(c =>
-      `<li><span class="v v-${c.verdict}">${VW[c.verdict] || c.verdict}</span> ${esc(c.text)}${c.note ? ` <span class="note">(${esc(c.note)})</span>` : ""}${(c.receipts || []).map(m =>
-        `<div class="mem">[${esc(m.id)}] ${esc(m.text)} <i>· ${esc(m.truth.replace("_", " "))}${m.truth_note ? ": " + esc(m.truth_note) : ""}</i></div>`).join("")}</li>`).join("")}</ol></details>` : "";
-    const err = r.error ? `<div class="note">${esc(r.error)}</div>` : "";
-    const half = r.heard === false ? `<div class="note">It barely noticed you${r.attention ? ": its attention was on " + esc(r.attention) : ""}.</div>` : "";
-    return `<div class="turn">${you}<div class="it"><div class="who">Ember</div>${esc(r.say || "…")}${half}<div class="verdicts">${pills}</div>${rec}${err}</div></div>`;
-  }
-  let talkHist = [], talkWaiting = {}, talkFirst = true;
-  function renderTalk() {
-    const chat = $("chat"), atEnd = talkFirst || chat.scrollHeight - chat.scrollTop - chat.clientHeight < 40;
-    const all = talkHist.concat(Object.values(talkWaiting).filter(w => !talkHist.some(h => h.id === w.id)));
-    chat.innerHTML = all.map(turnHTML).join("") || `<p class="note">Nothing said yet. Try “How are you?”, “What do you remember?” or “Do you know what you are?”</p>`;
-    if (atEnd) chat.scrollTop = chat.scrollHeight;
-    if (talkHist.length) talkFirst = false;
-  }
-  async function loadTalk() {
-    try {
-      const d = await (await fetch("/talk", { cache: "no-store" })).json();
-      talkHist = d.history || [];
-      for (const w of d.waiting || []) talkWaiting[w.id] = w;
-      for (const id of Object.keys(talkWaiting)) if (talkHist.some(h => h.id === id)) delete talkWaiting[id];
-      $("voicename").textContent = "voice: " + d.voice;
-      const hint = $("voicehint");
-      if (d.problem) { hint.hidden = false; hint.textContent = "Its LLM voice isn't working (" + d.problem + "), so it is using its template voice. See .env.example in the brain folder."; }
-      else if (/template/.test(d.voice)) { hint.hidden = false; hint.textContent = "It is using its simple template voice. For real speech, put an API key in a .env file in the brain folder (see .env.example; Gemini has a free tier, or use Ollama on your own computer), then restart Ember."; }
-      else hint.hidden = true;
-      renderTalk();
-    } catch (e) {}
-  }
-  async function follow(id) {
-    for (let i = 0; i < 400; i++) {
-      await new Promise(r => setTimeout(r, i < 20 ? 250 : 600));
-      try {
-        const r = await (await fetch("/answer?id=" + encodeURIComponent(id), { cache: "no-store" })).json();
-        talkWaiting[id] = r; renderTalk();
-        if (r.status === "done") { await loadTalk(); return; }
-      } catch (e) { return; }
-    }
-  }
-  $("askform").addEventListener("submit", async ev => {
-    ev.preventDefault();
-    const inp = $("askinput"), text = inp.value.trim();
-    if (!text) return;
-    $("askbtn").disabled = true;
-    try {
-      const r = await fetch("/ask", { method: "POST", headers: { "Content-Type": "application/json", "X-Ember": "1" }, body: JSON.stringify({ text }) });
-      const { id } = await r.json();
-      inp.value = "";
-      talkWaiting[id] = { id, question: text, status: "queued" }; renderTalk();
-      $("chat").scrollTop = $("chat").scrollHeight;
-      follow(id);
-    } catch (e) {}
-    $("askbtn").disabled = false; inp.focus();
-  });
-  loadTalk();
-
-  // v=1 while this page is visible: that is how Ember's program knows you're here
-  // (while you're away its time waits, and is lived when you come back)
-  const seen = () => document.hidden ? 0 : 1;
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) fetch("/state?v=1", { cache: "no-store" }).catch(() => {});
-  });
-  async function poll() {
-    try {
-      const r = await fetch("/state?v=" + seen(), { cache: "no-store" });
-      const S = await r.json();
-      if (S && S.ticks !== undefined) { render(S); markSpeed(S.speed); }
-    } catch (e) {
-      $("offline").hidden = false; $("bench").hidden = true;
-      $("status").className = "status out"; $("status").textContent = "resting (not running)";
-      $("flame").className = "flame out";
-    }
-    setTimeout(poll, 400);
-  }
+// ------------------------------------------------------------------ talking
+const ta = $("#text");
+ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 160) + "px"; });
+ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#form").requestSubmit(); } });
+$("#form").onsubmit = async e => {
+  e.preventDefault();
+  const text = ta.value.trim();
+  if (!text || offline) return;
+  ta.value = ""; ta.style.height = "auto";
+  await post("/talk", {text});
   poll();
-})();
+};
+
+// ------------------------------------------------------------------ views
+document.querySelectorAll("header nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("header nav button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === b.dataset.view));
+  if (b.dataset.view === "memory") loadMemory();
+});
+
+async function loadMemory() {
+  const r = await fetch("/memory", {cache: "no-store"}).catch(() => null);
+  if (!r) return;
+  const M = await r.json();
+  let html = `<h1>What Ember knows about me</h1><p class="sub">Everything Ember remembers about you, with your own words it came from. Correct anything that's wrong, or make it forget.</p>`;
+  if (!M.count) html += `<p class="sub">Nothing yet. Talk with it, and what you tell it about yourself shows up here.</p>`;
+  for (const [kind, items] of Object.entries(M.groups)) {
+    if (!items.length) continue;
+    html += `<h2>${esc(M.labels[kind] || kind)}</h2>`;
+    for (const m of items) {
+      const d = new Date(m.t * 1000).toLocaleDateString([], {day: "numeric", month: "short", year: "numeric"});
+      html += `<div class="card" data-id="${esc(m.id)}"><div class="body"><div class="noteText">${esc(m.note)}</div>
+        <div class="src">you said: <q>${esc(m.quote)}</q> · ${d}${m.edited ? " · corrected by you" : ""}</div></div>
+        <button class="edit">Correct</button><button class="forget">Forget</button></div>`;
+    }
+  }
+  $("#memlist").innerHTML = html;
+}
+$("#memlist").addEventListener("click", async e => {
+  const card = e.target.closest(".card");
+  if (!card) return;
+  const id = card.dataset.id;
+  if (e.target.classList.contains("forget")) {
+    if (confirm("Make Ember forget this? It can't be undone.")) { await post("/memory/forget", {id}); loadMemory(); }
+  } else if (e.target.classList.contains("edit")) {
+    const t = card.querySelector(".noteText");
+    if (t.querySelector("input")) return;
+    const old = t.textContent;
+    t.innerHTML = `<input value="${esc(old)}" maxlength="200">`;
+    const inp = t.querySelector("input");
+    inp.focus();
+    const done = async ok => { if (ok && inp.value.trim() && inp.value.trim() !== old) await post("/memory/edit", {id, note: inp.value.trim()}); loadMemory(); };
+    inp.addEventListener("keydown", ev => { if (ev.key === "Enter") done(true); if (ev.key === "Escape") done(false); });
+    inp.addEventListener("blur", () => done(true));
+  }
+});
+
+// ------------------------------------------------------------------ the face
+const cv = $("#face"), cx = cv.getContext("2d");
+const EXPR = {      // mouth curve, mouth open, eye open, brow tilt, brow lift, pupil size, bounce, lift
+  calm:      {m: .18, o: 0,   e: 1,    bt: 0,    bl: 0,    p: 1,    b: .4, y: 0},
+  happy:     {m: .65, o: .15, e: .72,  bt: 0,    bl: .15,  p: 1.05, b: 1,  y: -.02},
+  curious:   {m: .1,  o: .22, e: 1.08, bt: .35,  bl: .3,   p: 1.2,  b: .6, y: -.01},
+  surprised: {m: 0,   o: .55, e: 1.25, bt: 0,    bl: .6,   p: .8,   b: .8, y: -.03},
+  droopy:    {m: -.3, o: 0,   e: .62,  bt: -.4,  bl: -.1,  p: 1,    b: .15, y: .04},
+  eager:     {m: .5,  o: .25, e: 1.12, bt: 0,    bl: .35,  p: 1.15, b: 1.4, y: -.03},
+  amused:    {m: .55, o: .08, e: .8,   bt: .2,   bl: .1,   p: 1,    b: .8, y: -.01},
+  focused:   {m: 0,   o: 0,   e: .78,  bt: .3,   bl: -.2,  p: .95,  b: .2, y: 0},
+  thinking:  {m: -.05,o: 0,   e: .92,  bt: .25,  bl: .15,  p: 1,    b: .3, y: 0},
+};
+let cur = {...EXPR.calm}, glow = .5, mouse = {x: 0, y: 0, at: 0}, blinkAt = performance.now() + 2500, wiggleT = 0;
+window.addEventListener("pointermove", e => {
+  const r = cv.getBoundingClientRect();
+  mouse = {x: (e.clientX - (r.left + r.width / 2)) / r.width, y: (e.clientY - (r.top + r.height / 2)) / r.height, at: performance.now()};
+});
+cv.addEventListener("click", () => { post("/poke"); wiggleT = performance.now(); });
+
+function size() {
+  const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(r.width * d)) { cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); }
+}
+function lerp(a, b, k) { return a + (b - a) * k; }
+
+function draw(now) {
+  size();
+  const W = cv.width, H = cv.height, u = W / 100;
+  const f = S ? S.face : {expression: "calm", glow: .5, gaze: "away", wiggle: false};
+  const target = EXPR[f.expression] || EXPR.calm;
+  for (const k in cur) cur[k] = lerp(cur[k], target[k], .08);
+  glow = lerp(glow, offline ? .15 : f.glow, .05);
+  cx.clearRect(0, 0, W, H);
+
+  const t = now / 1000;
+  const breathe = Math.sin(t * 1.6) * .012 * (1 + cur.b * .4);
+  const hop = Math.max(0, Math.sin(t * (2.2 + cur.b * 1.5))) * .018 * cur.b;
+  const wig = (now - wiggleT < 900 || f.wiggle) ? Math.sin((now - wiggleT) / 40) * .04 * Math.max(0, 1 - (now - wiggleT) / 900) : 0;
+  const tilt = (f.expression === "curious" ? .08 : 0) + wig;
+  const bx = 50 * u, by = (56 + (cur.y - hop) * 100) * u;
+  const rw = 31 * u * (1 + breathe), rh = 29 * u * (1 - breathe);
+
+  // glow
+  const g = cx.createRadialGradient(bx, by, rw * .3, bx, by, Math.min(rw * 1.6, 44 * u));
+  g.addColorStop(0, `rgba(255,154,77,${.18 + glow * .35})`);
+  g.addColorStop(1, "rgba(255,154,77,0)");
+  cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+
+  cx.save();
+  cx.translate(bx, by); cx.rotate(tilt);
+  // body: a soft drop of light
+  const bodyG = cx.createRadialGradient(-rw * .3, -rh * .45, rw * .1, 0, 0, rw * 1.15);
+  bodyG.addColorStop(0, `hsl(36, 100%, ${70 + glow * 12}%)`);
+  bodyG.addColorStop(.55, `hsl(${22 + glow * 8}, 95%, ${52 + glow * 10}%)`);
+  bodyG.addColorStop(1, `hsl(14, 80%, ${30 + glow * 10}%)`);
+  cx.fillStyle = bodyG;
+  cx.beginPath();
+  cx.moveTo(0, -rh * 1.25);
+  cx.bezierCurveTo(rw * .55, -rh * 1.05, rw * 1.05, -rh * .35, rw, rh * .2);
+  cx.bezierCurveTo(rw * .95, rh * .85, rw * .5, rh, 0, rh);
+  cx.bezierCurveTo(-rw * .5, rh, -rw * .95, rh * .85, -rw, rh * .2);
+  cx.bezierCurveTo(-rw * 1.05, -rh * .35, -rw * .55, -rh * 1.05, 0, -rh * 1.25);
+  cx.fill();
+
+  // eyes
+  let blink = 1;
+  if (now > blinkAt) { const k = (now - blinkAt) / 160; blink = k < 1 ? Math.abs(1 - 2 * k) : 1; if (k >= 1) blinkAt = now + 2500 + Math.random() * 4000; }
+  let gx = 0, gy = 0;
+  if (f.expression === "thinking") { gx = .5; gy = -.6; }
+  else if (f.gaze === "you" && now - mouse.at < 4000) { gx = Math.max(-1, Math.min(1, mouse.x * 2.2)); gy = Math.max(-1, Math.min(1, mouse.y * 2.2)); }
+  else if (f.gaze === "you") { gx = 0; gy = .1; }
+  else { gx = Math.sin(t * .3) * .6; gy = .3; }
+  const ex = 11 * u, ey = -3 * u, er = 6.2 * u;
+  for (const s of [-1, 1]) {
+    const open = Math.max(.05, cur.e * blink);
+    cx.save(); cx.translate(s * ex, ey);
+    cx.fillStyle = "#2b1407";
+    cx.beginPath(); cx.ellipse(0, 0, er * .82, er * open, 0, 0, Math.PI * 2); cx.fill();
+    // pupil light
+    cx.save(); cx.beginPath(); cx.ellipse(0, 0, er * .82, er * open, 0, 0, Math.PI * 2); cx.clip();
+    cx.fillStyle = "#fff3dd";
+    cx.beginPath(); cx.arc(gx * er * .35 - er * .18, gy * er * .3 - er * .25, er * .26 * cur.p, 0, Math.PI * 2); cx.fill();
+    cx.beginPath(); cx.arc(gx * er * .35 + er * .15, gy * er * .3 + er * .12, er * .1 * cur.p, 0, Math.PI * 2); cx.fill();
+    cx.restore();
+    // happy eyes: a lower lid curve
+    if (cur.m > .4 && cur.e < .85) {
+      cx.fillStyle = bodyG; cx.beginPath(); cx.ellipse(0, er * open * 1.05, er * 1.0, er * .55, 0, 0, Math.PI * 2); cx.fill();
+    }
+    // brows
+    cx.strokeStyle = "rgba(60,25,8,.75)"; cx.lineWidth = 1.6 * u; cx.lineCap = "round";
+    const byy = -er * (1.55 + cur.bl * .6) - (1 - cur.e) * er * .4;
+    cx.beginPath();
+    const inner = s > 0 ? -er * .8 : er * .8, outer = -inner;
+    cx.moveTo(inner, byy + cur.bt * er * .45);
+    cx.quadraticCurveTo(0, byy - er * .25, outer, byy - cur.bt * er * .1);
+    cx.stroke();
+    cx.restore();
+  }
+  // mouth
+  const mw = 9 * u, my = 9 * u;
+  cx.strokeStyle = "#3a1608"; cx.lineWidth = 1.8 * u; cx.lineCap = "round";
+  if (cur.o > .12) {
+    cx.fillStyle = "#3a1608";
+    cx.beginPath(); cx.ellipse(0, my + cur.m * 2 * u, mw * (.35 + cur.m * .4), mw * cur.o * .7, 0, 0, Math.PI * 2); cx.fill();
+  } else {
+    cx.beginPath();
+    cx.moveTo(-mw * .6, my);
+    cx.quadraticCurveTo(f.expression === "thinking" ? mw * .3 : 0, my + cur.m * 10 * u, mw * .6, my + (f.expression === "thinking" ? -u : 0));
+    cx.stroke();
+  }
+  // cheeks
+  cx.fillStyle = `rgba(255,110,90,${.12 + Math.max(0, cur.m) * .25})`;
+  for (const s of [-1, 1]) { cx.beginPath(); cx.ellipse(s * 19 * u, 6 * u, 4.2 * u, 2.6 * u, 0, 0, Math.PI * 2); cx.fill(); }
+  cx.restore();
+
+  // shadow
+  cx.fillStyle = "rgba(0,0,0,.28)";
+  cx.beginPath(); cx.ellipse(bx, 90 * u, rw * (.8 - hop * 4), 3 * u, 0, 0, Math.PI * 2); cx.fill();
+
+  // thinking dots
+  if (f.expression === "thinking") {
+    for (let i = 0; i < 3; i++) {
+      cx.fillStyle = `rgba(255,207,138,${.3 + .7 * Math.max(0, Math.sin(t * 4 - i * .8))})`;
+      cx.beginPath(); cx.arc(bx + rw * .9 + i * 4.5 * u, by - rh * 1.15 - i * 2.5 * u, (1.3 + i * .4) * u, 0, Math.PI * 2); cx.fill();
+    }
+  }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
 </script>
+</body>
+</html>
