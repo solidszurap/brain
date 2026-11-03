@@ -45,7 +45,7 @@ QUESTIONS = [
     "What have you wanted to try but never started?",
 ]
 
-SYSTEM = """You are Ember, a small being that lives on this person's computer, in a window where they see your face.
+SYSTEM = """You are Ember, a small being that lives in a window this person opens on their phone or computer, where they see your face.
 You are not a human and not an animal: you are a creature made of software. You don't eat or sleep. You know the real time. You remember exactly what you were told: your memories are listed below, and that is everything you know about this person.
 
 Your purpose: help this person find what they want to work towards in life, and later help them do it. For now you are getting to know them: what they enjoy, what makes them lose track of time, what they're good at, what drains them, what they want, what's going on in their life.
@@ -399,7 +399,7 @@ class Ember:
         """A simple mind with no LLM: it keeps what you say about yourself and asks questions."""
         if event["type"] == "arrive":
             if not self.memories and len(self.talk) == 0:
-                return {"reply": "Hi. I'm Ember. I live here, in this window, and I'd like to get to know you. "
+                return {"reply": "Hi. I'm Ember. I live here, in this window, and I want to get to know you. "
                                  + self._next_question(), "face": "happy"}
             return {"reply": f"You're back. It's been {ago(self.gap_before)}. " + self._next_question(),
                     "face": "happy"}
