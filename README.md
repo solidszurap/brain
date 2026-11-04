@@ -1,6 +1,6 @@
 # Ember
 
-A small being with a face that helps you find what to work towards, then works alongside you on it, and over time becomes someone who knows your story. It is a web app: you open it on your phone, log in with Google, and add it to your home screen, where it opens like an app.
+A small being with a face that helps you get what you want. If you don't know yet what to work towards, it helps you find out (experiments); when you know what you want, it helps you get there (goals). It works alongside you, and over time becomes someone who knows your story. It is a web app: you open it on your phone, log in with Google, and add it to your home screen, where it opens like an app.
 
 ## Ember online
 
@@ -50,14 +50,15 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
    - The memory page.
    - Its wants, moved by real time apart and together.
    - A greeting when you come back after an hour or more.
-2. **Experiments (done).**
-   - **Chat | Experiment.** A switch at the top, there from the start. Chat is just the conversation. Experiment shows the experiment line above the input and tells Ember's mind you want to work on it (or find one).
-   - **Suggestions, in the conversation.** Ask it what you could try; in Experiment mode the input says so. Its ideas appear as cards under its message: small experiments, 3 to 14 days each, each with one question. Before it knows 3 things about you, they're starter experiments for finding out what you enjoy, things you can do on your own, and the card says so. After that, every suggestion names the memories it rests on; one that rests on none isn't shown.
-   - **Picking one.** "Pick this" on a card makes it your active experiment and switches to Experiment mode. It shows as one line above the input (title, day, steps done, Start/Stop); click the title for the steps, Finish and Drop. A running work session shows in Chat mode too.
+2. **Experiments and goals (done).**
+   - **Chat | Work.** A switch at the top, there from the start. Chat is just the conversation. Work shows the line for your goal or experiment above the input and tells Ember's mind you want to work on it (or set one up).
+   - **Suggestions, in the conversation.** Ask it what you could try; in Work mode the input says so. Its ideas appear as cards under its message: small experiments, 3 to 14 days each, each with one question. Before it knows 3 things about you, they're starter experiments for finding out what you enjoy, things you can do on your own, and the card says so. After that, every suggestion names the memories it rests on; one that rests on none isn't shown.
+   - **Picking one.** "Pick this" on a card makes it your active experiment and switches to Work mode. It shows as one line above the input (title, day, steps done, Start/Stop); click the title for the steps, Finish and Drop. A running work session shows in Chat mode too.
    - **Work sessions.** "Start working on it" shows a timer, and its face goes focused while real time is counted. A session ends by itself after 8 hours.
    - **Check-in, in the conversation.** When you stop a session, Ember asks how it went; you answer under its question with 1–5 and a few words. Its mind answers, agrees the next step (added to the checklist), and ticks off steps you say you finished.
    - **Help with the work.** During a session, its mind knows the experiment, the steps and the time so far.
    - **The end, honestly.** When its days are up, Ember asks once: finish and look back, or 3 more days. When an experiment ends (finished or dropped), Ember looks back on what actually happened: each session's day, length and feeling, and your own words after it. It says what that suggests about the experiment's question, or that there's too little to tell, then asks your own answer. A card under its words shows the numbers. Its mind remembers this look back later.
+   - **Goals.** Anything you want in your life: a girlfriend, friends, fitness, a job, a skill. When you tell Ember what you want, it doesn't jump to a plan. It talks it through with you first, one question at a time: what exactly you want and why, where you are now, what you've tried, what's in the way, what you're comfortable doing. Then it says back what it understood and proposes the goal as a card: what having it looks like (so you'll know), how many days (7 to 180), the plan (the way there, built on what you told it), and the first steps, the first one doable today. "Make this my goal" makes it yours. Then you come back and tell it what happened; it helps with the next step and the hard parts, ticks off what you did, adds steps you agree on, and changes the plan with you when it isn't working. When a goal depends on other people, it says plainly that the outcome isn't fully in your hands and makes the steps what is. No manipulation or tricks towards others. Work sessions and check-ins work for goals too. When its days are up it asks whether you got there (finish and look back, or a week more), and its look back asks whether you got what you wanted. You have one goal or experiment at a time.
 3. **Online (live since 2026-11-03).**
    - A web app with Google login, one Ember per person.
    - Phone layout, installable to the home screen.

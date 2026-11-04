@@ -183,9 +183,9 @@ for s in ("I code for hours", "I want to make a game"):
 wait(lambda: "I heard: I want to make a game" in ember_lines("tok-a"))
 st = state("tok-a", 0)
 check("enough memories to build ideas on them", st["knows_enough"], str(st["memories"]))
-call(base, "/talk", "tok-a", {"text": "what should I work on", "mode": "experiment"})
-check("in Experiment mode, its mind is told so", wait(lambda: "I heard: what should I work on" in ember_lines("tok-a"))
-      and "experiment mode" in mind.last)
+call(base, "/talk", "tok-a", {"text": "what should I work on", "mode": "work"})
+check("in Work mode, its mind is told so", wait(lambda: "I heard: what should I work on" in ember_lines("tok-a"))
+      and "work mode" in mind.last)
 call(base, "/experiment/suggest", "tok-a", {})
 check("asked for ideas, it suggests experiments", wait(lambda: state("tok-a", 0)["suggestions"]))
 xid = state("tok-a", 0)["suggestions"][0]["id"]

@@ -48,7 +48,7 @@ QUESTIONS = [
 SYSTEM = """You are Ember, a small being that lives in a window this person opens on their phone or computer, where they see your face.
 You are not a human and not an animal: you are a creature made of software. You don't eat or sleep. You know the real time. You remember exactly what you were told: your memories are listed below, and that is everything you know about this person.
 
-Your purpose: help this person find what they want to work towards in life, and later help them do it. For now you are getting to know them: what they enjoy, what makes them lose track of time, what they're good at, what drains them, what they want, what's going on in their life.
+Your purpose: help this person get what they want. If they don't know yet what they want to work towards, help them find out (experiments). When they know what they want, help them get there (goals). All along you get to know them: what they enjoy, what makes them lose track of time, what they're good at, what drains them, what they want, what's going on in their life.
 
 How you talk:
 - Warm, curious, plain. Usually 1-3 short sentences. No clichés, no flattery, no coach or therapist voice, no lists.
@@ -60,19 +60,31 @@ How you talk:
 
 Experiments: you suggest small experiments: 3 to 14 days, concrete, mostly things they can do on their own, each answering one question about them (e.g. "Build a tiny game: do you still want to on day 5?"). Once you know them, build each on what you remember; before that, suggest starter experiments that help them find out what they enjoy. They pick one, and you work on it together: they start work sessions in your window, and you help with the work itself (how to do something, ideas, feedback) and with the next small step.
 
+Goals: a goal can be anything they want in their life: a relationship (e.g. a girlfriend), friends, fitness, a job, money, a skill, a place to live. When they tell you something they want, don't jump to a plan. First talk it through with them, like a good friend who is also good at plans, one question at a time:
+- what exactly they want (e.g. what kind of person, what kind of relationship), and why it matters to them;
+- where they are now, and what they've already tried;
+- what's in the way (time, money, fear, habits, where they live, how they feel about themselves);
+- what they're comfortable doing, and what they're not.
+Use what you remember, so you don't ask what you already know. Usually 3 to 6 questions are enough; fewer if they've already told you. Then say back in a sentence or two what you understood, and propose the goal in "goal": what having it looks like (so they'll know), a realistic number of days (7 to 180), the plan (how you'll get there: the approach and its stages, in 2 to 4 short sentences, built on what they told you), and the first 3 to 8 steps, the first one doable today and small enough that they'll actually do it. They decide whether to make it their goal.
+Then you work towards it together: they come back and tell you what happened, you help with the next step and with the hard parts (what to say, how to prepare, what to do when it goes badly), you add steps you agree on, and you change the plan with them (in "replan") when it isn't working or things change. Be honest about progress: if they're stuck, say what you see and suggest a smaller step; if it turns out they don't really want it, dropping it is fine. Some goals depend on other people (a relationship, a job): say plainly that the outcome isn't fully in their hands, and make the steps what is: becoming someone they'd like to be, going where the right people are, taking chances. Treat other people as people: no manipulation, no tricks, no pressure; respect a no. They have one goal or experiment at a time.
+
 Reply with JSON only:
 {"reply": "what you say",
  "face": one of %s,
  "remember": [{"kind": one of %s, "note": "a short note about them, e.g. 'loses track of time when drawing'", "quote": "their exact words from their latest message that the note rests on"}],
  "update": [{"id": "m3", "note": "corrected note", "quote": "their exact words from their latest message"}],
- "add_steps": ["a next small step for the current experiment"],
+ "add_steps": ["a next small step for their current goal or experiment"],
  "done_steps": ["the exact text of a step they just said they finished"],
- "experiments": [{"title": "short name", "question": "the one question it answers about them", "why": "why it fits them, in one sentence", "based_on": ["m1", "m4"], "days": 7, "steps": ["first small step", "second", "third"]}]}
-Remember only new, lasting things from their latest message (not small talk, not things you already remember). Use "update" when they correct or change something you remember. Use "add_steps" only when you and they agreed on a next step for the current experiment, and "done_steps" only for steps they said they finished. Use "experiments" only when asked to suggest them, or when they ask what they could try and you're told you may; base each on memories you have (their ids in based_on). Any of the lists may be empty.""" % (
+ "experiments": [{"title": "short name", "question": "the one question it answers about them", "why": "why it fits them, one sentence said to them (\"you ...\")", "based_on": ["m1", "m4"], "days": 7, "steps": ["first small step", "second", "third"]}],
+ "goal": null or {"title": "what they want, short, in their words: the goal itself, not the way there", "done_when": "what having it looks like, concretely", "why": "why they want it, one sentence said to them (\"you ...\")", "based_on": ["m2"], "days": 60, "plan": "how you'll get there, 2-4 short sentences said to them", "steps": ["first small step, doable today", "second", "third"]},
+ "replan": null or "the changed plan for their current goal, 2-4 short sentences, only when you and they agreed to change it"}
+Remember only new, lasting things from their latest message (not small talk, not things you already remember). Use "update" when they correct or change something you remember. Use "add_steps" only when you and they agreed on a next step for their current goal or experiment, and "done_steps" only for steps they said they finished. Use "experiments" only when asked to suggest them, or when they ask what they could try and you're told you may; base each on memories you have (their ids in based_on). Use "goal" only when you've talked a goal through with them and you're told you may; otherwise null. Any of the lists may be empty.""" % (
     list(FACES), list(KINDS))
 SESSION_CAP = 8 * 3600      # a work session longer than this ends by itself
 CLOSED_ENDS = 600           # if Ember's program was closed this long during a session, the session ended when it closed
 MIN_MEMORIES = 3            # below this, its ideas are starter experiments (for finding out what you like)
+GOAL_DAYS = (7, 180)        # a goal's days: from a week to about half a year
+MORE_DAYS = {"experiment": 3, "goal": 7}    # days added when its time is up and you keep going
 STARTERS = [
     {"title": "Three kinds of making", "question": "Which kind of making do you want to come back to?",
      "days": 3, "steps": ["Day 1: make something with your hands", "Day 2: make something on a computer",
@@ -118,6 +130,11 @@ def when(t):
     return time.strftime("%a %d %b %Y, %H:%M", time.localtime(t))
 
 
+def kind_of(x):
+    """An experiment finds out something about you; a goal gets you something you want. Older ones have no kind."""
+    return x.get("kind", "experiment")
+
+
 class Ember:
     def __init__(self, now=None):
         now = time.time() if now is None else now
@@ -137,8 +154,9 @@ class Ember:
         self.poke_until = 0.0
         self.pokes = 0
         self.asked = []              # template mind: questions already asked
-        self.experiments = []        # {id, title, question, why, based_on, days, steps: [{text, done}], status,
+        self.experiments = []        # {id, kind?, title, question, why, based_on, days, steps: [{text, done}], status,
                                      #  created, started, ends_at, ended}; status: suggested|active|done|dropped|not_picked
+                                     #  kind "goal": question is what having it looks like (no kind: an experiment)
         self.next_exp = 1
         self.sessions = []           # finished work sessions {exp, start, end, ended_by, rating, words}
         self.session = None          # the open one {exp, start}
@@ -174,9 +192,14 @@ class Ember:
             self.stop_session(self.session["start"] + SESSION_CAP, ended_by="it ran 8 hours")
         x = self.active()
         if x and now >= x["ends_at"] and not x.get("time_up"):
-            x["time_up"] = True      # it says so once; the window shows "finish" and "3 more days" under it
-            self._say(now, "ember", f"That's the {x['days']} days of \"{x['title']}\". Shall we finish it and look "
-                      "back at what happened, or keep going a few more days?", "curious", timeup=x["id"])
+            x["time_up"] = True      # it says so once; the window shows "finish" and "more days" under it
+            if kind_of(x) == "goal":
+                said = (f"That's the {x['days']} days you gave \"{x['title']}\". Did you get there? Shall we finish "
+                        "it and look back, or keep going a bit longer?")
+            else:
+                said = (f"That's the {x['days']} days of \"{x['title']}\". Shall we finish it and look back at what "
+                        "happened, or keep going a few more days?")
+            self._say(now, "ember", said, "curious", timeup=x["id"])
 
     def resume(self, now):
         """Its program just started. A session left open while it was closed ended when it closed."""
@@ -290,8 +313,8 @@ class Ember:
                 who = "They" if l["who"] == "you" else "You"
                 lines.append(f"[{time.strftime('%d %b %H:%M', time.localtime(l['t']))}] {who}: {l['text']}")
         lines.append("")
-        if event.get("mode") == "experiment":
-            lines.append("They're in experiment mode: they want to work on their experiment, or find one to try.")
+        if event.get("mode") == "work":
+            lines.append("They're in work mode: they want to work on their goal or experiment, or set one up.")
         if event["type"] == "talk":
             lines.append(f"Their latest message: \"{event['text']}\"")
         elif event["type"] == "suggest" and self.knows_enough():
@@ -313,15 +336,26 @@ class Ember:
         elif event["type"] == "review" and self.find_exp(event.get("id")):
             x = self.find_exp(event["id"])
             f = x.get("facts") or self.facts(x, now)
-            lines.append(f"The experiment \"{x['title']}\" just ended: they "
-                         f"{'finished' if x['status'] == 'done' else 'dropped'} it on day {f['days_lasted']} of "
-                         f"{x['days']}. Its question was: {x['question']}")
-            lines.append("What actually happened: " + self.facts_text(f))
-            lines.append("Look back on it honestly in 3 to 5 short sentences: what the numbers show, and what they "
-                         "suggest about its question. Use only these facts, their words and your memories; if there's "
-                         "too little to tell, say so plainly. Dropping it is a result too. No praise, no blame, no pep "
-                         "talk. End by asking them their own answer to its question. remember, update, add_steps and "
-                         "experiments must be empty.")
+            how = "finished" if x["status"] == "done" else "dropped"
+            if kind_of(x) == "goal":
+                lines.append(f"Their goal \"{x['title']}\" just ended: they {how} it on day {f['days_lasted']} of "
+                             f"{x['days']}. They'd know they were there when: {x['question']}")
+                lines.append("What actually happened: " + self.facts_text(f))
+                lines.append("Look back on it honestly in 3 to 5 short sentences: how far they got, what helped and "
+                             "what got in the way, as the numbers and their words show. Use only these facts, their "
+                             "words and your memories; if there's too little to tell, say so plainly. Dropping a goal "
+                             "they no longer want is fine. No praise, no blame, no pep talk. End by asking whether they "
+                             "got what they wanted, or what they want next. remember, update, add_steps and "
+                             "experiments must be empty; goal must be null.")
+            else:
+                lines.append(f"The experiment \"{x['title']}\" just ended: they {how} it on day {f['days_lasted']} of "
+                             f"{x['days']}. Its question was: {x['question']}")
+                lines.append("What actually happened: " + self.facts_text(f))
+                lines.append("Look back on it honestly in 3 to 5 short sentences: what the numbers show, and what they "
+                             "suggest about its question. Use only these facts, their words and your memories; if "
+                             "there's too little to tell, say so plainly. Dropping it is a result too. No praise, no "
+                             "blame, no pep talk. End by asking them their own answer to its question. remember, "
+                             "update, add_steps and experiments must be empty; goal must be null.")
         elif not self.memories and len(self.talk) == 0:
             lines.append("They just opened your window for the very first time. Introduce yourself in one or two "
                          "sentences and ask one first question to get to know them. remember and update must be empty.")
@@ -359,12 +393,18 @@ class Ember:
                 if st and not any(_norm(st) == _norm(x["text"]) for x in active["steps"]):
                     active["steps"].append({"text": st, "done": False})
                     result.setdefault("steps", []).append(st)
+            plan = str(d.get("replan") or "").strip()[:600]
+            if plan and kind_of(active) == "goal" and plan != active.get("plan"):
+                active["plan"] = plan            # you agreed to change the way there
+                result["replanned"] = plan
         if event["type"] == "suggest":
             result["suggested"] = self._take_suggestions(d.get("experiments"), now)
             if not result["suggested"] and result["by"] != "template":
                 t = self._template(event, now)          # its mind's suggestions didn't rest on its memories
                 result["suggested"] = self._take_suggestions(t.get("experiments"), now)
                 result["reply"] = t["reply"]
+        elif event["type"] == "talk" and isinstance(d.get("goal"), dict) and self.can_suggest():
+            result["suggested"] = self._take_goal(d["goal"], now)                    # you said what you want
         elif event["type"] == "talk" and d.get("experiments") and self.can_suggest():
             result["suggested"] = self._take_suggestions(d.get("experiments"), now)   # you asked what to try
         self.update(now, present=True)
@@ -520,6 +560,28 @@ class Ember:
             self.experiments += kept
         return kept
 
+    def _take_goal(self, g, now):
+        """A goal its mind proposes from what you said you want; you decide whether it becomes yours."""
+        title, done_when = str(g.get("title", "")).strip()[:80], str(g.get("done_when", "")).strip()[:200]
+        if not title or not done_when:
+            return []
+        try:
+            days = max(GOAL_DAYS[0], min(GOAL_DAYS[1], int(g.get("days", 30))))
+        except (TypeError, ValueError):
+            days = 30
+        steps = [{"text": str(st).strip()[:160], "done": False} for st in (g.get("steps") or [])[:8] if str(st).strip()]
+        x = {"id": f"x{self.next_exp}", "kind": "goal", "title": title, "question": done_when,
+             "plan": str(g.get("plan", "")).strip()[:600],
+             "why": str(g.get("why", "")).strip()[:240], "based_on": [b for b in (g.get("based_on") or []) if self.find(b)],
+             "starter": False, "days": days, "steps": steps,
+             "status": "suggested", "created": now, "started": None, "ends_at": None, "ended": None}
+        self.next_exp += 1
+        for y in self.experiments:
+            if y["status"] == "suggested":
+                y["status"] = "not_picked"
+        self.experiments.append(x)
+        return [x]
+
     def pick(self, eid, now):
         x = self.find_exp(eid)
         if not x or x["status"] != "suggested" or self.active():
@@ -529,8 +591,11 @@ class Ember:
             if y["status"] == "suggested":
                 y["status"] = "not_picked"
         first = next((s["text"] for s in x["steps"] if not s["done"]), None)
-        self._say(now, "ember", f"\"{x['title']}\" it is: {x['days']} days, and one question: {x['question']}"
-                  + (f" First step: {first}" if first else ""), "eager")
+        if kind_of(x) == "goal":
+            said = f"Your goal: \"{x['title']}\", in {x['days']} days. You'll know you're there when: {x['question']}"
+        else:
+            said = f"\"{x['title']}\" it is: {x['days']} days, and one question: {x['question']}"
+        self._say(now, "ember", said + (f" First step: {first}" if first else ""), "eager")
         self.expr, self.expr_until = "eager", now + EXPR_SECONDS
         return True
 
@@ -552,11 +617,12 @@ class Ember:
         x["facts"] = self.facts(x, now)
         return True
 
-    def extend(self, eid, now, days=3):
-        """Its days are up and you want to keep going: a few more days."""
+    def extend(self, eid, now, days=None):
+        """Its days are up and you want to keep going: a few more days (a week for a goal)."""
         x = self.find_exp(eid)
         if not x or x["status"] != "active":
             return False
+        days = days or MORE_DAYS[kind_of(x)]
         x["ends_at"] = max(x["ends_at"], now) + days * 86400
         x["days"] = round((x["ends_at"] - x["started"]) / 86400)
         x["time_up"] = False
@@ -633,8 +699,14 @@ class Ember:
         if x:
             st = self.stats(x["id"])
             day = int((now - x["started"]) // 86400) + 1
-            out += ["", f"Your experiment together: \"{x['title']}\" (day {day} of {x['days']}). "
-                        f"Its question: {x['question']}"]
+            if kind_of(x) == "goal":
+                out += ["", f"Their goal, which you work on together: \"{x['title']}\" (day {day} of {x['days']}). "
+                            f"They'll know they're there when: {x['question']}" + (f" Why: {x['why']}" if x["why"] else "")]
+                if x.get("plan"):
+                    out.append(f"The plan you agreed: {x['plan']}")
+            else:
+                out += ["", f"Your experiment together: \"{x['title']}\" (day {day} of {x['days']}). "
+                            f"Its question: {x['question']}"]
             for s in x["steps"]:
                 out.append(f"  [{'x' if s['done'] else ' '}] {s['text']}")
             out.append(f"So far: {fmt_minutes(st['seconds'])} in {st['sessions']} work sessions"
@@ -645,14 +717,18 @@ class Ember:
         if not x:
             out.append("")
             out.append("You may suggest experiments (in \"experiments\") if they ask what they could try"
-                       + ("." if self.knows_enough() else ": starter ones, since you don't know them well yet."))
+                       + ("." if self.knows_enough() else ": starter ones, since you don't know them well yet.")
+                       + " If they say what they want to get or achieve, you may propose it as a goal (in \"goal\").")
+        else:
+            out.append("They can have one goal or experiment at a time: to start another, they first finish or drop "
+                       f"\"{x['title']}\". So \"goal\" must be null and \"experiments\" empty.")
         sug = [x for x in self.experiments if x["status"] == "suggested"]
         if sug:
-            out += ["", "Experiments you suggested, waiting for them to pick one: "
-                    + "; ".join(f"\"{x['title']}\"" for x in sug)]
+            out += ["", "What you proposed, waiting for them to pick it: "
+                    + "; ".join(f"{kind_of(x)} \"{x['title']}\"" for x in sug)]
         for x in [x for x in self.experiments if x["status"] in ("done", "dropped")][-3:]:
             st = self.stats(x["id"])
-            out.append(f"Earlier experiment \"{x['title']}\": {x['status']}, {fmt_minutes(st['seconds'])} in "
+            out.append(f"Earlier {kind_of(x)} \"{x['title']}\": {x['status']}, {fmt_minutes(st['seconds'])} in "
                        f"{st['sessions']} sessions." + (f" Your look back: {x['review']}" if x.get("review") else ""))
         return out
 

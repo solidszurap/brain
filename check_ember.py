@@ -195,6 +195,55 @@ check("3 more days", f.extend(f.active()["id"], T + 3 * D + 200) and f.active()[
 f.update(T + 6 * D + 300, present=False)
 check("...and it asks again when those are up", f.talk[-1].get("timeup") and f.active()["time_up"])
 
+print("Goals")
+G = T + 10 * D
+f.end_experiment(f.active()["id"], "done", G)
+system, user = f.prompt({"type": "talk", "text": "I want to run 5 km", "mode": "work"}, G)
+check("its mind may propose a goal when nothing is active", "propose it as a goal" in user and "work mode" in user)
+check("its mind is told to talk a goal through before planning it", "don't jump to a plan" in system
+      and "what's in the way" in system and "no manipulation" in system)
+f.hear(G + 1, "I want to run 5 km without stopping")
+r = f.respond({"type": "talk", "text": "I want to run 5 km without stopping"}, mind_says(
+    reply="Let's make it a goal.", goal={"title": "Run 5 km", "done_when": "You run 5 km without stopping",
+                                         "why": "to feel fit", "days": 400, "plan": "Walk-run three times a week.",
+                                         "steps": ["Run 1 km today", "Run 2 km"]}),
+    G + 2)
+gid = r["suggested"][0]["id"] if r.get("suggested") else None
+gx = f.find_exp(gid) if gid else {}
+check("a goal it proposes shows as a card in the conversation", gid and f.talk[-1].get("exps") == [gid]
+      and gx.get("kind") == "goal" and gx["status"] == "suggested")
+check("a goal's days are kept between a week and half a year", gx.get("days") == 180)
+check("a goal keeps its plan", gx.get("plan") == "Walk-run three times a week.")
+r2 = f.respond({"type": "talk", "text": "x"}, mind_says(reply="Hm", goal={"title": "No end"}), G + 3)
+check("a goal without what having it looks like isn't kept", not r2.get("suggested"))
+check("picking it makes it your goal, and Ember says what done looks like",
+      f.pick(gid, G + 4) and f.active()["id"] == gid and "You'll know you're there when" in f.talk[-1]["text"])
+_, user = f.prompt({"type": "talk", "text": "how am I doing"}, G + 5)
+check("its mind knows the goal and its plan, and that nothing new can start meanwhile",
+      "Their goal" in user and "You run 5 km without stopping" in user and "one goal or experiment at a time" in user
+      and "The plan you agreed: Walk-run three times a week." in user)
+f.hear(G + 5, "my knee hurts after running")
+r = f.respond({"type": "talk", "text": "my knee hurts after running"}, mind_says(
+    reply="Let's go slower.", replan="Walk-run twice a week, with a rest day after each.", add_steps=["Rest two days"]), G + 5.5)
+check("the plan changes when you agree to change it", f.active()["plan"].startswith("Walk-run twice")
+      and r.get("replanned") and "Rest two days" in [st["text"] for st in f.active()["steps"]])
+r = f.respond({"type": "talk", "text": "another?"}, mind_says(reply="Later.", goal={"title": "B", "done_when": "b"}), G + 6)
+check("no second goal while one is active", not r.get("suggested"))
+f.start_session(G + 7)
+f.stop_session(G + 7 + 1800)
+check("work sessions and the check-in work for a goal", f.checkin_due and f.sessions[-1]["exp"] == gid)
+f.checkin(G + 7 + 1900, 4, "ran 1 km")
+f.update(G + 180 * D + 60, present=False)
+check("when its days are up, it asks whether you got there", f.talk[-1].get("timeup") == gid
+      and "Did you get there" in f.talk[-1]["text"])
+check("a goal gets a week more, not 3 days", f.extend(gid, G + 180 * D + 120) and f.active()["days"] == 187)
+f.end_experiment(gid, "done", G + 181 * D)
+_, user = f.prompt({"type": "review", "id": gid}, G + 181 * D)
+check("the look back at a goal asks whether you got what you wanted",
+      "Their goal" in user and "got what they wanted" in user and "1 work session" in user)
+h = Ember.from_dict(json.loads(json.dumps(f.to_dict())))
+check("goals survive a save", h.find_exp(gid)["kind"] == "goal" and h.experiments == f.experiments)
+
 print("Saving")
 e.poke(back + 200)
 d = json.loads(json.dumps(e.to_dict()))

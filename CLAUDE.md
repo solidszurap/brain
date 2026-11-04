@@ -1,6 +1,6 @@
 # Ember / brain
 
-**Ember** is a small being with a face, now a web app (phone-first, Google login, one Ember per person). It helps you find what to work towards, then works alongside you on it, and over time it becomes someone who knows your story. Szilard is its first user; he has no project yet, which is exactly the problem it's for. A possible business later: a free plan with a daily limit plus Ember Plus via Stripe; no ads, no selling data. README.md is the overview; DEPLOY.md is how it goes online.
+**Ember** is a small being with a face, now a web app (phone-first, Google login, one Ember per person). It helps you get what you want: if you don't know yet what to work towards, it helps you find out (experiments); when you know what you want, it helps you get there (goals). It works alongside you, and over time it becomes someone who knows your story. Szilard is its first user; he has no project yet, which is exactly the problem it's for. A possible business later: a free plan with a daily limit plus Ember Plus via Stripe; no ads, no selling data. README.md is the overview; DEPLOY.md is how it goes online.
 
 Owner: Szilard (Hungarian, Budapest/Szeged; prefers direct, concrete, plain answers; gets lost in jargon; runs on Windows; not technical about hosting, so he relies on us for that). GitHub: solidszurap/brain.
 
@@ -43,14 +43,14 @@ python -m server                      # online mode (Render); needs the env vars
   - `face()` with its reasons;
   - `prompt()` and `respond()`, the mind's JSON → reply, face, remember/update/add_steps/done_steps/experiments;
   - memories `{id, kind, note, quote, t, edited}`;
-  - experiments, sessions and the check-in;
+  - experiments and goals (one list, `experiments`; a goal has `kind: "goal"` and its `question` is what having it looks like; `kind_of`), sessions and the check-in. `SYSTEM` tells the mind to talk a goal through first (what, why, where you are, what you tried, what's in the way, what you're comfortable with; usually 3-6 questions), then propose it in `goal` with a `plan` (`_take_goal`: 7-180 days, up to 8 steps; the title is what you want, not the way there). While a goal is active, `replan` changes its plan when you agree. Goals that depend on other people: honest that the outcome isn't fully in your hands; no manipulation. One goal or experiment is active at a time; a goal gets 7 more days (`MORE_DAYS`), and its time-up line and look back ask whether you got there;
   - `say()`;
   - `_template` (the mind without an LLM);
   - the safety rule in `SYSTEM`.
 - `mind/llm.py`: `LLMConfig` (`EMBER_VOICE`; Claude first in auto), `call_llm`, `LLMError(retryable)`, and `_call_claude` (`anthropic` SDK, `claude-haiku-5-5`, effort low, records `cfg.last_usage`).
 - `web/index.html`:
   - Boot reads `/config`. Online, it loads supabase-js (pinned 2.118.0 from jsdelivr; supports Supabase's new publishable keys) for Google login. `api()` adds the bearer token; a 401 shows the login cover and a 403 shows "not invited".
-  - The top switch is Chat | Experiment (`mode`, kept in localStorage, sent with `/talk`, which tells the mind). Experiment mode shows `#sessionbar` (always while a session runs). Ideas are there from the start: before `knows_enough()` (3 memories) they are `starter` experiments (`STARTERS` for the template mind) that need no memory; after it, each must cite memories.
+  - The top switch is Chat | Work (`mode` "chat"/"work", kept in localStorage, sent with `/talk`, which tells the mind; "experiment" is its older name and still accepted). Work mode shows `#sessionbar` (always while a session runs). Ideas are there from the start: before `knows_enough()` (3 memories) they are `starter` experiments (`STARTERS` for the template mind) that need no memory; after it, each must cite memories.
   - The canvas face (`EXPR`) sits above the conversation. Experiment cards render under an Ember line's `exps`; the check-in renders under the last `checkin` line while `checkin_due`. The experiment line is `#sessionbar`, with its pop-up `#expcard`.
   - The look: solid surfaces with a thin edge (`--surface`, `--raised`, `--overlay`, `--edge`), soft shadows (`--lift`), a warm glow behind (`--glow1-3`) and flat orange buttons (`--btn`). No glass: no backdrop blur, gloss or lit edges (Szilard, 2026-11-03). The body is `position: fixed; inset: 0`, so the page is exactly the screen. iOS 26 paints the strip behind the clock from the pinned layer at the top (the body) if it has one plain colour, and blurs the page there if not, so the body's background is plain `--bg` and the glow is `body::before`. Never give the body a gradient or blur again. (Sources: hawkshift.com/research/ios-26-safari-status-bar; WebKit bug 301994.) Colour versions (Ember, Night, Plum, Forest, Day) are `[data-theme]` token overrides, picked in the menu and kept in localStorage `ember.theme`; Ember and the buttons stay orange in all of them. The model's name is never shown.
   - The menu (⋯): install guide, privacy, export, colour, log out, delete. Confirmations are a second click (`sure`), because `confirm()` is blocked in the app's browser.
@@ -89,12 +89,12 @@ python -m server                      # online mode (Render); needs the env vars
   - Szilard logged in on his iPhone on 2026-11-03 and Ember greeted him.
   - Stripe is set up in **test mode** (2026-11-03) on his account "Solid Results Marketing": product Ember Plus €4.99/month (`price_1UXn8gG7FBneCrtjMlHk8vWe`), webhook "ember" to `/stripe/webhook` (4 events, API version 2023-10-16), and the customer portal (cancel at the end of the period). The three `STRIPE_*` values are in Render, and its log says "payments: on". A test payment and a cancel both reached the `plans` table. Live mode needs his business and ÁSZF first (DEPLOY.md step 6.8).
 
-- **Built and live:** the face, chat, memories with quotes, the memory page, wants, the greeting on return, Chat | Experiment, experiments, work sessions, check-ins, end-of-experiment reviews, Ember Plus, privacy/export/delete, five colour versions.
+- **Built and live:** the face, chat, memories with quotes, the memory page, wants, the greeting on return, Chat | Work, experiments, goals (2026-11-04), work sessions, check-ins, end-of-experiment reviews, Ember Plus, privacy/export/delete, five colour versions.
 - **Checked on 2026-11-03:** both checks pass; the live pages load; `/state` without a login is refused (401) and an unsigned webhook is refused (400); Render's logs show no errors (mind: Claude Haiku, invite list 1 person, payments on); with the public key, all four Supabase tables show 0 rows (RLS on, no policies, as intended); Stripe's webhook has 4 deliveries and 0 failures.
 - **Supabase hardened (2026-11-03, with Szilard's OK):** the Email sign-in provider is off (only Google is on); `public.rls_auto_enable()` (Supabase's own event-trigger function) can no longer be executed by `public`, `anon` or `authenticated`.
 - **Supabase free projects pause after a week with no activity,** so the online server reads it once a day (`keep_awake` in `server/__main__.py`).
 - **The mind is Claude Haiku 5.5** ($0.10/$0.50 per million tokens; measured about $0.0003 a reply). The real cost per reply is logged in the `usage` table.
-- **iPhone:** iOS 26 draws its own blur under the clock in home-screen web apps, and 26.1+ has a WebKit bug with the status bar area (WebKit bug 301994). Neither is Ember's CSS.
+- **iPhone:** iOS 26 blurs the top of a home-screen web app that runs under the clock (`apple-mobile-web-app-status-bar-style` black-translucent); Safari tabs don't. So that meta is gone (2026-11-04), and in `display-mode: standalone` the top bar gets extra padding below the clock for installs made before (iOS keeps the style it saw when Ember was added; re-adding Ember to the home screen gives the opaque status bar). Also WebKit bug 301994 (26.1+ status bar area).
 
 ## Next (in order)
 

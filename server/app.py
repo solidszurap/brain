@@ -363,7 +363,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         text = str(body.get("text", "")).strip()[:MAX_TEXT]
         if not text:
             raise HTTPException(400, "empty")
-        mode = "experiment" if body.get("mode") == "experiment" else "chat"
+        mode = "work" if body.get("mode") in ("work", "experiment") else "chat"   # "experiment": its older name
 
         def f(u, now):
             spend_free(u, now)

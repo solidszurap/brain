@@ -8,7 +8,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Ember">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icons/icon-180.png">
 <link rel="icon" type="image/png" href="/icons/icon-192.png">
@@ -64,7 +63,7 @@ button { font: inherit; }
 .tbtn { background: var(--raised); border: 1px solid var(--edge);
   color: var(--text); border-radius: 999px; padding: 7px 14px; cursor: pointer; position: relative; white-space: nowrap; }
 .tbtn:hover { border-color: var(--edge2); }
-/* the switch between chatting and working on an experiment */
+/* the switch between chatting and working on a goal or experiment */
 .modes { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--raised); border: 1px solid var(--edge); }
 .modes button { background: none; border: 0; color: var(--dim); padding: 6px 15px; border-radius: 999px; font-weight: 600; cursor: pointer; transition: color .2s, background .2s, box-shadow .2s; }
 .modes button:hover { color: var(--text); }
@@ -110,6 +109,7 @@ button { font: inherit; }
 .xcard.picked { border-color: var(--accent); }
 .xcard.gone { opacity: .5; }
 .xcard .tag { font-size: 12px; color: var(--accent); }
+.plan { font-size: 14px; color: var(--text); margin: 6px 0 4px; }
 .checkin { align-self: flex-start; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; width: min(560px, 92%); margin-top: -2px; }
 .checkin .rate { display: flex; gap: 4px; }
 .checkin .rate button { width: 36px; padding: 6px 0; }
@@ -232,12 +232,18 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
   .msg { max-width: 90%; }
   .pill { border-radius: 18px; padding: 6px 8px 6px 14px; gap: 6px 10px; font-size: 13.5px; }
 }
+/* the home-screen app: iOS keeps the status bar style it saw when Ember was added, so an Ember added before
+   still runs under the clock, and iOS 26 blurs about 25 px below it. There the top bar starts below that blur.
+   Added again (or for the first time) the inset is 0 and nothing changes. */
+@media (display-mode: standalone) {
+  .top { padding-top: calc(14px + min(env(safe-area-inset-top), 28px)); }
+}
 </style>
 </head>
 <body>
 <div class="top">
   <button class="tbtn" id="openKnows">What it knows</button>
-  <div class="title"><div class="modes" id="modes"><button data-mode="chat">Chat</button><button data-mode="experiment">Experiment</button></div></div>
+  <div class="title"><div class="modes" id="modes"><button data-mode="chat">Chat</button><button data-mode="work">Work</button></div></div>
   <div class="menuwrap">
     <button class="tbtn" id="menuBtn" aria-label="Menu">⋯</button>
     <div class="menu" id="menu">
@@ -285,7 +291,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 <div class="cover" id="login">
   <img src="/icons/icon-192.png" alt="">
   <h1>Ember</h1>
-  <p>A small being that helps you find what to work towards, then works alongside you, and remembers your story.</p>
+  <p>A small being that helps you get what you want: it helps you find what to work towards, reach your goals, and remembers your story.</p>
   <button class="gbtn" id="googleBtn"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>
   <small>By continuing you agree that Ember keeps what you tell it, as described in the <a href="/privacy">privacy page</a>. 16+.</small>
 </div>
@@ -480,9 +486,9 @@ document.addEventListener("click", e => {
 if (new URLSearchParams(location.search).get("plus")) history.replaceState(null, "", "/");
 
 // ------------------------------------------------------------------ the conversation
-// Chat or Experiment: the experiment line and its tools show in Experiment mode (or while you're working)
+// Chat or Work: the line for your goal or experiment and its tools show in Work mode (or while you're working)
 let mode = "chat";
-try { mode = localStorage.getItem("ember.mode") === "experiment" ? "experiment" : "chat"; } catch (e) {}
+try { mode = ["work", "experiment"].includes(localStorage.getItem("ember.mode")) ? "work" : "chat"; } catch (e) {}   // "experiment": its older name
 function setMode(m) {
   mode = m;
   try { localStorage.setItem("ember.mode", m); } catch (e) {}
@@ -493,11 +499,11 @@ function setMode(m) {
 }
 $("#modes").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setMode(b.dataset.mode); });
 
-// the one line above the input: what's going on with your experiment
+// the one line above the input: what's going on with your goal or experiment
 let expOpen = false;
 function renderSessionBar() {
-  const x = S.experiment, bar = $("#sessionbar"), work = mode === "experiment";
-  ta.placeholder = !work ? "Say something to Ember…" : x ? `Ask about ${x.title}…` : "Ask Ember what you could try…";
+  const x = S.experiment, bar = $("#sessionbar"), work = mode === "work";
+  ta.placeholder = !work ? "Say something to Ember…" : x ? `Ask about ${x.title}…` : "What do you want to get, or try?";
   let html = "";
   if (x && (work || S.session)) {
     const done = x.steps.filter(s => s.done).length;
@@ -520,28 +526,31 @@ $("#sessionbar").addEventListener("click", async e => {
   expKey = ""; poll();
 });
 
-// the conversation, with Ember's experiment ideas and its check-in question inside it
+// the conversation, with Ember's ideas (experiments, or a goal from what you said you want) and its check-in inside it
 let seenLines = 0, rating = 0;
+const isGoal = x => x.kind === "goal";
+const doneWhen = x => isGoal(x) ? "Done when: " + x.question : x.question;
 function cardHtml(x) {
-  const st = x.status;
+  const st = x.status, goal = isGoal(x);
   const based = x.based_on.length ? "Based on: " + x.based_on.map(id => esc(S.memory_notes[id] || "something you told it")).join("; ")
-    : "A starting point: Ember doesn't know you well yet";
-  const foot = st === "suggested" ? `<div class="row"><button class="btn" data-pick="${esc(x.id)}" ${S.experiment ? "disabled" : ""}>Pick this</button></div>`
-    : st === "active" ? `<div class="tag">Your experiment now</div>`
+    : goal ? "" : "A starting point: Ember doesn't know you well yet";
+  const foot = st === "suggested" ? `<div class="row"><button class="btn" data-pick="${esc(x.id)}" ${S.experiment ? "disabled" : ""}>${goal ? "Make this my goal" : "Pick this"}</button></div>`
+    : st === "active" ? `<div class="tag">${goal ? "Your goal now" : "Your experiment now"}</div>`
     : st === "done" || st === "dropped" ? `<div class="tag">${st === "done" ? "Finished" : "Dropped"}</div>` : `<div class="meta">Not picked</div>`;
   return `<div class="xcard ${st === "active" ? "picked" : st === "not_picked" ? "gone" : ""}">
-    <h4>${esc(x.title)}</h4><div class="q">${esc(x.question)}</div>
+    ${goal ? `<div class="tag">Goal</div>` : ""}<h4>${esc(x.title)}</h4><div class="q">${esc(doneWhen(x))}</div>
+    ${x.plan ? `<div class="plan">${esc(x.plan)}</div>` : ""}
     <div class="meta">${x.days} days${x.steps.length ? " · first: " + esc(x.steps[0].text) : ""}</div>
     ${x.why ? `<div class="meta" style="margin-top:4px">${esc(x.why)}</div>` : ""}
-    <div class="meta" style="margin-top:4px">${based}</div>${foot}</div>`;
+    ${based ? `<div class="meta" style="margin-top:4px">${based}</div>` : ""}${foot}</div>`;
 }
-// what actually happened in an experiment, under Ember's look back at it
+// what actually happened in a goal or experiment, under Ember's look back at it
 function factsHtml(x) {
   const f = x.facts;
   if (!f) return "";
   const avg = f.ratings.length ? (f.ratings.reduce((a, b) => a + b, 0) / f.ratings.length).toFixed(1) : null;
   return `<div class="cards"><div class="xcard"><div class="tag">${x.status === "done" ? "Finished" : "Dropped"} on day ${f.days_lasted} of ${x.days}</div>
-    <h4>${esc(x.title)}</h4><div class="q">${esc(x.question)}</div>
+    <h4>${esc(x.title)}</h4><div class="q">${esc(doneWhen(x))}</div>
     <div class="meta">${f.sessions} session${f.sessions === 1 ? "" : "s"} on ${f.work_days} day${f.work_days === 1 ? "" : "s"} · ${fmtTotal(f.seconds)} · ${f.steps_done}/${f.steps} steps${avg ? ` · felt ${avg}/5` : ""}</div>
     ${f.ratings.length > 1 ? `<div class="meta">Each session: ${f.ratings.join(" → ")}</div>` : ""}</div></div>`;
 }
@@ -564,7 +573,7 @@ function renderTalk() {
         <input type="text" id="cwords" placeholder="A few words (optional)" maxlength="2000"><button class="btn" id="csend" ${rating ? "" : "disabled"}>Send</button></div>`;
     }
     if (l.timeup && i === lastTimeup && x && x.id === l.timeup && x.time_up) {
-      html += `<div class="checkin"><button class="btn" id="tfinish">Finish and look back</button><button class="btn ghost" id="textend">3 more days</button></div>`;
+      html += `<div class="checkin"><button class="btn" id="tfinish">Finish and look back</button><button class="btn ghost" id="textend">${isGoal(x) ? 7 : 3} more days</button></div>`;
     }
     if (l.review && S.exps[l.review]) html += factsHtml(S.exps[l.review]);
   });
@@ -591,7 +600,7 @@ $("#talk").addEventListener("click", async e => {
   } else if (t.dataset.pick) {
     t.disabled = true;
     await post("/experiment/pick", {id: t.dataset.pick});
-    setMode("experiment"); poll();
+    setMode("work"); poll();
   } else if ((t.id === "tfinish" || t.id === "textend") && S.experiment) {
     t.disabled = true;
     await post(t.id === "tfinish" ? "/experiment/end" : "/experiment/extend", {id: S.experiment.id, how: "done"});
@@ -637,7 +646,7 @@ function sure(btn, ask) {
   return false;
 }
 
-// ------------------------------------------------------------------ the experiment's steps
+// ------------------------------------------------------------------ the steps of your goal or experiment
 let expKey = "";
 function fmtDur(sec) {
   sec = Math.max(0, Math.round(sec));
@@ -655,8 +664,9 @@ function renderExpCard() {
   if (!x || !expOpen) { $("#expcard").innerHTML = ""; return; }
   const st = x.stats, left = Math.max(0, Math.ceil((x.ends_at - S.now) / 86400));
   const steps = x.steps.map((s, i) => `<li class="${s.done ? "done" : ""}" data-step="${i}"><input type="checkbox" ${s.done ? "checked" : ""}><span>${esc(s.text)}</span></li>`).join("");
-  $("#expcard").innerHTML = `<div class="panel"><div class="meta">Experiment · day ${Math.min(x.day, x.days)} of ${x.days}${left ? "" : " · its time is up"}</div>
-    <div class="q">${esc(x.question)}</div>
+  $("#expcard").innerHTML = `<div class="panel"><div class="meta">${isGoal(x) ? "Goal" : "Experiment"} · day ${Math.min(x.day, x.days)} of ${x.days}${left ? "" : " · its time is up"}</div>
+    <div class="q">${esc(doneWhen(x))}</div>
+    ${x.plan ? `<div class="plan">${esc(x.plan)}</div>` : ""}
     ${steps ? `<ul class="steps">${steps}</ul>` : ""}
     <div class="meta" style="margin-top:8px">${fmtTotal(st.seconds)} in ${st.sessions} session${st.sessions === 1 ? "" : "s"}${st.avg_rating ? ` · felt ${st.avg_rating}/5 on average` : ""}</div>
     <div class="row"><button class="btn ghost" id="enddone">Finish it</button><button class="btn ghost" id="enddrop">Drop it</button></div></div>`;
