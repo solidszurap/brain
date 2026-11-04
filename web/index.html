@@ -21,6 +21,7 @@
   --edge: rgba(255, 245, 235, .1); --edge2: rgba(255, 245, 235, .2);
   --btn: #ffa862;
   --lift: 0 10px 30px rgba(0, 0, 0, .28);
+  --topbar: 62px;              /* the top bar's height below the clock */
   --glow1: rgba(255, 138, 58, .2); --glow2: rgba(255, 190, 125, .09); --glow3: rgba(214, 88, 48, .11);
 }
 /* colour versions, picked in the menu; Ember itself and its buttons stay orange in all of them */
@@ -49,8 +50,8 @@ html, body { margin: 0; }
 /* iOS 26 paints the strip behind the clock from the pinned layer at the top (here the body) when it has one plain
    colour, and blurs the page there when it doesn't: so the body is plain and the glow is a layer of its own */
 body { position: fixed; inset: 0; background: var(--bg); color: var(--text);
-  font: 15px/1.5 system-ui, "Segoe UI", sans-serif; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; overflow: hidden;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) max(8px, calc(env(safe-area-inset-bottom) - 16px)) env(safe-area-inset-left); box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  font: 15px/1.5 system-ui, "Segoe UI", sans-serif; display: grid; grid-template-rows: minmax(0, 1fr) auto auto; overflow: hidden;
+  padding: calc(env(safe-area-inset-top) + var(--topbar)) env(safe-area-inset-right) max(8px, calc(env(safe-area-inset-bottom) - 16px)) env(safe-area-inset-left); box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background: radial-gradient(55% 34% at 50% 27%, var(--glow1), transparent 72%),
     radial-gradient(45% 35% at 92% 78%, var(--glow2), transparent 70%),
@@ -58,16 +59,17 @@ body::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-e
 button { font: inherit; }
 
 /* top bar */
-.top { display: flex; align-items: center; gap: 8px; padding: 16px 14px 10px; }
-.top .title { flex: 1; text-align: center; font-weight: 650; letter-spacing: .03em; min-width: 0; }
+/* the top bar is pinned to the very top of the screen and has one plain colour: iOS 26 then paints the strip
+   behind the clock in that colour instead of blurring the page there (in Safari and in the home-screen app) */
+.top { position: fixed; top: 0; left: 0; right: 0; z-index: 8; display: flex; align-items: center; gap: 8px; box-sizing: border-box;
+  height: calc(env(safe-area-inset-top) + var(--topbar)); background: var(--bg);
+  padding: env(safe-area-inset-top) calc(14px + env(safe-area-inset-right)) 0 calc(14px + env(safe-area-inset-left)); }
+.top::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 16px; pointer-events: none;
+  background: linear-gradient(var(--bg), transparent); }
+.top .title { flex: 1; text-align: center; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); font-size: 14px; }
 .tbtn { background: var(--raised); border: 1px solid var(--edge);
   color: var(--text); border-radius: 999px; padding: 7px 14px; cursor: pointer; position: relative; white-space: nowrap; }
 .tbtn:hover { border-color: var(--edge2); }
-/* the switch between chatting and working on a goal or experiment */
-.modes { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--raised); border: 1px solid var(--edge); }
-.modes button { background: none; border: 0; color: var(--dim); padding: 6px 15px; border-radius: 999px; font-weight: 600; cursor: pointer; transition: color .2s, background .2s, box-shadow .2s; }
-.modes button:hover { color: var(--text); }
-.modes button.on { color: #2a1a0c; background: var(--btn); box-shadow: 0 2px 10px rgba(255, 140, 60, .3); }
 .tbtn .dot { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: none; box-shadow: 0 0 8px var(--accent); }
 .tbtn .dot.on { display: block; }
 
@@ -197,6 +199,15 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .drawer header h2 { margin: 0; font-size: 16px; flex: 1; }
 .drawer header button { background: none; border: 0; color: var(--dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 2px 6px; }
 .drawer .body { flex: 1; overflow-y: auto; padding: 16px; }
+/* your chats */
+.newchat { width: 100%; margin-bottom: 12px; }
+.chatitem { display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 14px; padding: 9px 12px; margin-bottom: 4px; color: var(--text); cursor: pointer; font: inherit; }
+.chatitem:hover { background: var(--surface); }
+.chatitem.on { background: var(--raised); border-color: var(--edge); }
+.chatitem .ct { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chatitem .cs { font-size: 12.5px; color: var(--dim); }
+.chatitem .cs b { color: var(--accent); font-weight: 600; }
+.chatitem.new .ct::after { content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); vertical-align: middle; }
 
 /* experiment */
 .panel { background: var(--raised); border: 1px solid var(--edge); border-radius: 22px; padding: 14px 16px; margin-bottom: 10px; }
@@ -216,6 +227,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 
 /* what it knows */
 .sub { color: var(--dim); margin: 0 0 18px; }
+.story .sub { margin: 4px 0 0; }
 .kind { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin: 20px 0 8px; }
 .card { background: var(--surface); border: 1px solid var(--edge); border-radius: 18px; padding: 11px 14px; margin-bottom: 8px; display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
 .card .cbody { flex: 1; min-width: 200px; }
@@ -225,30 +237,25 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .card input { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--accent); border-radius: 8px; padding: 6px 8px; font: inherit; }
 
 @media (max-width: 560px) {
-  .top { padding: 14px 10px 8px; gap: 6px; }
+  .top { padding-left: calc(10px + env(safe-area-inset-left)); padding-right: calc(10px + env(safe-area-inset-right)); gap: 6px; }
   .tbtn { padding: 7px 12px; font-size: 14px; }
-  .modes button { padding: 6px 11px; font-size: 14px; }
   #face { width: min(22vh, 50vw); }
   .msg { max-width: 90%; }
   .pill { border-radius: 18px; padding: 6px 8px 6px 14px; gap: 6px 10px; font-size: 13.5px; }
-}
-/* the home-screen app: iOS keeps the status bar style it saw when Ember was added, so an Ember added before
-   still runs under the clock, and iOS 26 blurs about 25 px below it. There the top bar starts below that blur.
-   Added again (or for the first time) the inset is 0 and nothing changes. */
-@media (display-mode: standalone) {
-  .top { padding-top: calc(14px + min(env(safe-area-inset-top), 28px)); }
 }
 </style>
 </head>
 <body>
 <div class="top">
+  <button class="tbtn" id="openChats" aria-label="Your chats">☰ Chats<span class="dot" id="chatsDot"></span></button>
+  <div class="title" id="chatTitle"></div>
   <button class="tbtn" id="openKnows">What it knows</button>
-  <div class="title"><div class="modes" id="modes"><button data-mode="chat">Chat</button><button data-mode="work">Work</button></div></div>
   <div class="menuwrap">
     <button class="tbtn" id="menuBtn" aria-label="Menu">⋯</button>
     <div class="menu" id="menu">
       <div class="who" id="whoami"></div>
       <button data-menu="install">Add Ember to your home screen</button>
+      <button data-menu="notify" id="notifyItem" style="display:none">Turn on notifications</button>
       <a href="/privacy">Privacy</a>
       <button data-menu="plus" id="plusItem" style="display:none"></button>
       <button data-menu="export">Download my data</button>
@@ -308,6 +315,10 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
   <button class="tbtn" id="installDone">Got it</button>
 </div>
 <div class="scrim" id="scrim"></div>
+<aside class="drawer left" id="chatsDrawer">
+  <header><h2>Your chats</h2><button data-close>×</button></header>
+  <div class="body"><button class="btn newchat" id="newChat">+ New chat</button><div id="chatlist"></div></div>
+</aside>
 <aside class="drawer right wide" id="knowsDrawer">
   <header><h2>What Ember knows about me</h2><button data-close>×</button></header>
   <div class="body" id="memlist"></div>
@@ -367,6 +378,7 @@ let started = false;
 function start() {
   if (started) return;
   started = true;
+  renderNotify();
   setInterval(poll, 1000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
   poll();
@@ -376,7 +388,8 @@ function start() {
 async function poll() {
   if (gate) return;
   try {
-    const r = await api("/state?v=" + (document.hidden ? 0 : 1));
+    const r = await api("/state?v=" + (document.hidden ? 0 : 1) + "&chat=" + encodeURIComponent(chat)
+      + "&tz=" + (-new Date().getTimezoneOffset()));     // your clock, for Ember's sense of your day
     if (!r.ok) throw new Error(r.status);
     S = await r.json();
     offline = false;
@@ -397,7 +410,9 @@ document.addEventListener("click", async e => {
   const t = e.target.closest("[data-menu]");
   if (!t) return;
   const what = t.dataset.menu;
-  if (what === "install") {
+  if (what === "notify") {
+    toggleNotify(t);
+  } else if (what === "install") {
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
     $("#installSteps").innerHTML = ios
       ? "<li>Open Ember in <b>Safari</b>.</li><li>Tap the <b>Share</b> button (the square with an arrow).</li><li>Tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>"
@@ -442,7 +457,8 @@ function render() {
   $("#note").innerHTML = S.problem
     ? `<span class="problem">Its mind had a problem: ${esc(S.problem)}. The simple template mind answered instead.</span>`
     : Date.now() < flash.until ? flash.html : "";
-  const key = JSON.stringify([S.talk.length, S.talk.length && S.talk[S.talk.length - 1].t, S.thinking, S.checkin_due,
+  renderChats();
+  const key = JSON.stringify([S.chat, S.talk.length, S.talk.length && S.talk[S.talk.length - 1].t, S.thinking, S.thinking_in, S.checkin_due,
     Object.values(S.exps).map(x => x.status), !!S.experiment, !!(S.experiment && S.experiment.time_up)]);
   if (key !== lastTalkKey) { lastTalkKey = key; renderTalk(); }
   if ($("#why").classList.contains("on")) renderWhy();
@@ -486,31 +502,56 @@ document.addEventListener("click", e => {
 if (new URLSearchParams(location.search).get("plus")) history.replaceState(null, "", "/");
 
 // ------------------------------------------------------------------ the conversation
-// Chat or Work: the line for your goal or experiment and its tools show in Work mode (or while you're working)
-let mode = "chat";
-try { mode = ["work", "experiment"].includes(localStorage.getItem("ember.mode")) ? "work" : "chat"; } catch (e) {}   // "experiment": its older name
-function setMode(m) {
-  mode = m;
-  try { localStorage.setItem("ember.mode", m); } catch (e) {}
-  document.querySelectorAll("#modes button").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
-  if (m === "chat") expOpen = false;
-  expKey = ""; $("#sessionbar").dataset.html = "";
-  if (S) render();
+// your chats: one is open at a time; Ember remembers you in all of them
+let chat = "";
+try { chat = localStorage.getItem("ember.chat") || ""; } catch (e) {}
+const askedChat = new URLSearchParams(location.search).get("chat");     // a notification opens its chat
+if (askedChat) { chat = askedChat; history.replaceState(null, "", "/"); }
+let seenAt = {};      // per chat: when you last saw Ember's newest line there (a dot when there's something newer)
+try { seenAt = JSON.parse(localStorage.getItem("ember.seen") || "{}"); } catch (e) {}
+if (!seenAt || typeof seenAt !== "object" || Array.isArray(seenAt) || "chat" in seenAt) seenAt = {};
+function openChat(id) {
+  chat = id; jumpDown = true; expOpen = false; lastTalkKey = ""; expKey = "";
+  $("#sessionbar").dataset.html = "-";   // "-": redraw it even when it becomes empty
+  try { localStorage.setItem("ember.chat", id); } catch (e) {}
+  closeDrawers(); poll();
 }
-$("#modes").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setMode(b.dataset.mode); });
+function fmtWhen(t) {
+  const d = new Date(t * 1000);
+  return d.toDateString() === new Date().toDateString() ? fmtTime(t) : d.toLocaleDateString([], {day: "numeric", month: "short"});
+}
+function renderChats() {
+  if (S.chat !== chat) { chat = S.chat; try { localStorage.setItem("ember.chat", chat); } catch (e) {} }
+  for (const c of S.chats) if (!(c.id in seenAt)) seenAt[c.id] = c.ember_at;   // first time: nothing is new
+  const cur = S.chats.find(c => c.id === S.chat);
+  if (cur) seenAt[cur.id] = Math.max(seenAt[cur.id] || 0, cur.ember_at);
+  try { localStorage.setItem("ember.seen", JSON.stringify(seenAt)); } catch (e) {}
+  const isNew = c => c.id !== S.chat && c.ember_at > (seenAt[c.id] || 0);
+  $("#chatsDot").classList.toggle("on", S.chats.some(isNew));
+  $("#chatTitle").textContent = cur && S.chats.length > 1 ? cur.title : "";
+  const html = S.chats.map(c => `<button class="chatitem${c.id === S.chat ? " on" : ""}${isNew(c) ? " new" : ""}" data-chat="${esc(c.id)}">
+    <div class="ct">${esc(c.title)}</div><div class="cs">${c.goal ? `<b>${c.goal.kind === "goal" ? "Goal" : "Experiment"}</b> · ` : ""}${esc(fmtWhen(c.last))}</div></button>`).join("");
+  if ($("#chatlist").dataset.html !== html) { $("#chatlist").dataset.html = html; $("#chatlist").innerHTML = html; }
+}
+$("#chatlist").addEventListener("click", e => { const b = e.target.closest("[data-chat]"); if (b) openChat(b.dataset.chat); });
+$("#newChat").onclick = async () => { const r = await post("/chat/new"); if (r && r.id) openChat(r.id); };
+$("#openChats").onclick = () => openDrawer("chats");
 
 // the one line above the input: what's going on with your goal or experiment
 let expOpen = false;
 function renderSessionBar() {
-  const x = S.experiment, bar = $("#sessionbar"), work = mode === "work";
-  ta.placeholder = !work ? "Say something to Ember…" : x ? `Ask about ${x.title}…` : "What do you want to get, or try?";
+  const x = S.experiment, bar = $("#sessionbar");
+  const sx = S.session ? S.exps[S.session.exp] : null;      // a work session runs, maybe on another chat's goal
+  ta.placeholder = x ? `Ask about ${x.title}…` : "Message Ember…";
   let html = "";
-  if (x && (work || S.session)) {
+  if (sx) {
+    const title = x && x.id === sx.id
+      ? `<button class="open" data-toggle>Working on <b>${esc(sx.title)}</b> ${expOpen ? "▴" : "▾"}</button>`
+      : `<button class="open" data-chat="${esc(sx.chat || "c1")}">Working on <b>${esc(sx.title)}</b></button>`;
+    html = `<div class="pill">${title}<span class="timer" id="pilltimer"></span><button class="btn" data-act="stop">Stop</button></div>`;
+  } else if (x) {
     const done = x.steps.filter(s => s.done).length;
-    const title = `<button class="open" data-toggle>${S.session ? "Working on " : ""}<b>${esc(x.title)}</b> ${expOpen ? "▴" : "▾"}</button>`;
-    html = S.session
-      ? `<div class="pill">${title}<span class="timer" id="pilltimer"></span><button class="btn" data-act="stop">Stop</button></div>`
-      : `<div class="pill">${title}<span>day ${Math.min(x.day, x.days)} of ${x.days} · ${done}/${x.steps.length} steps</span><button class="btn" data-act="start">Start working</button></div>`;
+    html = `<div class="pill"><button class="open" data-toggle><b>${esc(x.title)}</b> ${expOpen ? "▴" : "▾"}</button><span>day ${Math.min(x.day, x.days)} of ${x.days} · ${done}/${x.steps.length} steps</span><button class="btn" data-act="start">Start working</button></div>`;
   }
   if (bar.dataset.html !== html) { bar.dataset.html = html; bar.innerHTML = html; }
   const pt = $("#pilltimer");
@@ -519,15 +560,16 @@ function renderSessionBar() {
 $("#sessionbar").addEventListener("click", async e => {
   const t = e.target.closest("button");
   if (!t) return;
-  if (t.hasAttribute("data-toggle")) { expOpen = !expOpen; expKey = ""; $("#sessionbar").dataset.html = ""; render(); return; }
+  if (t.hasAttribute("data-toggle")) { expOpen = !expOpen; expKey = ""; $("#sessionbar").dataset.html = "-"; render(); return; }
+  if (t.dataset.chat) { openChat(t.dataset.chat); return; }
   t.disabled = true;
   if (t.dataset.act === "stop") expOpen = false;          // so its question about the session is in view
-  await post("/session/" + t.dataset.act);
+  await post("/session/" + t.dataset.act, {chat: S.chat});
   expKey = ""; poll();
 });
 
 // the conversation, with Ember's ideas (experiments, or a goal from what you said you want) and its check-in inside it
-let seenLines = 0, rating = 0;
+let seenLines = 0, rating = 0, jumpDown = true;   // jumpDown: scroll to the end after opening a chat
 const isGoal = x => x.kind === "goal";
 const doneWhen = x => isGoal(x) ? "Done when: " + x.question : x.question;
 function cardHtml(x) {
@@ -577,13 +619,17 @@ function renderTalk() {
     }
     if (l.review && S.exps[l.review]) html += factsHtml(S.exps[l.review]);
   });
-  if (S.thinking) html += `<div class="msg ember typing"><i></i><i></i><i></i></div>`;
-  if (!S.talk.length && !S.thinking) html = `<div class="empty">Ember will greet you in a moment.</div>`;
+  const thinkingHere = S.thinking && (!S.thinking_in || S.thinking_in === S.chat);
+  if (thinkingHere) html += `<div class="msg ember typing"><i></i><i></i><i></i></div>`;
+  if (!html) html = S.chats.length > 1
+    ? `<div class="empty">A new chat. Tell Ember what's on your mind: something you want, or that you don't know yet what to work on.</div>`
+    : `<div class="empty">Ember will greet you in a moment.</div>`;
   box.innerHTML = html;
   if (typing !== null && $("#cwords")) { $("#cwords").value = typing; $("#cwords").focus(); }
   const grew = S.talk.length > seenLines;
   seenLines = S.talk.length;
-  if (atBottom || grew) { chat.scrollTop = chat.scrollHeight; requestAnimationFrame(() => chat.scrollTop = chat.scrollHeight); }
+  if (atBottom || grew || jumpDown) { chat.scrollTop = chat.scrollHeight; requestAnimationFrame(() => chat.scrollTop = chat.scrollHeight); }
+  jumpDown = false;
 }
 $("#talk").addEventListener("click", async e => {
   const t = e.target.closest("button");
@@ -600,7 +646,7 @@ $("#talk").addEventListener("click", async e => {
   } else if (t.dataset.pick) {
     t.disabled = true;
     await post("/experiment/pick", {id: t.dataset.pick});
-    setMode("work"); poll();
+    poll();
   } else if ((t.id === "tfinish" || t.id === "textend") && S.experiment) {
     t.disabled = true;
     await post(t.id === "tfinish" ? "/experiment/end" : "/experiment/extend", {id: S.experiment.id, how: "done"});
@@ -614,13 +660,13 @@ function renderWhy() {
     `<div class="meter"><span>${name}</span><i><b style="width:${Math.round(v * 100)}%"></b></i><span>${v.toFixed(2)}</span></div>`;
   $("#why").innerHTML = `<b>${esc(f.expression)}</b>, because:<ul>${f.why.map(w => `<li>${esc(w)}</li>`).join("")}</ul>`
     + m("connection", S.connection) + m("curiosity", S.curiosity) + m("mood", S.mood)
-    + `<div style="margin-top:8px">These are numbers in Ember's program, moved by real events and real time. They are not feelings, and nothing shows Ember feels anything.</div>`;
+    + `<div style="margin-top:8px">These are Ember's wants, moved by real events and real time.</div>`;
 }
 $("#whybtn").onclick = e => { e.stopPropagation(); $("#why").classList.toggle("on"); if (S) renderWhy(); };
 document.addEventListener("click", e => { if (!e.target.closest("#why, #whybtn")) $("#why").classList.remove("on"); });
 
 // ------------------------------------------------------------------ drawers
-const DRAWERS = {knows: "#knowsDrawer"};
+const DRAWERS = {knows: "#knowsDrawer", chats: "#chatsDrawer"};
 function openDrawer(name) {
   closeDrawers();
   $(DRAWERS[name]).classList.add("on");
@@ -687,13 +733,12 @@ $("#expcard").addEventListener("click", async e => {
 const ta = $("#text");
 ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 160) + "px"; });
 ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#form").requestSubmit(); } });
-setMode(mode);
 $("#form").onsubmit = async e => {
   e.preventDefault();
   const text = ta.value.trim();
   if (!text || offline) return;
   ta.value = ""; ta.style.height = "auto";
-  const r = await post("/talk", {text, mode});
+  const r = await post("/talk", {text, chat: S ? S.chat : chat});
   if (!r) ta.value = text;
   poll();
 };
@@ -703,7 +748,13 @@ async function loadMemory() {
   const r = await api("/memory").catch(() => null);
   if (!r) return;
   const M = await r.json();
-  let html = `<p class="sub">Everything Ember remembers about you, with your own words it came from. Correct anything that's wrong, or make it forget.</p>`;
+  const st = M.story, plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+  let html = st ? `<div class="panel story"><div class="kind" style="margin-top:0">Our story</div>
+    <div>Together since ${esc(new Date(st.since * 1000).toLocaleDateString([], {year: "numeric", month: "long", day: "numeric"}))} (${plural(st.days, "day")})</div>
+    <div class="sub">${[plural(st.chats, "chat"), plural(st.memories, "thing") + " it remembers",
+      st.goals && plural(st.goals, "goal"), st.experiments && plural(st.experiments, "experiment"),
+      st.finished && `${st.finished} finished`, st.sessions && `${fmtTotal(st.seconds)} of work together`].filter(Boolean).join(" · ")}</div></div>` : "";
+  html += `<p class="sub">Everything Ember remembers about you, with your own words it came from. Correct anything that's wrong, or make it forget.</p>`;
   if (!M.count) html += `<p class="sub">Nothing yet. Talk with it, and what you tell it about yourself shows up here.</p>`;
   for (const [kind, items] of Object.entries(M.groups)) {
     if (!items.length) continue;
@@ -867,7 +918,56 @@ function draw(now) {
 }
 requestAnimationFrame(draw);
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
+  navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.chat) openChat(e.data.chat); });
+}
+
+// ------------------------------------------------------------------ notifications: Ember's check-ups on your phone
+const canPush = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const onHomeScreen = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+function keyBytes(s) {
+  const b = atob((s + "=".repeat((4 - s.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(b, c => c.charCodeAt(0));
+}
+async function pushSubscription() {
+  if (!canPush()) return null;
+  return (await navigator.serviceWorker.ready).pushManager.getSubscription();
+}
+async function renderNotify() {
+  const item = $("#notifyItem");
+  item.style.display = CFG.vapid_public ? "" : "none";
+  if (!CFG.vapid_public) return;
+  const sub = await pushSubscription().catch(() => null);
+  item.dataset.on = sub ? "1" : "";
+  item.textContent = sub ? "Notifications: on · turn off" : "Turn on notifications";
+}
+function say(html) { flash = {html, until: Date.now() + 9000}; if (S) render(); }
+async function toggleNotify(item) {
+  item.disabled = true;
+  try {
+    if (item.dataset.on) {
+      const sub = await pushSubscription();
+      if (sub) { await post("/push/unsubscribe", {endpoint: sub.endpoint}); await sub.unsubscribe(); }
+    } else if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !onHomeScreen()) {
+      say("On iPhone, notifications work once Ember is on your home screen: add it (⋯ → Add Ember to your home screen), open it from there, then turn them on.");
+    } else if (!canPush()) {
+      say("This browser can't show Ember's notifications.");
+    } else if (await Notification.requestPermission() !== "granted") {
+      say("Notifications are off for Ember in your settings. Allow them there, then try again.");
+    } else {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: keyBytes(CFG.vapid_public)});
+      const r = await post("/push/subscribe", {subscription: sub.toJSON()});
+      say(r && r.ok ? "Notifications are on. Ember will let you know when it checks up on you, never at night."
+        : "Couldn't turn notifications on. Try again in a moment.");
+    }
+  } catch (e) {
+    say("Couldn't turn notifications on here.");
+  }
+  item.disabled = false;
+  renderNotify();
+}
 boot();
 </script>
 </body>

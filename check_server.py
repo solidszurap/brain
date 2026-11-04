@@ -183,9 +183,14 @@ for s in ("I code for hours", "I want to make a game"):
 wait(lambda: "I heard: I want to make a game" in ember_lines("tok-a"))
 st = state("tok-a", 0)
 check("enough memories to build ideas on them", st["knows_enough"], str(st["memories"]))
-call(base, "/talk", "tok-a", {"text": "what should I work on", "mode": "work"})
-check("in Work mode, its mind is told so", wait(lambda: "I heard: what should I work on" in ember_lines("tok-a"))
-      and "work mode" in mind.last)
+cid = call(base, "/chat/new", "tok-a", {})[1]["id"]
+check("a new chat", cid == "c2" and state("tok-a", 0)["chat"] == "c2" and not state("tok-a", 0)["talk"])
+call(base, "/talk", "tok-a", {"text": "what should I work on", "chat": cid})
+check("Ember answers in that chat", wait(lambda: "I heard: what should I work on" in ember_lines("tok-a"))
+      and "This is your chat" in mind.last)
+check("...and the first chat doesn't show it", "I heard: what should I work on" not in
+      [l["text"] for l in call(base, "/state?v=0&chat=c1", "tok-a")[1]["talk"]])
+check("the chat list has both, latest first", [c["id"] for c in state("tok-a", 0)["chats"]] == ["c2", "c1"])
 call(base, "/experiment/suggest", "tok-a", {})
 check("asked for ideas, it suggests experiments", wait(lambda: state("tok-a", 0)["suggestions"]))
 xid = state("tok-a", 0)["suggestions"][0]["id"]
@@ -194,12 +199,112 @@ T[0] += 8 * 86400
 state("tok-a")
 check("when its days are up, it asks: finish or keep going",
       wait(lambda: any(l.get("timeup") == xid for l in state("tok-a", 0)["talk"])))
-check("3 more days", call(base, "/experiment/extend", "tok-a", {})[1]["ok"] and state("tok-a", 0)["experiment"]["days"] == 11)
+check("3 more days", call(base, "/experiment/extend", "tok-a", {"id": xid})[1]["ok"] and state("tok-a", 0)["experiment"]["days"] == 11)
 check("finish it", call(base, "/experiment/end", "tok-a", {"id": xid, "how": "done"})[1]["ok"])
 check("...and it looks back on what actually happened, on its own line",
       wait(lambda: any(l.get("review") == xid and l["text"].startswith("Looking back: 0 work sessions")
                        for l in state("tok-a", 0)["talk"])))
 check("...with the facts kept for the window", state("tok-a", 0)["exps"][xid]["facts"]["sessions"] == 0)
+
+print("Ember checks up on you, even while you're away")
+app5 = create_app(FileStore(os.path.join(tmp, "users5")), FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock,
+                  checkup_every=0.1)
+base5, srv5 = serve(app5)
+call(base5, "/state?v=0", "tok-a")
+u5 = next(iter(app5.state.users.cache.values()))
+with u5.lock:
+    u5.ember.followups.append({"chat": "c1", "at": T[0] - 1, "about": "how the gym went", "set": T[0] - 3600})
+check("a planned check-up arrives in its chat by itself", wait(lambda: any(
+    l.get("checkup") and l["text"] == "Hello again." for l in call(base5, "/state?v=0", "tok-a")[1]["talk"])))
+check("...and it isn't one of your free messages", call(base5, "/state?v=0", "tok-a")[1]["plan"]["plus"]
+      or call(base5, "/state?v=0", "tok-a")[1]["plan"]["free_left"] == 5)
+srv5.should_exit = True
+
+print("Phone notifications (Web Push)")
+import base64
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from server.push import Push, PushGone, b64u, encrypt, new_private_key, unb64u
+
+
+def hk(salt, ikm, info, n):
+    return HKDF(algorithm=hashes.SHA256(), length=n, salt=salt, info=info).derive(ikm)
+
+
+phone = ec.generate_private_key(ec.SECP256R1())                     # what a phone's browser holds
+phone_pub = phone.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+auth_secret = os.urandom(16)
+body = encrypt(b'{"body": "How did Wednesday go?"}', b64u(phone_pub), b64u(auth_secret))
+salt, rs, idlen = body[:16], int.from_bytes(body[16:20], "big"), body[20]
+sender_pub = body[21:21 + idlen]
+shared = phone.exchange(ec.ECDH(), ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), sender_pub))
+ikm = hk(auth_secret, shared, b"WebPush: info\x00" + phone_pub + sender_pub, 32)
+plain = AESGCM(hk(salt, ikm, b"Content-Encoding: aes128gcm\x00", 16)).decrypt(
+    hk(salt, ikm, b"Content-Encoding: nonce\x00", 12), body[21 + idlen:], None)
+check("a notification decrypts on the phone (RFC 8291)", rs == 4096 and idlen == 65
+      and plain == b'{"body": "How did Wednesday go?"}\x02')
+pk = new_private_key()
+pusher = Push(pk, "https://ember.example")
+auth_header = pusher._vapid("https://push.example.com/abc", T[0])
+token = auth_header.split("t=")[1].split(",")[0]
+head, claims, sig = token.split(".")
+pub = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), unb64u(pusher.public))
+raw = unb64u(sig)
+try:
+    pub.verify(encode_dss_signature(int.from_bytes(raw[:32], "big"), int.from_bytes(raw[32:], "big")),
+               f"{head}.{claims}".encode(), ec.ECDSA(hashes.SHA256()))
+    signed = True
+except Exception:
+    signed = False
+cl = json.loads(unb64u(claims))
+check("...and Ember signs its request (VAPID, RFC 8292)", signed and cl["aud"] == "https://push.example.com"
+      and cl["sub"] == "https://ember.example" and auth_header.endswith("k=" + pusher.public))
+
+
+class FakePush:
+    public = "BFAKE"
+
+    def __init__(self):
+        self.sent, self.gone = [], set()
+
+    def send(self, device, message, ttl=0, now=None):
+        if device["endpoint"] in self.gone:
+            raise PushGone()
+        self.sent.append((device["endpoint"], message))
+        return 201
+
+
+fp = FakePush()
+app6 = create_app(FileStore(os.path.join(tmp, "users6")), FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock,
+                  checkup_every=0.1, push=fp)
+base6, srv6 = serve(app6)
+check("the window learns Ember's public key", call(base6, "/config")[1]["vapid_public"] == "BFAKE")
+sub = {"endpoint": "https://push.example.com/phone1", "keys": {"p256dh": b64u(phone_pub), "auth": b64u(auth_secret)}}
+check("a phone turns notifications on", call(base6, "/push/subscribe", "tok-a", {"subscription": sub})[1]["ok"])
+check("a bad subscription is refused", call(base6, "/push/subscribe", "tok-a",
+                                           {"subscription": {"endpoint": "http://x"}})[0] == 400)
+call(base6, "/state?v=0&tz=60", "tok-a")
+u6 = next(iter(app6.state.users.cache.values()))
+check("the window tells Ember its clock", u6.ember.tz == 60 and len(u6.ember.devices) == 1)
+day = T[0] - (T[0] % 86400)
+T_saved = T[0]
+T[0] = day + 9 * 3600                            # 10:00 their time
+with u6.lock:
+    u6.ember.followups.append({"chat": "c1", "at": T[0] - 1, "about": "the gym", "set": T[0] - 3600})
+check("a check-up goes to the phone as a notification", wait(lambda: fp.sent and fp.sent[-1][1]["chat"] == "c1"
+      and fp.sent[-1][1]["body"] == "Hello again."))
+fp.gone.add(sub["endpoint"])
+with u6.lock:
+    u6.ember.talk.append({"t": T[0], "who": "you", "text": "ok"})
+    u6.ember.followups.append({"chat": "c1", "at": T[0] - 1, "about": "again", "set": T[0] - 3600})
+check("a phone that turned notifications off is forgotten", wait(lambda: not u6.ember.devices))
+check("turning off from the window", call(base6, "/push/subscribe", "tok-a", {"subscription": sub})[1]["ok"]
+      and call(base6, "/push/unsubscribe", "tok-a", {"endpoint": sub["endpoint"]})[1]["ok"] and not u6.ember.devices)
+T[0] = T_saved
+srv6.should_exit = True
 
 print("The daily limit")
 store2 = FileStore(os.path.join(tmp, "users2"))

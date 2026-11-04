@@ -24,6 +24,7 @@ from mind import llm
 from mind.core import Ember
 from .auth import NotInvited, NotLoggedIn
 from .billing import PLUS_STATUSES, BillingError
+from .push import PushGone
 from .store import StoreError
 
 log = logging.getLogger("ember")
@@ -39,6 +40,7 @@ CAPPED = ("I've reached today's limit for thinking (it keeps Ember affordable). 
 LAST_FREE = ("That was your last free message for today. With Ember Plus we can keep going without a daily "
              "limit; otherwise I'll be here tomorrow.")
 COUNTED = ("talk", "suggest", "checkin")      # what you send that makes Ember think; its greetings are free
+OWN = ("arrive", "followup")                  # what Ember says on its own: free, and nothing said if it can't
 PLUS_ON = "Ember Plus is on. Thank you! There's no daily limit now."
 PLUS_ENDED = ("Your Ember Plus has ended, so there's a daily limit of free messages again. "
               "I still remember everything, as always.")
@@ -57,6 +59,7 @@ class User:
         self.seen_at = 0.0           # last poll from a visible window
         self.saved_at = 0.0
         self.jobs = 0                # thoughts queued or in progress for this person
+        self.thinking_in = None      # the chat its latest thought will answer in
 
 
 class Users:
@@ -118,18 +121,21 @@ class MindWorker:
         u = self.users.get(uid)
         with u.lock:
             u.jobs += 1
+            u.thinking_in = u.ember.event_chat(event)
         self.q.put((uid, event))
 
     def requeue_unanswered(self):
-        """After a restart: anyone whose last line is theirs and unanswered gets an answer."""
+        """After a restart: anyone whose last line in a chat is theirs and unanswered gets an answer."""
         for uid in self.users.store.all_uids():
             try:
-                talk = self.users.get(uid).ember.talk
-            except StoreError as e:
-                log.error("couldn't load %s: %s", uid, e)
+                e = self.users.get(uid).ember
+            except StoreError as err:
+                log.error("couldn't load %s: %s", uid, err)
                 continue
-            if talk and talk[-1]["who"] == "you":
-                self.put(uid, {"type": "talk", "text": talk[-1]["text"]})
+            for c in e.chats:
+                last = e.last_line(c["id"])
+                if last and last["who"] == "you":
+                    self.put(uid, {"type": "talk", "text": last["text"], "chat": c["id"]})
 
     def _work(self):
         while True:
@@ -164,12 +170,18 @@ class MindWorker:
 
     def _think(self, u, event):
         store, day = self.users.store, time.strftime("%Y-%m-%d", time.gmtime(self.clock()))
+        with u.lock:
+            chat = u.ember.event_chat(event)
         raw = None
+
+        def said_last(text):
+            last = u.ember.last_line(chat)
+            return last is not None and last["text"] == text
         if self.cfg.usable:
             if store.calls_today(u.uid, day) >= self.daily_cap:
                 with u.lock:
-                    if event["type"] != "arrive" and (not u.ember.talk or u.ember.talk[-1]["text"] != CAPPED):
-                        u.ember.say(self.clock(), CAPPED, "calm")
+                    if event["type"] not in OWN and not said_last(CAPPED):
+                        u.ember.say(self.clock(), CAPPED, "calm", chat)
                     self.users.save(u)
                 return
             with u.lock:
@@ -178,16 +190,16 @@ class MindWorker:
                 raw = self._ask(system, user)
             except llm.LLMError as e:
                 log.warning("mind failed for %s: %s", u.uid, e)
-                if event["type"] == "arrive":
-                    return                          # no greeting this time; nothing to say about it
+                if event["type"] in OWN:
+                    return                          # no greeting or check-up this time; nothing to say about it
                 with u.lock:
                     if e.retryable:
-                        if not u.ember.talk or u.ember.talk[-1]["text"] != UNREACHABLE:
-                            u.ember.say(self.clock(), UNREACHABLE, "droopy")
+                        if not said_last(UNREACHABLE):
+                            u.ember.say(self.clock(), UNREACHABLE, "droopy", chat)
                         with self.plock:
                             self.pending.append((self.clock() + self.retry_every, u.uid, event))
                     else:
-                        u.ember.say(self.clock(), FAILED, "calm")
+                        u.ember.say(self.clock(), FAILED, "calm", chat)
                     self.users.save(u)
                 return
             usage = getattr(self.cfg, "last_usage", None) or (0, 0)
@@ -196,15 +208,15 @@ class MindWorker:
             except StoreError as e:
                 log.error("usage count failed for %s: %s", u.uid, e)
         with u.lock:
-            u.ember.respond(event, raw, self.clock())
+            result = u.ember.respond(event, raw, self.clock())
             if self.after:
-                self.after(u, event)
+                self.after(u, event, result)
             self.users.save(u)
 
 
 def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=150,
                retry_delay=10.0, retry_every=60.0, public_config=None, web_dir=WEB,
-               billing=None, free_per_day=5, plus_emails=()):
+               billing=None, free_per_day=5, plus_emails=(), checkup_every=300.0, push=None):
     users = Users(store, clock)
     plus_emails = {e.strip().lower() for e in plus_emails if e.strip()}
 
@@ -235,17 +247,58 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         except StoreError as e:
             log.error("message count failed for %s: %s", u.uid, e)
 
-    def after_reply(u, event):
-        """Right after its answer to your last free message, Ember says so."""
+    def after_reply(u, event, result=None):
+        """Right after its answer to your last free message, Ember says so. A check-up goes to your phone too."""
         if event["type"] in COUNTED and free_left(u, clock()) == 0:
-            u.ember.say(clock(), LAST_FREE, "calm", paywall=True)
+            u.ember.say(clock(), LAST_FREE, "calm", u.ember.event_chat(event), paywall=True)
+        if event["type"] == "followup" and result and result.get("reply"):
+            notify(u, result["reply"], u.ember.event_chat(event))
+
+    def notify(u, text, chat):
+        """A notification on each of your devices, sent in the background; devices that are gone are forgotten."""
+        if not push or not u.ember.devices:
+            return
+        devices = [dict(d) for d in u.ember.devices]
+        message = {"title": "Ember", "body": text[:180], "chat": chat}
+
+        def send():
+            gone = []
+            for d in devices:
+                try:
+                    push.send(d, message)
+                except PushGone:
+                    gone.append(d["endpoint"])
+                except Exception as e:              # a push service that's down: this one is missed
+                    log.warning("notification failed for %s: %s", u.uid, type(e).__name__)
+            if gone:
+                with u.lock:
+                    u.ember.devices = [d for d in u.ember.devices if d["endpoint"] not in gone]
+                    users.save(u)
+        threading.Thread(target=send, daemon=True).start()
 
     worker = MindWorker(users, cfg, call, clock, daily_cap, retry_delay, retry_every, after=after_reply)
 
     @asynccontextmanager
+    def checkups():
+        """Ember checks up on you even while you're away: every few minutes, the check-ups that are due."""
+        while True:
+            try:
+                for uid in store.all_uids():
+                    u = users.get(uid)
+                    with u.lock:
+                        due = u.ember.due_checkups(clock())
+                        if due:
+                            users.save(u)
+                    for event in due:
+                        worker.put(uid, event)
+            except Exception as e:                  # keep checking whatever happens
+                log.error("check-ups failed: %s", type(e).__name__)
+            time.sleep(checkup_every)
+
     async def lifespan(_app):
         worker.start()
         threading.Thread(target=worker.requeue_unanswered, daemon=True).start()
+        threading.Thread(target=checkups, daemon=True).start()
         yield
         for u in list(users.cache.values()):       # a last save on the way down
             with u.lock:
@@ -320,22 +373,26 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
 
     @app.get("/config")
     def config():
-        return dict(public_config or {}, mode=auth.mode)
+        return dict(public_config or {}, mode=auth.mode, vapid_public=push.public if push else None)
 
     # ------------------------------------------------------------ Ember
     @app.get("/state")
-    def state(request: Request, v: int = 0):
+    def state(request: Request, v: int = 0, chat: str = "", tz: int = None):
         u = who(request)
         now = clock()
         with u.lock:
             e = u.ember
+            if tz is not None:
+                e.tz = max(-840, min(840, tz))     # your clock: Ember's sense of your day, and its quiet nights
+            chat = e.find_chat(chat)["id"]          # the chat you have open (none: your latest)
             if v == 1:
                 if now - u.seen_at >= PRESENT_FOR and e.arrive(now):
-                    worker.put(u.uid, {"type": "arrive"})
+                    worker.put(u.uid, {"type": "arrive", "chat": chat})
                 u.seen_at = now
             present = now - u.seen_at < PRESENT_FOR
             e.update(now, present)
-            s = e.snapshot(now, present, u.jobs > 0)
+            s = e.snapshot(now, present, u.jobs > 0, chat)
+            s["thinking_in"] = u.thinking_in
             if now - u.saved_at > SAVE_EVERY:
                 users.save(u)
         plan = users.plan(u) if auth.mode != "local" else None
@@ -349,7 +406,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
     def memory(request: Request):
         u = who(request)
         with u.lock:
-            return u.ember.memory_page()
+            return u.ember.memory_page(clock())
 
     def act(request, fn):
         u = who(request)
@@ -363,14 +420,44 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         text = str(body.get("text", "")).strip()[:MAX_TEXT]
         if not text:
             raise HTTPException(400, "empty")
-        mode = "work" if body.get("mode") in ("work", "experiment") else "chat"   # "experiment": its older name
-
         def f(u, now):
             spend_free(u, now)
-            u.ember.hear(now, text)
-            worker.put(u.uid, {"type": "talk", "text": text, "mode": mode})
+            chat = u.ember.find_chat(body.get("chat"))["id"]
+            u.ember.hear(now, text, chat)
+            worker.put(u.uid, {"type": "talk", "text": text, "chat": chat})
             return True
         return act(request, f)
+
+    @app.post("/push/subscribe")
+    def push_subscribe(request: Request, body: dict = Body(default={})):
+        sub = body.get("subscription") or {}
+        keys = sub.get("keys") or {}
+        endpoint = str(sub.get("endpoint", ""))
+        if not push or not endpoint.startswith("https://") or not keys.get("p256dh") or not keys.get("auth"):
+            raise HTTPException(400, "subscription")
+
+        def f(u, now):
+            devices = [d for d in u.ember.devices if d["endpoint"] != endpoint]
+            devices.append({"endpoint": endpoint, "keys": {"p256dh": str(keys["p256dh"]), "auth": str(keys["auth"])},
+                            "added": now})
+            u.ember.devices = devices[-10:]
+            return True
+        return act(request, f)
+
+    @app.post("/push/unsubscribe")
+    def push_unsubscribe(request: Request, body: dict = Body(default={})):
+        def f(u, now):
+            u.ember.devices = [d for d in u.ember.devices if d["endpoint"] != body.get("endpoint")]
+            return True
+        return act(request, f)
+
+    @app.post("/chat/new")
+    def chat_new(request: Request):
+        u = who(request)
+        with u.lock:
+            cid = u.ember.new_chat(clock())
+            users.save(u)
+        return {"ok": True, "id": cid}
 
     @app.post("/poke")
     def poke(request: Request):
@@ -385,12 +472,13 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         return act(request, lambda u, now: u.ember.forget(body.get("id")))
 
     @app.post("/experiment/suggest")
-    def suggest(request: Request):
+    def suggest(request: Request, body: dict = Body(default={})):
         def f(u, now):
-            ok = u.ember.can_suggest()
+            chat = u.ember.find_chat(body.get("chat"))["id"]
+            ok = u.ember.can_suggest(chat)
             if ok:
                 spend_free(u, now)
-                worker.put(u.uid, {"type": "suggest"})
+                worker.put(u.uid, {"type": "suggest", "chat": chat})
             return ok
         return act(request, f)
 
@@ -412,12 +500,12 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         return act(request, f)
 
     @app.post("/experiment/extend")
-    def extend(request: Request):
-        return act(request, lambda u, now: u.ember.active() and u.ember.extend(u.ember.active()["id"], now))
+    def extend(request: Request, body: dict = Body(default={})):
+        return act(request, lambda u, now: u.ember.extend(body.get("id"), now))
 
     @app.post("/session/start")
-    def session_start(request: Request):
-        return act(request, lambda u, now: u.ember.start_session(now))
+    def session_start(request: Request, body: dict = Body(default={})):
+        return act(request, lambda u, now: u.ember.start_session(now, body.get("chat")))
 
     @app.post("/session/stop")
     def session_stop(request: Request):

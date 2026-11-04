@@ -199,7 +199,7 @@ print("Goals")
 G = T + 10 * D
 f.end_experiment(f.active()["id"], "done", G)
 system, user = f.prompt({"type": "talk", "text": "I want to run 5 km", "mode": "work"}, G)
-check("its mind may propose a goal when nothing is active", "propose it as a goal" in user and "work mode" in user)
+check("its mind may propose a goal when nothing is active", "propose it as a goal" in user and "This is your chat" in user)
 check("its mind is told to talk a goal through before planning it", "don't jump to a plan" in system
       and "what's in the way" in system and "no manipulation" in system)
 f.hear(G + 1, "I want to run 5 km without stopping")
@@ -220,7 +220,7 @@ check("picking it makes it your goal, and Ember says what done looks like",
       f.pick(gid, G + 4) and f.active()["id"] == gid and "You'll know you're there when" in f.talk[-1]["text"])
 _, user = f.prompt({"type": "talk", "text": "how am I doing"}, G + 5)
 check("its mind knows the goal and its plan, and that nothing new can start meanwhile",
-      "Their goal" in user and "You run 5 km without stopping" in user and "one goal or experiment at a time" in user
+      "Their goal" in user and "You run 5 km without stopping" in user and "they start a new chat" in user
       and "The plan you agreed: Walk-run three times a week." in user)
 f.hear(G + 5, "my knee hurts after running")
 r = f.respond({"type": "talk", "text": "my knee hurts after running"}, mind_says(
@@ -243,6 +243,120 @@ check("the look back at a goal asks whether you got what you wanted",
       "Their goal" in user and "got what they wanted" in user and "1 work session" in user)
 h = Ember.from_dict(json.loads(json.dumps(f.to_dict())))
 check("goals survive a save", h.find_exp(gid)["kind"] == "goal" and h.experiments == f.experiments)
+
+print("Chats")
+from mind.core import chat_of
+c = Ember(now=t)
+check("there's one chat to start with", [x["id"] for x in c.chats] == ["c1"])
+c.hear(t + 1, "hi there")
+c.respond({"type": "talk", "text": "hi there"}, mind_says(reply="Hi!"), t + 2)
+c2 = c.new_chat(t + 3)
+check("a new chat", c2 == "c2" and c.find_chat(c2)["title"] == "New chat")
+check("an empty new chat is reused, not piled up", c.new_chat(t + 4) == c2 and len(c.chats) == 2)
+c.hear(t + 5, "I want to learn to play the guitar properly this year", c2)
+check("a chat is named after your first words in it", c.find_chat(c2)["title"].startswith("I want to learn to play the"))
+c.respond({"type": "talk", "text": "I want to learn guitar", "chat": c2}, mind_says(reply="What kind of music?"), t + 6)
+check("lines stay in their own chat", [chat_of(l) for l in c.talk] == ["c1", "c1", "c2", "c2"])
+_, user = c.prompt({"type": "talk", "text": "rock", "chat": c2}, t + 7)
+check("its mind sees only this chat's conversation", "What kind of music?" in user and "Hi!" not in user)
+_, user = c.prompt({"type": "talk", "text": "how are you", "chat": "c1"}, t + 7)
+check("...in each chat", "Hi!" in user and "What kind of music?" not in user)
+r = c.respond({"type": "talk", "text": "rock", "chat": c2}, mind_says(
+    reply="A goal?", goal={"title": "Play guitar", "done_when": "You play three rock songs", "steps": ["Tune it"]}), t + 8)
+c.pick(r["suggested"][0]["id"], t + 9)
+check("a goal belongs to its chat, and the chat takes its name", c.active(c2)["title"] == "Play guitar"
+      and not c.active("c1") and c.find_chat(c2)["title"] == "Play guitar")
+c3 = c.new_chat(t + 10)
+c.hear(t + 11, "I want to get fit", c3)
+r = c.respond({"type": "talk", "text": "I want to get fit", "chat": c3}, mind_says(
+    reply="Let's.", goal={"title": "Get fit", "done_when": "You run 5 km"}), t + 12)
+check("another chat can have its own goal at the same time", c.pick(r["suggested"][0]["id"], t + 13)
+      and c.active(c3)["title"] == "Get fit" and c.active(c2)["title"] == "Play guitar")
+_, user = c.prompt({"type": "talk", "text": "x", "chat": c3}, t + 14)
+check("its mind keeps to this chat: nothing from your other chats", "Play guitar" not in user
+      and "don't bring up their other chats" in user)
+check("a work session is on this chat's goal", c.start_session(t + 20, c2) and c.session["exp"] == c.active(c2)["id"]
+      and not c.start_session(t + 21, c3))
+c.stop_session(t + 20 + 1200)
+check("its question about the session goes in that goal's chat", chat_of(c.talk[-1]) == c2 and c.talk[-1].get("checkin"))
+ev = c.checkin(t + 1300, 4, "learned a chord")
+check("the check-in answer goes there too", ev["chat"] == c2 and chat_of(c.talk[-1]) == c2)
+c.update(t + 40 * D, present=False)
+check("when their days are up, it asks in each goal's own chat",
+      {chat_of(l) for l in c.talk if l.get("timeup")} == {c2, c3})
+lst = c.chat_list()
+check("the chat list: latest first, with each chat's goal", lst[0]["id"] in (c2, c3)
+      and next(x for x in lst if x["id"] == c2)["goal"]["title"] == "Play guitar")
+snap = c.snapshot(t + 40 * D, True, chat=c3)
+check("the window gets the open chat's lines and goal", snap["chat"] == c3 and snap["experiment"]["title"] == "Get fit"
+      and all(chat_of(l) == c3 for l in snap["talk"]))
+for i in range(250):
+    c.hear(t + 41 * D + i, f"chat {i}", "c1")
+check("each chat keeps its own last lines", sum(chat_of(l) == "c1" for l in c.talk) == 200
+      and sum(chat_of(l) == c2 for l in c.talk) >= 6)
+old = Ember.from_dict({"born": t, "talk": [{"t": t, "who": "you", "text": "old"}], "experiments": []})
+check("an Ember from before chats has its lines in the first chat", [c["id"] for c in old.chats] == ["c1"]
+      and chat_of(old.talk[0]) == "c1" and old.snapshot(t, True)["talk"][0]["text"] == "old")
+cc = Ember.from_dict(json.loads(json.dumps(c.to_dict())))
+check("chats survive a save", cc.chats == c.chats and cc.active(c2)["title"] == "Play guitar")
+
+print("Check-ups, and remembering each chat")
+b = Ember(now=t)
+b.hear(t + 1, "I'm going to the climbing gym on Wednesday")
+r = b.respond({"type": "talk", "text": "I'm going to the climbing gym on Wednesday", "chat": "c1"}, mind_says(
+    reply="Good luck!", follow_up={"in_hours": 50, "about": "how the climbing gym on Wednesday went"},
+    summary="They're going climbing on Wednesday to meet people."), t + 2)
+check("Ember plans a check-up when you mention something coming up", len(b.followups) == 1
+      and b.followups[0]["at"] == t + 2 + 50 * H and r.get("follow_up"))
+check("...and keeps a short summary of the chat", b.find_chat("c1")["summary"].startswith("They're going climbing"))
+_, user = b.prompt({"type": "talk", "text": "x", "chat": "c1"}, t + 3)
+check("its mind knows it plans to check up", "You plan to check up on them in this chat" in user)
+check("nothing is due before its time", b.due_checkups(t + 49 * H) == [])
+due = b.due_checkups(t + 51 * H)
+check("then it's due, once", len(due) == 1 and due[0]["type"] == "followup" and due[0]["chat"] == "c1"
+      and not b.followups and b.due_checkups(t + 52 * H) == [])
+_, user = b.prompt(due[0], t + 51 * H)
+check("its mind is asked to check up, and to say nothing if they already told it",
+      "planned to check up on them about: how the climbing gym on Wednesday went" in user and 'reply with ""' in user)
+n = len(b.talk)
+r = b.respond(due[0], mind_says(reply=""), t + 51 * H)
+check("if they'd already told it, it says nothing", r.get("skipped") and len(b.talk) == n)
+r = b.respond(due[0], mind_says(reply="How did Wednesday go?"), t + 51 * H + 1)
+check("otherwise the check-up is in the chat", b.talk[-1]["text"] == "How did Wednesday go?" and b.talk[-1].get("checkup"))
+check("a check-up isn't Ember hearing from you (no presence)", b.last_seen != t + 51 * H + 1)
+r = b.respond({"type": "talk", "text": "y", "chat": "c1"}, mind_says(reply="ok", follow_up={"in_hours": 5, "about": "a"}), t + 52 * H)
+r = b.respond({"type": "talk", "text": "y", "chat": "c1"}, mind_says(reply="ok", follow_up={"in_hours": 9, "about": "b"}), t + 52 * H)
+check("one planned check-up per chat: a new one replaces it", [f["about"] for f in b.followups] == ["b"])
+b.followups = []
+r = b.respond({"type": "talk", "text": "I want to run", "chat": "c1"}, mind_says(
+    reply="A goal?", goal={"title": "Run 5 km", "done_when": "You run 5 km"}), t + 60 * H)
+b.pick(r["suggested"][0]["id"], t + 60 * H)
+check("a goal's chat isn't checked on while it's lively", b.due_checkups(t + 61 * H) == [])
+due = b.due_checkups(t + 60 * H + 3 * D + 60)
+check("after 3 quiet days, Ember checks in on the goal", len(due) == 1 and due[0].get("auto") and "Run 5 km" in due[0]["about"])
+b.respond(due[0], mind_says(reply="How's the running going?"), t + 60 * H + 3 * D + 60)
+check("...and doesn't nag while that's unanswered", b.due_checkups(t + 60 * H + 9 * D) == [])
+for i in range(30):
+    b.hear(t + 70 * D + i, f"line {i}")
+_, user = b.prompt({"type": "talk", "text": "z", "chat": "c1"}, t + 71 * D)
+check("a long chat: its mind gets the summary of what came before", "Earlier in this chat:" in user)
+st = b.memory_page(t + 71 * D)["story"]
+check("Our story: since when, the chats, goals, work together", st["since"] == t and st["days"] == 71 and st["chats"] == 1
+      and st["goals"] == 1)
+check("its mind knows your story together", "you've known each other" in user)
+bb = Ember.from_dict(json.loads(json.dumps(b.to_dict())))
+check("check-ups and summaries survive a save", bb.followups == b.followups and bb.chats == b.chats)
+
+print("Your own clock: no check-ups at night")
+n8 = Ember(now=t)
+n8.tz = 60                                       # Budapest in winter: UTC+1
+n8.followups.append({"chat": "c1", "at": t, "about": "x", "set": t})
+day0 = t - (t % 86400)                           # midnight UTC
+check("at 23:00 their time, it waits", n8.due_checkups(day0 + 22 * H) == [])
+check("at 3:00 their time, it waits", n8.due_checkups(day0 + 86400 + 2 * H) == [])
+check("at 9:00 their time, the check-up comes", len(n8.due_checkups(day0 + 86400 + 8 * H)) == 1)
+_, user = n8.prompt({"type": "talk", "text": "hi", "chat": "c1"}, day0 + 86400 + 8 * H)
+check("its mind knows their local time", "09:00 (their local time)" in user)
 
 print("Saving")
 e.poke(back + 200)

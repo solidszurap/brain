@@ -83,6 +83,13 @@ Taking real money needs a registered business (for example egyéni vállalkozó)
    - Then cancel via the menu → **Manage Ember Plus**.
 8. **Going live:** switch Stripe to live mode, then redo steps 2–4 there (live mode has its own product, price, keys and webhook secret), and put the live values in Render.
 
+## 6b. Phone notifications (Ember's check-ups)
+
+1. On your PC, in the `brain` folder: `python tools/make_vapid.py`. It puts `VAPID_PRIVATE_KEY` into `.env` (it doesn't show it).
+2. Open `.env` in Notepad, copy the text after `VAPID_PRIVATE_KEY=`, and add it in **Render → ember → Environment** as `VAPID_PRIVATE_KEY`. Save; Render restarts, and its log says "notifications: on".
+3. Keep that key forever: a new one would switch everyone's notifications off.
+4. On iPhone: notifications only work in the home-screen app (iOS 16.4 or later). Open Ember from its home-screen icon, then **⋯ → Turn on notifications** and allow them.
+
 ## 7. Try it
 
 1. On your iPhone, open the Render address in **Safari**, then tap **Continue with Google**.

@@ -39,3 +39,5 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
