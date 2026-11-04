@@ -390,6 +390,15 @@ class Ember:
             out.append(f"You plan to check up on them in this chat in {ago(fu['at'] - now)}, about: {fu['about']}.")
         return out
 
+    def rename_chat(self, cid, title):
+        """You named a chat yourself."""
+        c = next((c for c in self.chats if c["id"] == cid), None)
+        title = " ".join(str(title).split())[:60]
+        if not c or not title:
+            return False
+        c["title"] = title
+        return True
+
     def event_chat(self, event):
         """The chat an event belongs to: a look back goes where its goal or experiment is."""
         if event["type"] == "review" and self.find_exp(event.get("id")):

@@ -66,7 +66,15 @@ button { font: inherit; }
   padding: env(safe-area-inset-top) calc(14px + env(safe-area-inset-right)) 0 calc(14px + env(safe-area-inset-left)); }
 .top::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 16px; pointer-events: none;
   background: linear-gradient(var(--bg), transparent); }
-.top .title { flex: 1; text-align: center; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); font-size: 14px; }
+.top .title { flex: 1; min-width: 0; display: flex; justify-content: center; }
+.top .title button { display: flex; align-items: baseline; max-width: 100%; background: none; border: 0; color: var(--text); font: inherit; font-weight: 600;
+  font-size: 15px; cursor: pointer; padding: 6px 8px; border-radius: 12px; }
+.top .title button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top .title button:hover { background: var(--surface); }
+.top .title button i { flex: none; font-style: normal; color: var(--faint); font-size: 13px; margin-left: 5px; }
+.menu .knows { display: none; }
+.top .title input { width: 100%; max-width: 260px; background: var(--surface); color: var(--text); border: 1px solid var(--accent); border-radius: 12px;
+  padding: 6px 10px; font: inherit; font-size: 16px; text-align: center; }
 .tbtn { background: var(--raised); border: 1px solid var(--edge);
   color: var(--text); border-radius: 999px; padding: 7px 14px; cursor: pointer; position: relative; white-space: nowrap; }
 .tbtn:hover { border-color: var(--edge2); }
@@ -207,6 +215,17 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .chatitem .ct { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chatitem .cs { font-size: 12.5px; color: var(--dim); }
 .chatitem .cs b { color: var(--accent); font-weight: 600; }
+.chatrow { display: flex; align-items: center; gap: 4px; }
+.chatrow .chatitem { flex: 1; min-width: 0; }
+.chatrow .ren { flex: none; background: none; border: 0; color: var(--faint); font-size: 15px; padding: 8px; cursor: pointer; border-radius: 10px; }
+.chatrow .ren:hover { color: var(--text); background: var(--surface); }
+/* asking once whether Ember may send its check-ups as notifications */
+#notifyAsk { display: none; width: min(760px, calc(100% - 24px)); margin: 8px auto 0; background: var(--raised); border: 1px solid rgba(255, 179, 107, .45);
+  border-radius: 20px; padding: 12px 14px; box-shadow: var(--lift); }
+#notifyAsk.on { display: block; }
+#notifyAsk p { margin: 0 0 10px; font-size: 14.5px; }
+#notifyAsk p small { display: block; color: var(--dim); font-size: 13px; margin-top: 2px; }
+#notifyAsk .row { display: flex; gap: 8px; }
 .chatitem.new .ct::after { content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); vertical-align: middle; }
 
 /* experiment */
@@ -239,6 +258,8 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 @media (max-width: 560px) {
   .top { padding-left: calc(10px + env(safe-area-inset-left)); padding-right: calc(10px + env(safe-area-inset-right)); gap: 6px; }
   .tbtn { padding: 7px 12px; font-size: 14px; }
+  #openKnows { display: none; }                 /* on a phone it's in the menu, so the chat's name has room */
+  .menu .knows { display: block; }
   #face { width: min(22vh, 50vw); }
   .msg { max-width: 90%; }
   .pill { border-radius: 18px; padding: 6px 8px 6px 14px; gap: 6px 10px; font-size: 13.5px; }
@@ -254,6 +275,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
     <button class="tbtn" id="menuBtn" aria-label="Menu">⋯</button>
     <div class="menu" id="menu">
       <div class="who" id="whoami"></div>
+      <button data-menu="knows" class="knows">What Ember knows about you</button>
       <button data-menu="install">Add Ember to your home screen</button>
       <button data-menu="notify" id="notifyItem" style="display:none">Turn on notifications</button>
       <a href="/privacy">Privacy</a>
@@ -281,6 +303,10 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
   <div id="chat"><div id="talk"></div></div>
   <div class="dock"><div id="expcard"></div><div id="sessionbar"></div></div>
 </main>
+<div id="notifyAsk">
+  <p>Want Ember's check-ups on your phone?<small>It asks how things went, now and then. Never at night.</small></p>
+  <div class="row"><button class="btn" id="notifyYes">Turn on</button><button class="btn ghost" id="notifyNo">Not now</button></div>
+</div>
 <form class="say" id="form">
   <textarea id="text" rows="1" placeholder="Say something to Ember…" maxlength="2000"></textarea>
   <button class="btn" type="submit">Send</button>
@@ -410,7 +436,9 @@ document.addEventListener("click", async e => {
   const t = e.target.closest("[data-menu]");
   if (!t) return;
   const what = t.dataset.menu;
-  if (what === "notify") {
+  if (what === "knows") {
+    $("#menu").classList.remove("on"); openDrawer("knows");
+  } else if (what === "notify") {
     toggleNotify(t);
   } else if (what === "install") {
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -528,12 +556,42 @@ function renderChats() {
   try { localStorage.setItem("ember.seen", JSON.stringify(seenAt)); } catch (e) {}
   const isNew = c => c.id !== S.chat && c.ember_at > (seenAt[c.id] || 0);
   $("#chatsDot").classList.toggle("on", S.chats.some(isNew));
-  $("#chatTitle").textContent = cur && S.chats.length > 1 ? cur.title : "";
-  const html = S.chats.map(c => `<button class="chatitem${c.id === S.chat ? " on" : ""}${isNew(c) ? " new" : ""}" data-chat="${esc(c.id)}">
-    <div class="ct">${esc(c.title)}</div><div class="cs">${c.goal ? `<b>${c.goal.kind === "goal" ? "Goal" : "Experiment"}</b> · ` : ""}${esc(fmtWhen(c.last))}</div></button>`).join("");
+  if (!renaming) {
+    const th = cur ? `<button id="titleBtn" title="Rename this chat"><span>${esc(cur.title)}</span><i>✎</i></button>` : "";
+    if ($("#chatTitle").dataset.html !== th) { $("#chatTitle").dataset.html = th; $("#chatTitle").innerHTML = th; }
+  }
+  const html = S.chats.map(c => `<div class="chatrow"><button class="chatitem${c.id === S.chat ? " on" : ""}${isNew(c) ? " new" : ""}" data-chat="${esc(c.id)}">
+    <div class="ct">${esc(c.title)}</div><div class="cs">${c.goal ? `<b>${c.goal.kind === "goal" ? "Goal" : "Experiment"}</b> · ` : ""}${esc(fmtWhen(c.last))}</div></button>
+    <button class="ren" data-rename="${esc(c.id)}" title="Rename">✎</button></div>`).join("");
   if ($("#chatlist").dataset.html !== html) { $("#chatlist").dataset.html = html; $("#chatlist").innerHTML = html; }
 }
-$("#chatlist").addEventListener("click", e => { const b = e.target.closest("[data-chat]"); if (b) openChat(b.dataset.chat); });
+$("#chatlist").addEventListener("click", e => {
+  const r = e.target.closest("[data-rename]");
+  if (r) { const id = r.dataset.rename; if (id !== S.chat) openChat(id); else closeDrawers(); startRename(); return; }
+  const b = e.target.closest("[data-chat]");
+  if (b) openChat(b.dataset.chat);
+});
+// renaming the open chat, in place of its title at the top
+let renaming = false;
+function startRename() {
+  renaming = true;
+  const cur = S && S.chats.find(c => c.id === S.chat);
+  $("#chatTitle").dataset.html = "";
+  $("#chatTitle").innerHTML = `<input id="renameInput" maxlength="60" value="${esc(cur ? cur.title : "")}" aria-label="Chat name">`;
+  const inp = $("#renameInput");
+  inp.focus(); inp.select();
+  let done = false;
+  const finish = async save => {
+    if (done) return;
+    done = true;
+    const title = inp.value.trim();
+    if (save && cur && title && title !== cur.title) await post("/chat/rename", {id: cur.id, title});
+    renaming = false; poll();
+  };
+  inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); finish(true); } else if (e.key === "Escape") finish(false); });
+  inp.addEventListener("blur", () => finish(true));
+}
+$("#chatTitle").addEventListener("click", e => { if (e.target.closest("#titleBtn")) startRename(); });
 $("#newChat").onclick = async () => { const r = await post("/chat/new"); if (r && r.id) openChat(r.id); };
 $("#openChats").onclick = () => openDrawer("chats");
 
@@ -938,10 +996,36 @@ async function renderNotify() {
   const item = $("#notifyItem");
   item.style.display = CFG.vapid_public ? "" : "none";
   if (!CFG.vapid_public) return;
-  const sub = await pushSubscription().catch(() => null);
+  let sub = await pushSubscription().catch(() => null);
+  let turnedOff = false;
+  try { turnedOff = !!localStorage.getItem("ember.notifyOff"); } catch (e) {}
+  if (!sub && canPush() && Notification.permission === "granted" && !turnedOff) {
+    sub = await subscribePush().catch(() => null);      // allowed before (e.g. Ember added again): back on quietly
+  }
   item.dataset.on = sub ? "1" : "";
   item.textContent = sub ? "Notifications: on · turn off" : "Turn on notifications";
+  askNotify(!sub);
 }
+async function subscribePush() {
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: keyBytes(CFG.vapid_public)});
+  const r = await post("/push/subscribe", {subscription: sub.toJSON()});
+  return r && r.ok ? sub : null;
+}
+// when you open Ember: a card asking once (iPhone allows the question only after a tap); "Not now" waits a week
+function askNotify(off) {
+  let later = 0;
+  try { later = +(localStorage.getItem("ember.notifyAskAfter") || 0); } catch (e) {}
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const show = off && CFG.vapid_public && canPush() && Notification.permission === "default" && (!ios || onHomeScreen())
+    && Date.now() > later;
+  $("#notifyAsk").classList.toggle("on", !!show);
+}
+$("#notifyYes").onclick = async () => { $("#notifyAsk").classList.remove("on"); await toggleNotify($("#notifyItem")); };
+$("#notifyNo").onclick = () => {
+  try { localStorage.setItem("ember.notifyAskAfter", String(Date.now() + 7 * 86400 * 1000)); } catch (e) {}
+  $("#notifyAsk").classList.remove("on");
+};
 function say(html) { flash = {html, until: Date.now() + 9000}; if (S) render(); }
 async function toggleNotify(item) {
   item.disabled = true;
@@ -949,6 +1033,7 @@ async function toggleNotify(item) {
     if (item.dataset.on) {
       const sub = await pushSubscription();
       if (sub) { await post("/push/unsubscribe", {endpoint: sub.endpoint}); await sub.unsubscribe(); }
+      try { localStorage.setItem("ember.notifyOff", "1"); } catch (e) {}      // you turned them off: don't turn back on
     } else if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !onHomeScreen()) {
       say("On iPhone, notifications work once Ember is on your home screen: add it (⋯ → Add Ember to your home screen), open it from there, then turn them on.");
     } else if (!canPush()) {
@@ -956,10 +1041,8 @@ async function toggleNotify(item) {
     } else if (await Notification.requestPermission() !== "granted") {
       say("Notifications are off for Ember in your settings. Allow them there, then try again.");
     } else {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: keyBytes(CFG.vapid_public)});
-      const r = await post("/push/subscribe", {subscription: sub.toJSON()});
-      say(r && r.ok ? "Notifications are on. Ember will let you know when it checks up on you, never at night."
+      try { localStorage.removeItem("ember.notifyOff"); } catch (e) {}
+      say(await subscribePush() ? "Notifications are on. Ember will let you know when it checks up on you, never at night."
         : "Couldn't turn notifications on. Try again in a moment.");
     }
   } catch (e) {

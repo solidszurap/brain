@@ -297,6 +297,8 @@ check("each chat keeps its own last lines", sum(chat_of(l) == "c1" for l in c.ta
 old = Ember.from_dict({"born": t, "talk": [{"t": t, "who": "you", "text": "old"}], "experiments": []})
 check("an Ember from before chats has its lines in the first chat", [c["id"] for c in old.chats] == ["c1"]
       and chat_of(old.talk[0]) == "c1" and old.snapshot(t, True)["talk"][0]["text"] == "old")
+check("you can rename a chat", c.rename_chat(c3, "  Fitness   plan ") and c.find_chat(c3)["title"] == "Fitness plan"
+      and not c.rename_chat(c3, "   ") and not c.rename_chat("c99", "x"))
 cc = Ember.from_dict(json.loads(json.dumps(c.to_dict())))
 check("chats survive a save", cc.chats == c.chats and cc.active(c2)["title"] == "Play guitar")
 

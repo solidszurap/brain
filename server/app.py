@@ -428,6 +428,10 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
             return True
         return act(request, f)
 
+    @app.post("/chat/rename")
+    def chat_rename(request: Request, body: dict = Body(default={})):
+        return act(request, lambda u, now: u.ember.rename_chat(body.get("id"), body.get("title", "")))
+
     @app.post("/push/subscribe")
     def push_subscribe(request: Request, body: dict = Body(default={})):
         sub = body.get("subscription") or {}
