@@ -360,6 +360,12 @@ check("at 9:00 their time, the check-up comes", len(n8.due_checkups(day0 + 86400
 _, user = n8.prompt({"type": "talk", "text": "hi", "chat": "c1"}, day0 + 86400 + 8 * H)
 check("its mind knows their local time", "09:00 (their local time)" in user)
 
+print("Who it is")
+from mind.core import SYSTEM
+check("Ember knows who it is, why it exists and how it helps", "Szurap" not in SYSTEM and all(w in SYSTEM for w in (
+    "Who you are, when they ask", "always say why you exist too", "no names", "small experiments", "make a plan with them",
+    "check up on them", "What it knows", "+ New chat", "not a therapist", "5 free messages")))
+
 print("Saving")
 e.poke(back + 200)
 d = json.loads(json.dumps(e.to_dict()))

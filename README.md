@@ -39,6 +39,7 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
   - a face that shows them.
 - **Honest, lightly.** Every memory keeps your exact words and the date. A memory whose quote isn't in what you wrote is not kept. "Why this face?" shows the wants behind its face. Ember is warm and talks naturally; only if you ask it directly whether it really feels things does it tell you honestly what it is.
 - **Memory is the core promise, for everyone.** Ember remembers everything, forever. The "What it knows" page lists everything it remembers, with its source. You can correct anything or make it forget.
+- **It knows who it is.** Asked who it is, what it's for or how it works, Ember explains in its own words: what it is, why it exists, how it helps, what it remembers, how the app works, what it isn't, and (only if asked) which AI its mind runs on.
 - **Not a therapist.** If someone talks about harming themselves, Ember points to real help (in Hungary 116-123, or 112).
 
 ## Build order
