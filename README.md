@@ -59,7 +59,7 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
    - Memories with your words as the source.
    - The memory page.
    - Its wants, moved by real time apart and together.
-   - A greeting when you come back after an hour or more.
+   - When you come back after an hour or more, its face lights up. It writes to you first only the first time you open it, or after 8 hours or more away, and never on top of its own unanswered words (a check-up or a greeting).
 2. **Experiments and goals (done).**
    - **Chats.** One place to talk, like a messaging app: "☰ Chats" at the top opens the list of your chats, latest first, with "+ New chat". A new chat is named after your first words in it; the open chat's name is in the middle of the top bar, and tapping it (or ✎ in the list) renames it. Each chat can be about anything: finding out what you want to work on, talking a goal through to a plan, or working on it. Ember remembers you in all of them, but its mind sees only the open chat's conversation. A dot on "Chats" means Ember said something new in another chat (like asking how a work session went).
    - **Suggestions, in the conversation.** Ask it what you could try. Its ideas appear as cards under its message: small experiments, 3 to 14 days each, each with one question. Before it knows 3 things about you, they're starter experiments for finding out what you enjoy, things you can do on your own, and the card says so. After that, every suggestion names the memories it rests on; one that rests on none isn't shown.
@@ -77,7 +77,11 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
    - Privacy, export and delete.
    - The safety rule.
 4. **Checking up on you, and a connection (done).**
-   - **Check-ups.** When you mention something coming up ("I'm going climbing on Wednesday"), Ember plans when to ask how it went, and then writes to you in that chat by itself, even while you're away (the server looks every few minutes). If it turns out you'd already told it, it says nothing. When a goal's chat has been quiet for 3 days, it checks in once; it never sends another while its last check-up is unanswered. Check-ups aren't free messages. A dot on "Chats" shows them.
+   - **Check-ups.** When you mention something coming up ("I'm going climbing on Wednesday"), Ember plans when to ask how it went, and then writes to you in that chat by itself, even while you're away (the server looks every few minutes). If it turns out you'd already told it, it says nothing. When a goal's chat has been quiet for 3 days, it checks in once; it never sends another while its last check-up is unanswered.
+     - **You choose how often** (⋯ → Check-ups): Off, When it matters (just the above), Once a week, A few times a week (every 2 days), or Every day (the default), at the hour you pick (8:00–21:00, your time; 18:00 by default).
+     - A regular check-up comes at that hour once that many calendar days have passed since you last talked. It goes to your latest chat with a goal or experiment.
+     - Off also drops the ones it planned.
+     - Check-ups aren't free messages. A dot on "Chats" shows them.
    - **Each chat remembered.** Ember keeps a short summary of each chat, so in a long chat it still knows how it started. It keeps each chat to its own topic: it doesn't bring up your other chats unless you do (Szilard's choice).
    - **Your story together.** Its mind knows how long you've known each other and what you've done together, refers back to what you told it, notices progress, and sometimes asks about you. "What it knows" starts with "Our story": together since, chats, what it remembers, goals and experiments, hours of work.
 5. **Phone notifications (done).** Ember's check-ups also arrive as phone notifications (Web Push): ⋯ → Turn on notifications (on iPhone, from the home-screen app). Never at night: nothing between 22:00 and 8:00 on your clock (the window tells Ember your time zone); those wait for the morning. Tapping one opens its chat. Turn them off in the same place. When you open Ember and they're not on yet, a small card asks once ("Turn on" / "Not now"; Not now asks again after a week): iPhone only allows the question after a tap.

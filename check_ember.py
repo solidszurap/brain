@@ -360,6 +360,56 @@ check("at 9:00 their time, the check-up comes", len(n8.due_checkups(day0 + 86400
 _, user = n8.prompt({"type": "talk", "text": "hi", "chat": "c1"}, day0 + 86400 + 8 * H)
 check("its mind knows their local time", "09:00 (their local time)" in user)
 
+print("Check-ups as often as you choose, at your hour")
+from mind.core import CHECKUPS
+ck = Ember(now=t)
+ck.tz = 60                                        # Budapest in winter
+d0 = t - (t % 86400) + 86400                      # a midnight UTC
+ck.hear(d0 + 9 * H, "hi")                         # you talked at 10:00 your time
+ck.respond({"type": "talk", "text": "hi"}, mind_says(reply="Hi!"), d0 + 9 * H + 1)
+check("every day is the default, at 18:00", ck.checkups == "daily" and ck.checkup_hour == 18)
+check("not the same day you talked", ck.due_checkups(d0 + 18 * H) == [])
+check("not before your hour the next day", ck.due_checkups(d0 + D + 15 * H) == [])
+ev = ck.due_checkups(d0 + D + 17 * H)             # 18:00 your time, the next day
+check("the next day at your hour: a check-up", len(ev) == 1 and ev[0].get("regular") and ev[0]["chat"] == "c1")
+check("...only once", ck.due_checkups(d0 + D + 17 * H + 600) == [])
+_, user = ck.prompt(ev[0], d0 + D + 17 * H)
+check("its mind knows it's the check-up you asked for", "check up on them every day" in user)
+ck.respond(ev[0], mind_says(reply="How was your day?"), d0 + D + 17 * H + 5)
+check("unanswered: it doesn't ask again the day after", ck.due_checkups(d0 + 2 * D + 17 * H) == [])
+ck.hear(d0 + 2 * D + 19 * H, "good, thanks")
+check("answered: it checks up again the next day", len(ck.due_checkups(d0 + 3 * D + 17 * H)) == 1)
+check("you can choose how often and when", ck.set_checkups("weekly", 9) and ck.checkups == "weekly"
+      and ck.checkup_hour == 9)
+check("...not a time at night, or a made-up choice", not ck.set_checkups("daily", 23) and not ck.set_checkups("hourly")
+      and ck.checkups == "weekly")
+ck.hear(d0 + 4 * D + 12 * H, "hey")
+check("once a week: not after 3 days", ck.due_checkups(d0 + 7 * D + 9 * H) == [])
+check("...but after a week", len(ck.due_checkups(d0 + 11 * D + 9 * H)) == 1)
+ck.set_checkups("off")
+ck.followups.append({"chat": "c1", "at": d0 + 12 * D, "about": "x", "set": d0})
+check("off: nothing, not even what it planned", ck.due_checkups(d0 + 30 * D + 9 * H) == [] and not ck.followups)
+ck.set_checkups("when")
+ck.hear(d0 + 31 * D + 9 * H, "back")
+check("when it matters: no regular ones", ck.due_checkups(d0 + 40 * D + 9 * H) == [])
+check("every choice means something", set(CHECKUPS) == {"off", "when", "weekly", "few", "daily"})
+
+print("Writing first when you open it: only after a while")
+gr = Ember(now=t)
+check("the very first time, it introduces itself", gr.arrive(t))
+gr.respond({"type": "arrive"}, mind_says(reply="Hi, I'm Ember."), t + 1)
+gr.update(t + 2, present=True)
+check("back after 2 hours: it lights up but doesn't write", not gr.arrive(t + 2 * H) and gr.face(t + 2 * H + 1, True)[
+    "expression"] in ("happy", "surprised"))
+gr.update(t + 2 * H, present=True)
+check("back after 10 hours, its greeting still unanswered: it doesn't write again", not gr.arrive(t + 12 * H))
+gr.hear(t + 12 * H + 10, "hello")
+gr.respond({"type": "talk", "text": "hello"}, mind_says(reply="Hey you."), t + 12 * H + 11)
+gr.update(t + 12 * H + 20, present=True)
+check("back after 10 hours, after a real talk: it writes first", gr.arrive(t + 22 * H + 30))
+gr.respond({"type": "arrive"}, mind_says(reply="Good evening."), t + 22 * H + 31)
+check("...and its greeting is marked as its own words", gr.last_line("c1").get("greet"))
+
 print("Its mood: from how things go between you, and from time apart")
 from mind.core import FEELS, VALENCE_REST
 md = Ember(now=t)

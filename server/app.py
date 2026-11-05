@@ -278,7 +278,6 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
 
     worker = MindWorker(users, cfg, call, clock, daily_cap, retry_delay, retry_every, after=after_reply)
 
-    @asynccontextmanager
     def checkups():
         """Ember checks up on you even while you're away: every few minutes, the check-ups that are due."""
         while True:
@@ -295,6 +294,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
                 log.error("check-ups failed: %s", type(e).__name__)
             time.sleep(checkup_every)
 
+    @asynccontextmanager
     async def lifespan(_app):
         worker.start()
         threading.Thread(target=worker.requeue_unanswered, daemon=True).start()
@@ -386,7 +386,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
                 e.tz = max(-840, min(840, tz))     # your clock: Ember's sense of your day, and its quiet nights
             chat = e.find_chat(chat)["id"]          # the chat you have open (none: your latest)
             if v == 1:
-                if now - u.seen_at >= PRESENT_FOR and e.arrive(now):
+                if now - u.seen_at >= PRESENT_FOR and e.arrive(now, chat):
                     worker.put(u.uid, {"type": "arrive", "chat": chat})
                 u.seen_at = now
             present = now - u.seen_at < PRESENT_FOR
@@ -431,6 +431,10 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
     @app.post("/chat/rename")
     def chat_rename(request: Request, body: dict = Body(default={})):
         return act(request, lambda u, now: u.ember.rename_chat(body.get("id"), body.get("title", "")))
+
+    @app.post("/checkups")
+    def checkups_set(request: Request, body: dict = Body(default={})):
+        return act(request, lambda u, now: u.ember.set_checkups(body.get("every"), body.get("hour")))
 
     @app.post("/push/subscribe")
     def push_subscribe(request: Request, body: dict = Body(default={})):

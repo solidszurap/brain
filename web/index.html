@@ -173,6 +173,12 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .menu .danger { color: var(--danger); }
 .menu hr { border: 0; border-top: 1px solid var(--edge); margin: 6px 10px; }
 .menu .who { font-size: 12px; color: var(--faint); padding: 6px 12px 2px; overflow: hidden; text-overflow: ellipsis; }
+.menu .checkups { padding: 8px 14px 6px; font-size: 15px; }
+.menu .checkups .row { display: flex; gap: 6px; margin-top: 6px; }
+.menu .checkups select { flex: 1; min-width: 0; background: var(--surface); color: var(--text); border: 1px solid var(--edge2); border-radius: 12px;
+  padding: 7px 8px; font: inherit; font-size: 16px; }
+.menu .checkups #ckHour { flex: none; width: 88px; }
+.menu .checkups small { display: block; color: var(--faint); font-size: 12px; margin-top: 5px; line-height: 1.35; max-width: 250px; }
 .menu .colours { display: flex; align-items: center; gap: 8px; padding: 8px 14px 6px; font-size: 15px; }
 .menu .colours span { flex: 1; }
 .menu .colours button { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 2px solid var(--edge2); cursor: pointer; }
@@ -279,6 +285,16 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
       <button data-menu="knows" class="knows">What Ember knows about you</button>
       <button data-menu="install">Add Ember to your home screen</button>
       <button data-menu="notify" id="notifyItem" style="display:none">Turn on notifications</button>
+      <div class="checkups"><span>Check-ups</span>
+        <div class="row">
+          <select id="ckEvery" aria-label="How often Ember checks up on you">
+            <option value="off">Off</option><option value="when">When it matters</option><option value="weekly">Once a week</option>
+            <option value="few">A few times a week</option><option value="daily">Every day</option>
+          </select>
+          <select id="ckHour" aria-label="At what time"></select>
+        </div>
+        <small id="ckNote"></small>
+      </div>
       <a href="/privacy">Privacy</a>
       <button data-menu="plus" id="plusItem" style="display:none"></button>
       <button data-menu="export">Download my data</button>
@@ -466,6 +482,29 @@ document.addEventListener("click", async e => {
 });
 $("#installDone").onclick = () => showCover(null);
 
+// how often Ember checks up on you, and at which hour: kept in Ember itself, so every device shares it
+$("#ckHour").innerHTML = Array.from({length: 14}, (_, i) => `<option value="${i + 8}">${i + 8}:00</option>`).join("");
+const CK_NOTE = {
+  off: "Ember won't check up on you.",
+  when: "Only about things you mentioned, and a goal that's gone quiet.",
+  weekly: "Once a week if you haven't talked, plus things you mentioned.",
+  few: "Every couple of days if you haven't talked, plus things you mentioned.",
+  daily: "Each day you haven't talked, plus things you mentioned.",
+};
+function renderCheckups() {
+  const c = S && S.checkups;
+  if (!c || (document.activeElement && document.activeElement.closest(".checkups"))) return;
+  $("#ckEvery").value = c.every;
+  $("#ckHour").value = String(c.hour);
+  $("#ckHour").style.display = c.every === "off" || c.every === "when" ? "none" : "";
+  $("#ckNote").textContent = CK_NOTE[c.every] + (c.every === "off" ? "" : " Never at night; it won't ask again until you answer.");
+}
+$("#ckEvery").onchange = $("#ckHour").onchange = async () => {
+  const every = $("#ckEvery").value, hour = +$("#ckHour").value;
+  const r = await post("/checkups", {every, hour});
+  if (r && r.ok && S) { S.checkups = {every, hour}; document.activeElement.blur(); renderCheckups(); }
+};
+
 // colour versions: kept on this device
 const THEME_BG = {"": "#17130f", night: "#0e1220", plum: "#171019", forest: "#0f1512", day: "#f6eee5"};
 function setTheme(t) {
@@ -483,6 +522,7 @@ function fmtDay(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c])); }
 
 function render() {
+  renderCheckups();
   $("#note").innerHTML = S.problem
     ? `<span class="problem">Its mind had a problem: ${esc(S.problem)}. The simple template mind answered instead.</span>`
     : Date.now() < flash.until ? flash.html : "";

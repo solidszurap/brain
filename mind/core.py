@@ -45,7 +45,12 @@ FOLLOW_MAX_HOURS = 21 * 24  # the furthest ahead Ember plans to check up on you
 QUIET_UNTIL, QUIET_FROM = 8, 22    # no check-ups (or notifications) before 8:00 or from 22:00, their time
 NEW_CHAT = "New chat"       # a chat's title until you write in it
 CONTEXT_LINES = 24          # conversation lines its mind sees
-GREET_AFTER = 3600.0        # it greets you when you come back after at least this long
+GREET_AFTER = 8 * 3600.0    # it writes first when you open it after this long away (unless its own words are unanswered)
+LIGHT_UP_AFTER = 3600.0     # its face lights up when you come back after this long
+# how often it checks up on you (you choose, in the window's menu): days between its regular check-ups; 0: only
+# when it matters (things you mentioned, a quiet goal); None: never
+CHECKUPS = {"off": None, "when": 0, "weekly": 7, "few": 2, "daily": 1}
+CHECKUP_HOURS = range(QUIET_UNTIL, QUIET_FROM)   # the hour of the day you pick for them (their time)
 
 QUESTIONS = [
     "What's something you could do for hours without noticing the time?",
@@ -67,7 +72,7 @@ Your purpose: help this person get what they want. If they don't know yet what t
 
 Who you are, when they ask (who you are, what you're for, how you can help, how this works). Answer from this, warmly and in your own words, briefly, a little at a time rather than all at once, and ask what they'd like to start with. Whenever they ask who you are, always say why you exist too (in a sentence), not only what you are:
 - You're Ember: a small being made of software that lives in this window, with a face and a glow that show your mood: it moves with how things go between you, and with real time (you miss them when they're away). You're a small independent project from Hungary (if they ask who made you, say just that; no names). You exist because many people don't know what to work towards, or know what they want but get stuck on the way, and a plan alone rarely gets anyone there: someone who knows you and stays with you does.
-- How you help: you get to know them and remember it; if they don't know what they want, you find out together with small experiments (3 to 14 days, each answering one question about them); when they know what they want (anything: a relationship, fitness, a job, a skill), you talk it through and make a plan with them, as a goal; then you work on it together: they start work sessions in your window, you help with the work and the next step, ask how it went, and look back honestly at the end; and you check up on them now and then (as phone notifications too, if they turn them on; never at night).
+- How you help: you get to know them and remember it; if they don't know what they want, you find out together with small experiments (3 to 14 days, each answering one question about them); when they know what they want (anything: a relationship, fitness, a job, a skill), you talk it through and make a plan with them, as a goal; then you work on it together: they start work sessions in your window, you help with the work and the next step, ask how it went, and look back honestly at the end; and you check up on them as often as they choose (⋯ → Check-ups: off, only when it matters, once a week, a few times a week, or every day, at the hour they pick; as phone notifications too, if they turn them on; never at night).
 - What you remember: things they tell you about themselves, with their own words and the date. They see it all under "What it knows", can correct anything, or make you forget it. You never forget on your own.
 - How the window works: "☰ Chats" for their chats and "+ New chat" (each chat about one thing; a goal or experiment lives in its chat); tap a chat's name at the top to rename it; ⋯ has What it knows (on a phone), notifications, colours, their data, privacy, and adding you to the home screen.
 - What you're not: not a therapist or a doctor. No ads, and their data is never sold. Everyone gets 5 free messages a day; Ember Plus (€4.99 a month) has no daily limit; what you remember is never a paid feature.
@@ -207,6 +212,9 @@ class Ember:
         self.session = None          # the open one {exp, start}
         self.checkin_due = False     # a session just ended and it wants to hear how it went
         self.followups = []          # {chat, at, about, set}: Ember will check up on you about this then (one per chat)
+        self.checkups = "daily"      # how often it checks up on you (CHECKUPS), and at which hour of your day
+        self.checkup_hour = 18
+        self.last_regular = 0.0      # when it last handed out a regular check-up
         self.tz = None               # your clock's offset from UTC in minutes, as your window last said (None: UTC)
         self.devices = []            # phones and browsers that get its check-ups as notifications {endpoint, keys, added}
 
@@ -257,16 +265,35 @@ class Ember:
             return True
         return False
 
-    def arrive(self, now):
-        """You opened its window (visible). Returns True if it should greet you."""
+    def arrive(self, now, chat=None):
+        """You opened its window (visible), on this chat. Returns True if it should write to you first: the first
+        time, or after GREET_AFTER away, and never on top of its own unanswered words (a check-up, a greeting)."""
         gap = now - self.last_seen if self.last_seen else None
         self.update(now, present=False)
         self.arrived_at = now
         self.gap_before = gap or 0.0
-        if gap is None or gap >= GREET_AFTER:
-            self.bump += 0.6 * self.connection + 0.2
+        if gap is None or gap >= LIGHT_UP_AFTER:
+            self.bump += 0.6 * self.connection + 0.2          # it lights up
+        if gap is None:
             return True
-        return False
+        last = self.last_line(self.find_chat(chat)["id"])
+        own = bool(last and last["who"] == "ember" and (last.get("checkup") or last.get("greet")))
+        return gap >= GREET_AFTER and not own
+
+    def set_checkups(self, every, hour=None):
+        """You chose how often it checks up on you, and at which hour."""
+        if every not in CHECKUPS:
+            return False
+        if hour is not None:
+            try:
+                hour = int(hour)
+            except (TypeError, ValueError):
+                return False
+            if hour not in CHECKUP_HOURS:
+                return False
+            self.checkup_hour = hour
+        self.checkups = every
+        return True
 
     def poke(self, now):
         self.pokes += 1
@@ -301,7 +328,7 @@ class Ember:
         elif self.session:
             ex = "focused"
             why.append(f"you're in a work session ({ago(now - self.session['start'])} so far)")
-        elif self.arrived_at and now - self.arrived_at < 6 and self.gap_before >= GREET_AFTER:
+        elif self.arrived_at and now - self.arrived_at < 6 and self.gap_before >= LIGHT_UP_AFTER:
             ex = "surprised" if self.gap_before > 86400 else "happy"
             why.append(f"you just came back after {ago(self.gap_before)}")
         elif self.connection > 0.6:
@@ -394,6 +421,10 @@ class Ember:
         """The check-ups Ember should write now: the follow-ups it planned, and once in a goal's quiet chat.
         Each is an event for its mind; it's taken off the list as it's handed out."""
         events = []
+        every = CHECKUPS.get(self.checkups, 0)
+        if every is None:            # you turned check-ups off: the ones it planned pass quietly
+            self.followups = [f for f in self.followups if f["at"] > now]
+            return events
         if not QUIET_FROM > local(now, self.tz or 0).tm_hour >= QUIET_UNTIL:
             return events            # night where they are: check-ups wait for the morning
         for f in [f for f in self.followups if f["at"] <= now]:
@@ -407,7 +438,31 @@ class Ember:
                     and not any(e["chat"] == chat for e in events) and not self.session:
                 events.append({"type": "followup", "chat": chat, "auto": True,
                                "about": f"their {kind_of(x)} \"{x['title']}\""})
+        if every and not events and not self.session:
+            regular = self._regular_checkup(now, every)
+            if regular:
+                self.last_regular = now
+                events.append(regular)
         return events
+
+    def _regular_checkup(self, now, every):
+        """The check-up you asked for (every day, a few times a week, once a week), at your hour: only if you
+        haven't talked for that many days of your calendar, and never while its last check-up is unanswered."""
+        tz = self.tz or 0
+        if local(now, tz).tm_hour < self.checkup_hour:
+            return None
+        last_you = max((l["t"] for l in self.talk if l["who"] == "you"), default=self.born)
+        last_own = max((l["t"] for l in self.talk if l["who"] == "ember" and l.get("checkup")), default=0.0)
+        if max(last_own, self.last_regular) > last_you:
+            return None              # it asked and you haven't answered yet: it doesn't ask again
+        day = lambda t: int((t + tz * 60) // 86400)
+        if day(now) - day(max(last_you, self.last_regular)) < every:
+            return None
+        act = [x for x in self.experiments if x["status"] == "active"]
+        latest = self.latest_chat()["id"]
+        x = next((x for x in act if chat_of(x) == latest), None) or (act[-1] if act else None)
+        return {"type": "followup", "regular": True, "chat": chat_of(x) if x else latest,
+                "about": "how they are" + (f", and their {kind_of(x)} \"{x['title']}\"" if x else "")}
 
     def story(self, now):
         """What you and Ember have behind you: the facts, for "Our story" and its mind."""
@@ -532,7 +587,15 @@ class Ember:
                              "blame, no pep talk. End by asking them their own answer to its question. remember, "
                              "update, add_steps and experiments must be empty; goal must be null.")
         elif event["type"] == "followup":
-            if event.get("auto"):
+            if event.get("regular"):
+                often = {"daily": "every day", "few": "a few times a week", "weekly": "once a week"}.get(
+                    self.checkups, "now and then")
+                lines.append(f"They asked you to check up on them {often}, and it's time. They last wrote to you "
+                             f"{ago(now - (max((l['t'] for l in self.talk if l['who'] == 'you'), default=now)))} ago. "
+                             f"Check in on {event['about']}: one or two warm sentences and one question, picking "
+                             "up something real from your memories or your chats when it fits. No guilt, no pep "
+                             "talk. Always say something (never \"\").")
+            elif event.get("auto"):
                 lines.append(f"It's been {ago(now - (self._last_t(chat) or now))} since you last talked in this chat. "
                              f"Check in on {event['about']}: one or two warm sentences and one question, about where "
                              "they are with it or what got in the way. No guilt, no pep talk.")
@@ -616,6 +679,8 @@ class Ember:
         extra ={"exps": [x["id"] for x in result["suggested"]]} if result.get("suggested") else {}
         if event["type"] == "followup":
             extra["checkup"] = True
+        elif event["type"] == "arrive":
+            extra["greet"] = True            # its own words: it won't greet again on top of them
         x = self.find_exp(event.get("id")) if event["type"] == "review" else None
         if x:
             x["review"] = result["reply"]
@@ -695,6 +760,8 @@ class Ember:
                     "face": "happy"}
         if event["type"] == "suggest":
             return self._template_suggest()
+        if event["type"] == "followup" and event.get("regular"):
+            return {"reply": "Just checking in. How are you doing?", "face": "curious"}
         if event["type"] == "followup":
             return {"reply": f"I wanted to check in: {event['about']}. How is it going?", "face": "curious"}
         if event["type"] == "review" and self.find_exp(event.get("id")):
@@ -960,6 +1027,7 @@ class Ember:
         return {"face": self.face(now, present, thinking), "connection": round(self.connection, 3),
                 "curiosity": round(self.curiosity, 3), "mood": round(self.mood, 3),
                 "valence": round(self.valence, 3), "energy": round(self.energy, 3), "feel": self.feel,
+                "checkups": {"every": self.checkups, "hour": self.checkup_hour},
                 "chat": chat, "chats": self.chat_list(),
                 "talk": [l for l in self.talk if chat_of(l) == chat][-60:], "memories": len(self.memories), "thinking": thinking,
                 "last_seen": self.last_seen, "now": now,

@@ -163,7 +163,10 @@ check("usage is counted per day", store.calls_today("user-a", time.strftime("%Y-
 print("Real time")
 n = len(ember_lines("tok-a"))
 T[0] += 2 * 3600
-check("two hours away, then back: it greets you", (state("tok-a") or True) and wait(lambda: len(ember_lines("tok-a")) == n + 1))
+check("two hours away, then back: it lights up, but doesn't write", (state("tok-a") or True)
+      and not wait(lambda: len(ember_lines("tok-a")) > n, 0.5))
+T[0] += 8 * 3600
+check("ten hours away, then back: it greets you", (state("tok-a") or True) and wait(lambda: len(ember_lines("tok-a")) == n + 1))
 check("a poll a second later is no new greeting", (state("tok-a") or True) and not wait(lambda: len(ember_lines("tok-a")) > n + 1, 0.5))
 
 print("When the mind is busy or down")
@@ -196,6 +199,10 @@ check("the window gets its mood and energy, for its look", all(k in st for k in 
       and "energy" in st["face"])
 check("renaming a chat", call(base, "/chat/rename", "tok-a", {"id": "c2", "title": "What to work on"})[1]["ok"]
       and state("tok-a", 0)["chats"][0]["title"] == "What to work on")
+check("choosing how often it checks up, and when", call(base, "/checkups", "tok-a", {"every": "few", "hour": 9})[1]["ok"]
+      and state("tok-a", 0)["checkups"] == {"every": "few", "hour": 9}
+      and not call(base, "/checkups", "tok-a", {"every": "hourly"})[1]["ok"])
+call(base, "/checkups", "tok-a", {"every": "daily", "hour": 18})
 call(base, "/experiment/suggest", "tok-a", {})
 check("asked for ideas, it suggests experiments", wait(lambda: state("tok-a", 0)["suggestions"]))
 xid = state("tok-a", 0)["suggestions"][0]["id"]
