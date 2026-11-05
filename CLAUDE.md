@@ -42,8 +42,14 @@ python -m server                      # online mode (Render); needs the env vars
   - each chat's `summary` (from the mind's `summary`; "Earlier in this chat" once it's longer than `CONTEXT_LINES`); other chats are never brought into a chat (Szilard, 2026-11-04);
   - `story()`: since, chats, memories, goals, experiments, work; in the prompt (`_story`) and on the memory page ("Our story");
   - wants: `connection` and `curiosity`, moved by real time in `update`;
-  - `mood`;
-  - `face()` with its reasons;
+  - its feeling (2026-11-05):
+    - The mind's `feel` (one of `FEELS`) and `feel_why` go through `feeling()`, which nudges `valence` (-1..1) and `energy` (0..1).
+    - Both ease back to `VALENCE_REST`/`ENERGY_REST` in `update`: valence over about 8 hours, energy over about 3.
+    - The template mind leaves them alone.
+  - `mood = 0.5 + 0.3*valence - 0.35*connection + 0.4*bump`;
+  - `face()` with its reasons. Precedence: missing you (`droopy`), then a feeling from the last `FEEL_SHOWS` (its face from `FEELS`), then curious, then happy. It also returns `energy`.
+  - The window (`draw()`) turns mood and energy into the look: body colour and size, posture, breathing, eyelids and blinking, a baseline smile, sparks when glad, and `--moodglow` on `body::before`.
+  - Mood colours its words lightly and is never used to guilt-trip (`SYSTEM`).
   - `prompt()` and `respond()`, the mind's JSON → reply, face, remember/update/add_steps/done_steps/experiments;
   - memories `{id, kind, note, quote, t, edited}`;
   - experiments and goals (one list, `experiments`; a goal has `kind: "goal"` and its `question` is what having it looks like; `kind_of`), sessions and the check-in. `SYSTEM` tells the mind to talk a goal through first (what, why, where you are, what you tried, what's in the way, what you're comfortable with; usually 3-6 questions), then propose it in `goal` with a `plan` (`_take_goal`: 7-180 days, up to 8 steps; the title is what you want, not the way there). While a goal is active, `replan` changes its plan when you agree. Goals that depend on other people: honest that the outcome isn't fully in your hands; no manipulation. One goal or experiment is active at a time; a goal gets 7 more days (`MORE_DAYS`), and its time-up line and look back ask whether you got there;
@@ -71,7 +77,7 @@ python -m server                      # online mode (Render); needs the env vars
 3. **Not an imitation animal.** No food, hunger, sleep, seasons, or survival world. No simulated time while away: real time passes and it knows how much.
 4. **Honest, lightly.**
    - Memories keep the user's exact words and the date. A memory without a matching quote is dropped.
-   - Feelings (Szilard, 2026-11-04): Ember is warm and talks naturally ("I'm glad you went", "I missed hearing from you"), and the app doesn't point out what it lacks. Only if you ask it directly whether it really feels things does it answer honestly: software, wants that are real numbers, and it doesn't know whether that is feeling. It never lies about what it is.
+   - Feelings (Szilard, 2026-11-04): Ember is warm and talks naturally ("I'm glad you went", "I missed hearing from you"), and the app doesn't point out what it lacks. Only if you ask it directly whether it really feels things does it answer honestly: software, wants that are real numbers, and it doesn't know whether that is feeling. It never lies about what it is. Its mood shows on its face and in its words (2026-11-05), but it never makes you responsible for it: no guilt for being away, and it never asks you to stay for its sake.
    - When its mind can't answer, it says so; no fake answers online.
    - Honesty is a trait, not the whole product: no heavy checking pipelines unless asked.
 5. **Dependencies:**

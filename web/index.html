@@ -55,7 +55,8 @@ body { position: fixed; inset: 0; background: var(--bg); color: var(--text);
 body::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background: radial-gradient(55% 34% at 50% 27%, var(--glow1), transparent 72%),
     radial-gradient(45% 35% at 92% 78%, var(--glow2), transparent 70%),
-    radial-gradient(42% 32% at 6% 62%, var(--glow3), transparent 70%); }
+    radial-gradient(42% 32% at 6% 62%, var(--glow3), transparent 70%);
+  opacity: var(--moodglow, .85); transition: opacity 4s ease; }   /* the window's glow follows Ember's mood */
 button { font: inherit; }
 
 /* top bar */
@@ -717,8 +718,8 @@ function renderWhy() {
   const f = S.face, m = (name, v) =>
     `<div class="meter"><span>${name}</span><i><b style="width:${Math.round(v * 100)}%"></b></i><span>${v.toFixed(2)}</span></div>`;
   $("#why").innerHTML = `<b>${esc(f.expression)}</b>, because:<ul>${f.why.map(w => `<li>${esc(w)}</li>`).join("")}</ul>`
-    + m("connection", S.connection) + m("curiosity", S.curiosity) + m("mood", S.mood)
-    + `<div style="margin-top:8px">These are Ember's wants, moved by real events and real time.</div>`;
+    + m("mood", S.mood) + m("energy", S.energy ?? .5) + m("connection", S.connection) + m("curiosity", S.curiosity)
+    + `<div style="margin-top:8px">Its mood comes from what happens between you and from real time apart.</div>`;
 }
 $("#whybtn").onclick = e => { e.stopPropagation(); $("#why").classList.toggle("on"); if (S) renderWhy(); };
 document.addEventListener("click", e => { if (!e.target.closest("#why, #whybtn")) $("#why").classList.remove("on"); });
@@ -857,7 +858,12 @@ const EXPR = {      // mouth curve, mouth open, eye open, brow tilt, brow lift, 
   amused:    {m: .55, o: .08, e: .8,   bt: .2,   bl: .1,   p: 1,    b: .8, y: -.01},
   focused:   {m: 0,   o: 0,   e: .78,  bt: .3,   bl: -.2,  p: .95,  b: .2, y: 0},
   thinking:  {m: -.05,o: 0,   e: .92,  bt: .25,  bl: .15,  p: 1,    b: .3, y: 0},
+  worried:   {m: -.12,o: 0,   e: 1.05, bt: -.55, bl: .3,   p: .9,   b: .35, y: 0},
+  sad:       {m: -.45,o: 0,   e: .6,   bt: -.6,  bl: -.05, p: 1.05, b: .1, y: .05},
 };
+// its mood (S.mood: colour, glow, size, posture, smile, sparks) and energy (breathing, bounce, eyelids, blinking)
+// move its whole body, slowly, on top of the expression
+let energyV = .5, phase = 0, hopPhase = 0, lastFrame = 0, sparks = [], pageGlow = -1;
 let cur = {...EXPR.calm}, glow = .5, mouse = {x: 0, y: 0, at: 0}, blinkAt = performance.now() + 2500, wiggleT = 0;
 window.addEventListener("pointermove", e => {
   const r = cv.getBoundingClientRect();
@@ -876,31 +882,53 @@ function draw(now) {
   const W = cv.width, H = cv.height, u = W / 100;
   const f = S ? S.face : {expression: "calm", glow: .5, gaze: "away", wiggle: false};
   const target = EXPR[f.expression] || EXPR.calm;
-  for (const k in cur) cur[k] = lerp(cur[k], target[k], .08);
-  glow = lerp(glow, offline ? .15 : f.glow, .05);
+  // a small smile or frown from its mood, under the quieter expressions
+  const mBase = ["calm", "curious", "droopy", "focused"].includes(f.expression) ? (glow - .45) * .35 : 0;
+  for (const k in cur) cur[k] = lerp(cur[k], k === "m" ? target.m + mBase : target[k], .08);
+  glow = lerp(glow, offline ? .15 : f.glow, .03);
+  energyV = lerp(energyV, offline ? .3 : (f.energy ?? .5), .02);
+  const pg = Math.min(1, .6 + glow * .5);
+  if (Math.abs(pg - pageGlow) > .02) { pageGlow = pg; document.body.style.setProperty("--moodglow", pg.toFixed(2)); }
   cx.clearRect(0, 0, W, H);
 
-  const t = now / 1000;
-  const breathe = Math.sin(t * 1.6) * .012 * (1 + cur.b * .4);
-  const hop = Math.max(0, Math.sin(t * (2.2 + cur.b * 1.5))) * .018 * cur.b;
+  const t = now / 1000, dt = Math.min(.1, (now - (lastFrame || now)) / 1000);
+  lastFrame = now;
+  phase += dt * (1.1 + energyV);                       // breathing: slower when its energy is low
+  hopPhase += dt * (1.6 + energyV + cur.b * 1.5);
+  const breathe = Math.sin(phase) * .012 * (1 + cur.b * .4);
+  const hop = Math.max(0, Math.sin(hopPhase)) * .018 * cur.b * (.5 + energyV);
   const wig = (now - wiggleT < 900 || f.wiggle) ? Math.sin((now - wiggleT) / 40) * .04 * Math.max(0, 1 - (now - wiggleT) / 900) : 0;
   const tilt = (f.expression === "curious" ? .08 : 0) + wig;
-  const bx = 50 * u, by = (56 + (cur.y - hop) * 100) * u;
-  const rw = 31 * u * (1 + breathe), rh = 29 * u * (1 - breathe);
+  const scale = .94 + glow * .1;                       // a little smaller and lower when it's low, taller when glad
+  const bx = 50 * u, by = (56 + (cur.y - hop) * 100 + (.5 - glow) * 4) * u;
+  const rw = 31 * u * scale * (1 + breathe), rh = 29 * u * scale * (1 - breathe);
 
   // glow
-  const g = cx.createRadialGradient(bx, by, rw * .3, bx, by, Math.min(rw * 1.6, 44 * u));
-  g.addColorStop(0, `rgba(255,154,77,${.18 + glow * .35})`);
+  const g = cx.createRadialGradient(bx, by, rw * .3, bx, by, Math.min(rw * (1.35 + glow * .5), 46 * u));
+  g.addColorStop(0, `rgba(255,154,77,${.14 + glow * .4})`);
   g.addColorStop(1, "rgba(255,154,77,0)");
   cx.fillStyle = g; cx.fillRect(0, 0, W, H);
 
+  // sparks: little embers rising when it's glad (never while it's low or misses you)
+  const low = ["droopy", "sad", "worried"].includes(f.expression);
+  if (!low && !offline && Math.random() < Math.max(0, glow - .6) * .12 * (.6 + energyV)) {
+    sparks.push({x: (Math.random() - .5) * rw * 1.6, y: -rh * (.2 + Math.random() * .6), vx: (Math.random() - .5) * 4 * u,
+                 vy: -(7 + Math.random() * 7) * u, life: 1, r: (.6 + Math.random() * .8) * u});
+  }
+  sparks = sparks.filter(s => (s.life -= dt * .7) > 0);
+  for (const s of sparks) {
+    s.x += s.vx * dt; s.y += s.vy * dt; s.vx += Math.sin(now / 300 + s.r * 9) * u * dt * 3;
+    cx.fillStyle = `rgba(255,${190 + Math.round(50 * s.life)},120,${s.life * .85})`;
+    cx.beginPath(); cx.arc(bx + s.x, by + s.y, s.r * (.5 + s.life * .5), 0, Math.PI * 2); cx.fill();
+  }
+
   cx.save();
   cx.translate(bx, by); cx.rotate(tilt);
-  // body: a soft drop of light
+  // body: a soft drop of light; duller amber when its mood is low, bright gold when it's glad (always orange)
   const bodyG = cx.createRadialGradient(-rw * .3, -rh * .45, rw * .1, 0, 0, rw * 1.15);
-  bodyG.addColorStop(0, `hsl(36, 100%, ${70 + glow * 12}%)`);
-  bodyG.addColorStop(.55, `hsl(${22 + glow * 8}, 95%, ${52 + glow * 10}%)`);
-  bodyG.addColorStop(1, `hsl(14, 80%, ${30 + glow * 10}%)`);
+  bodyG.addColorStop(0, `hsl(36, ${Math.min(100, 78 + glow * 44)}%, ${Math.min(85, 64 + glow * 24)}%)`);
+  bodyG.addColorStop(.55, `hsl(${18 + glow * 16}, ${Math.min(98, 72 + glow * 46)}%, ${44 + glow * 26}%)`);
+  bodyG.addColorStop(1, `hsl(14, ${Math.min(90, 58 + glow * 44)}%, ${26 + glow * 18}%)`);
   cx.fillStyle = bodyG;
   cx.beginPath();
   cx.moveTo(0, -rh * 1.25);
@@ -912,7 +940,12 @@ function draw(now) {
 
   // eyes
   let blink = 1;
-  if (now > blinkAt) { const k = (now - blinkAt) / 160; blink = k < 1 ? Math.abs(1 - 2 * k) : 1; if (k >= 1) blinkAt = now + 2500 + Math.random() * 4000; }
+  if (now > blinkAt) {               // slower, heavier blinks when its energy is low
+    const k = (now - blinkAt) / (160 * (1.5 - energyV));
+    blink = k < 1 ? Math.abs(1 - 2 * k) : 1;
+    if (k >= 1) blinkAt = now + 2500 + Math.random() * 4000;
+  }
+  const lids = .8 + .2 * Math.min(1, energyV * 2);   // heavier eyelids when its energy is low
   let gx = 0, gy = 0;
   if (f.expression === "thinking") { gx = .5; gy = -.6; }
   else if (f.gaze === "you" && now - mouse.at < 4000) { gx = Math.max(-1, Math.min(1, mouse.x * 2.2)); gy = Math.max(-1, Math.min(1, mouse.y * 2.2)); }
@@ -920,7 +953,7 @@ function draw(now) {
   else { gx = Math.sin(t * .3) * .6; gy = .3; }
   const ex = 11 * u, ey = -3 * u, er = 6.2 * u;
   for (const s of [-1, 1]) {
-    const open = Math.max(.05, cur.e * blink);
+    const open = Math.max(.05, cur.e * blink * lids);
     cx.save(); cx.translate(s * ex, ey);
     cx.fillStyle = "#2b1407";
     cx.beginPath(); cx.ellipse(0, 0, er * .82, er * open, 0, 0, Math.PI * 2); cx.fill();
@@ -947,7 +980,14 @@ function draw(now) {
   // mouth
   const mw = 9 * u, my = 9 * u;
   cx.strokeStyle = "#3a1608"; cx.lineWidth = 1.8 * u; cx.lineCap = "round";
-  if (cur.o > .12) {
+  if (cur.o > .12 && cur.m > .3) {         // an open smile: glad, eager, amused
+    const w = mw * (.5 + cur.m * .3);
+    cx.fillStyle = "#3a1608";
+    cx.beginPath(); cx.moveTo(-w, my - u * .5);
+    cx.quadraticCurveTo(0, my + (cur.m * 9 + cur.o * 8) * u, w, my - u * .5);
+    cx.quadraticCurveTo(0, my + cur.m * 2 * u, -w, my - u * .5);
+    cx.fill();
+  } else if (cur.o > .12) {
     cx.fillStyle = "#3a1608";
     cx.beginPath(); cx.ellipse(0, my + cur.m * 2 * u, mw * (.35 + cur.m * .4), mw * cur.o * .7, 0, 0, Math.PI * 2); cx.fill();
   } else {

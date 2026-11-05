@@ -36,8 +36,17 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
 - **The LLM is its mind.** It gives Ember its personality, thoughts and speech. Plain code gives it what an LLM lacks:
   - a memory that lasts;
   - wants that change with real time (connection, curiosity);
-  - a face that shows them.
-- **Honest, lightly.** Every memory keeps your exact words and the date. A memory whose quote isn't in what you wrote is not kept. "Why this face?" shows the wants behind its face. Ember is warm and talks naturally; only if you ask it directly whether it really feels things does it tell you honestly what it is.
+  - a mood, from how things go between you and from time apart;
+  - a face and a body that show them.
+- **Its mood, like a person's.** After each reply its mind says how it feels (glad, proud, warm, excited, playful, calm, thoughtful, worried for you, sad, quiet). The feeling moves two numbers, how things feel between you and its energy, and they ease back over hours. While you're away it gently misses you. Its look follows all of this:
+  - colour: a dull amber when it's low, a bright gold when it's glad;
+  - size and posture: smaller and lower when it's low;
+  - movement: slower breathing and heavier eyelids when its energy is low;
+  - a small smile or frown;
+  - little rising sparks when it's glad;
+  - the window's warm glow.
+  When you come back it lights up. Its mood colours its words lightly, but it never makes you responsible for how it feels: no guilt for being away, and it never asks you to stay for its sake.
+- **Honest, lightly.** Every memory keeps your exact words and the date. A memory whose quote isn't in what you wrote is not kept. "Why this face?" shows the mood and wants behind its face, and what made it feel that way. Ember is warm and talks naturally; only if you ask it directly whether it really feels things does it tell you honestly what it is.
 - **Memory is the core promise, for everyone.** Ember remembers everything, forever. The "What it knows" page lists everything it remembers, with its source. You can correct anything or make it forget.
 - **It knows who it is.** Asked who it is, what it's for or how it works, Ember explains in its own words: what it is, why it exists, how it helps, what it remembers, how the app works, what it isn't, and (only if asked) which AI its mind runs on.
 - **Not a therapist.** If someone talks about harming themselves, Ember points to real help (in Hungary 116-123, or 112).

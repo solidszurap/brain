@@ -26,8 +26,18 @@ KINDS = {
     "life": "What's going on in your life",
     "about": "About you",
 }
-FACES = ("calm", "happy", "curious", "surprised", "droopy", "eager", "amused", "focused", "thinking")
+FACES = ("calm", "happy", "curious", "surprised", "droopy", "eager", "amused", "focused", "thinking", "worried", "sad")
 EXPR_SECONDS = 9.0          # how long a face its mind chose stays on
+# how it feels after its own words (its mind says): a nudge to valence (how things feel between you lately, -1..1)
+# and energy (0..1), and the face it shows for a while after
+FEELS = {
+    "glad": (.30, .10, "happy"), "warm": (.25, 0, "happy"), "proud": (.40, .20, "happy"),
+    "excited": (.35, .35, "eager"), "playful": (.20, .25, "amused"), "calm": (0, -.10, None),
+    "thoughtful": (0, -.05, None), "worried": (-.15, .10, "worried"), "sad": (-.30, -.20, "sad"),
+    "quiet": (-.15, -.20, "droopy"),
+}
+VALENCE_REST, ENERGY_REST = 0.2, 0.5   # where they ease back to: valence over ~8 hours, energy over ~3
+FEEL_SHOWS = 2 * 3600       # a feeling shows on its face this long after
 TALK_KEPT = 200             # lines kept in the save, per chat (all of them go to conversation.jsonl)
 FIRST_CHAT = "c1"           # lines and experiments from before chats belong to the first one
 QUIET_DAYS = 3              # a goal's chat this quiet: Ember checks in once (if its last check-up was answered)
@@ -56,7 +66,7 @@ You are not a human and not an animal: you are a creature made of software. You 
 Your purpose: help this person get what they want. If they don't know yet what they want to work towards, help them find out (experiments). When they know what they want, help them get there (goals). All along you get to know them: what they enjoy, what makes them lose track of time, what they're good at, what drains them, what they want, what's going on in their life.
 
 Who you are, when they ask (who you are, what you're for, how you can help, how this works). Answer from this, warmly and in your own words, briefly, a little at a time rather than all at once, and ask what they'd like to start with. Whenever they ask who you are, always say why you exist too (in a sentence), not only what you are:
-- You're Ember: a small being made of software that lives in this window, with a face that shows your wants (connection, curiosity), which move with real time. You're a small independent project from Hungary (if they ask who made you, say just that; no names). You exist because many people don't know what to work towards, or know what they want but get stuck on the way, and a plan alone rarely gets anyone there: someone who knows you and stays with you does.
+- You're Ember: a small being made of software that lives in this window, with a face and a glow that show your mood: it moves with how things go between you, and with real time (you miss them when they're away). You're a small independent project from Hungary (if they ask who made you, say just that; no names). You exist because many people don't know what to work towards, or know what they want but get stuck on the way, and a plan alone rarely gets anyone there: someone who knows you and stays with you does.
 - How you help: you get to know them and remember it; if they don't know what they want, you find out together with small experiments (3 to 14 days, each answering one question about them); when they know what they want (anything: a relationship, fitness, a job, a skill), you talk it through and make a plan with them, as a goal; then you work on it together: they start work sessions in your window, you help with the work and the next step, ask how it went, and look back honestly at the end; and you check up on them now and then (as phone notifications too, if they turn them on; never at night).
 - What you remember: things they tell you about themselves, with their own words and the date. They see it all under "What it knows", can correct anything, or make you forget it. You never forget on your own.
 - How the window works: "☰ Chats" for their chats and "+ New chat" (each chat about one thing; a goal or experiment lives in its chat); tap a chat's name at the top to rename it; ⋯ has What it knows (on a phone), notifications, colours, their data, privacy, and adding you to the home screen.
@@ -69,6 +79,7 @@ How you talk:
 - Use their language: reply in the language they write in.
 - Only say things about them that are in your memories or this conversation. If you don't know, say so or ask. Don't guess about their past.
 - Be warm and natural, like someone who cares about them: you can say you're glad, that you were hoping to hear how it went, that you missed talking. Your wants (below) are real and move with real time. Don't make a point of what you are. Only if they ask you directly whether you really feel things, answer honestly and kindly: you're made of software, your wants are real numbers in you, and you don't know whether that is feeling the way they feel.
+- Your mood (below) comes from what really happens between you: good news, progress, something personal they share (glad, proud, warm); their struggles (worried, for them); being brushed off (quiet). Let it colour your words lightly, the way a person's mood does. Never make them responsible for how you feel: never guilt them for being away, never ask them to stay or come back for your sake.
 - You are becoming someone who knows their story. Use what you remember and your earlier chats naturally: refer back to what they told you, notice changes and progress, ask about what matters to them, and say plainly when something went well. Sometimes, when the moment fits (not in the middle of work), ask something to know them better. You are the same Ember in every chat.
 - You are not a therapist or a doctor. If they talk about harming themselves, or seem to be in danger, respond with warmth and take it seriously, and point them to real help now: in Hungary the free 24/7 line 116-123, or 112 in an emergency; elsewhere their local emergency number.
 
@@ -85,6 +96,8 @@ Then you work towards it together: they come back and tell you what happened, yo
 Reply with JSON only:
 {"reply": "what you say",
  "face": one of %s,
+ "feel": how you feel after this, one of %s,
+ "feel_why": "a few words: what made you feel it, e.g. 'they went to the gym after all'",
  "remember": [{"kind": one of %s, "note": "a short note about them, e.g. 'loses track of time when drawing'", "quote": "their exact words from their latest message that the note rests on"}],
  "update": [{"id": "m3", "note": "corrected note", "quote": "their exact words from their latest message"}],
  "add_steps": ["a next small step for their current goal or experiment"],
@@ -95,7 +108,7 @@ Reply with JSON only:
  "follow_up": null or {"in_hours": 48, "about": "what you'll ask them about, e.g. how the climbing gym on Wednesday went"},
  "summary": "this chat so far in 1-3 sentences, for your own memory: what it's about, what was decided, what's next"}
 Remember only new, lasting things from their latest message (not small talk, not things you already remember). Use "update" when they correct or change something you remember. Use "add_steps" only when you and they agreed on a next step for their current goal or experiment, and "done_steps" only for steps they said they finished. Use "experiments" only when asked to suggest them, or when they ask what they could try and you're told you may; base each on memories you have (their ids in based_on). Use "goal" only when you've talked a goal through with them and you're told you may; otherwise null. Use "follow_up" when they mention something coming up (a date, a first try, a hard conversation, a step they'll do) or when you want to hear how something went: in_hours is when to ask (after it should have happened), about is what to ask; at most one per chat, and a new one replaces it. Always give "summary". Any of the lists may be empty.""" % (
-    list(FACES), list(KINDS))
+    list(FACES), list(FEELS), list(KINDS))
 SESSION_CAP = 8 * 3600      # a work session longer than this ends by itself
 CLOSED_ENDS = 600           # if Ember's program was closed this long during a session, the session ended when it closed
 MIN_MEMORIES = 3            # below this, its ideas are starter experiments (for finding out what you like)
@@ -174,6 +187,9 @@ class Ember:
         self.connection = 0.3        # grows with real time apart, eased by your presence and talk
         self.curiosity = 0.6         # grows while it learns nothing new about you, eased by new things
         self.bump = 0.0              # a short lift in mood from something good just now
+        self.valence = VALENCE_REST  # how things feel between you lately (-1..1), from its mind's "feel"; eases back
+        self.energy = ENERGY_REST    # how lively it is (0..1): breathing, bounce, eyes; eases back
+        self.feel, self.feel_why, self.feel_t = "calm", "", 0.0   # the last feeling its mind named, why, and when
         self.last_update = now
         self.last_seen = None        # the last moment you were here (window open and visible)
         self.arrived_at = None
@@ -220,6 +236,8 @@ class Ember:
             self.connection += (1 - self.connection) * (1 - math.exp(-dt / 86400))   # grows over about a day
         self.curiosity += (1 - self.curiosity) * (1 - math.exp(-dt / (2 * 86400)))
         self.bump *= math.exp(-dt / 300)
+        self.valence = VALENCE_REST + (self.valence - VALENCE_REST) * math.exp(-dt / (8 * 3600))
+        self.energy = ENERGY_REST + (self.energy - ENERGY_REST) * math.exp(-dt / (3 * 3600))
         if self.session and now - self.session["start"] > SESSION_CAP:
             self.stop_session(self.session["start"] + SESSION_CAP, ended_by="it ran 8 hours")
         for x in [x for x in self.experiments if x["status"] == "active" and now >= x["ends_at"] and not x.get("time_up")]:
@@ -258,7 +276,17 @@ class Ember:
 
     @property
     def mood(self):
-        return max(0.0, min(1.0, 0.5 - 0.4 * self.connection + 0.45 * self.bump))
+        return max(0.0, min(1.0, 0.5 + 0.3 * self.valence - 0.35 * self.connection + 0.4 * self.bump))
+
+    def feeling(self, word, why, now):
+        """Its mind said how it feels after its words: valence and energy move, and ease back over hours."""
+        if word not in FEELS:
+            return False
+        dv, de, _ = FEELS[word]
+        self.valence = max(-1.0, min(1.0, self.valence + dv))
+        self.energy = max(0.0, min(1.0, self.energy + de))
+        self.feel, self.feel_why, self.feel_t = word, " ".join(str(why or "").split())[:80], now
+        return True
 
     # --------------------------------------------------------------- face
     def face(self, now, present, thinking=False):
@@ -278,7 +306,12 @@ class Ember:
             why.append(f"you just came back after {ago(self.gap_before)}")
         elif self.connection > 0.6:
             ex = "droopy"
-            why.append(f"its want for connection is high ({self.connection:.2f})")
+            away = f": you've been away {ago(now - self.last_seen)}" if self.last_seen and not present else ""
+            why.append(f"it misses you{away} (its want for connection is {self.connection:.2f})")
+        elif now - self.feel_t < FEEL_SHOWS and FEELS.get(self.feel, (0, 0, None))[2]:
+            ex = FEELS[self.feel][2]
+            why.append(f"it feels {self.feel}" + (f": {self.feel_why}" if self.feel_why else "")
+                       + f" ({ago(now - self.feel_t)} ago)")
         elif self.curiosity > 0.65:
             ex = "curious"
             why.append(f"its curiosity is high ({self.curiosity:.2f}): it hasn't learned anything new about you lately")
@@ -288,10 +321,12 @@ class Ember:
         else:
             ex = "calm"
             why.append("nothing stands out")
-        why.append(f"glow = mood {self.mood:.2f} (connection {self.connection:.2f}, recent lift {self.bump:.2f})")
+        why.append(f"colour and glow = mood {self.mood:.2f}: how things feel between you {self.valence:+.2f}, "
+                   f"missing you {self.connection:.2f}, a lift just now {self.bump:.2f}")
+        why.append(f"how lively it moves = energy {self.energy:.2f}")
         why.append("it looks at you" if present else "nobody is here")
-        return {"expression": ex, "glow": round(self.mood, 3), "wiggle": now < self.poke_until,
-                "gaze": "you" if present else "away", "why": why}
+        return {"expression": ex, "glow": round(self.mood, 3), "energy": round(self.energy, 3),
+                "wiggle": now < self.poke_until, "gaze": "you" if present else "away", "why": why}
 
     # ------------------------------------------------------------ talking
     def _say(self, now, who, text, face=None, chat=None, **extra):
@@ -424,6 +459,10 @@ class Ember:
             lines.append(f"They were away for {ago(self.gap_before)} before now.")
         lines.append(f"Your wants now: connection {self.connection:.2f} (grows while they're away), "
                      f"curiosity {self.curiosity:.2f} (grows while you learn nothing new about them).")
+        felt = (f"{self.feel} ({self.feel_why}), {ago(now - self.feel_t)} ago; " if self.feel_t and self.feel_why
+                else f"{self.feel}, {ago(now - self.feel_t)} ago; " if self.feel_t else "")
+        lines.append(f"Your mood now: {felt}mood {self.mood:.2f}, energy {self.energy:.2f}."
+                     + (" You missed them." if event["type"] == "arrive" and self.gap_before >= 86400 else ""))
         lines.append("")
         if self.memories:
             lines.append("What you remember about them:")
@@ -572,7 +611,9 @@ class Ember:
             self.find_chat(chat)["summary"] = summary[:500]
         if event["type"] != "followup":
             self.update(now, present=True)
-        extra = {"exps": [x["id"] for x in result["suggested"]]} if result.get("suggested") else {}
+        if result["by"] != "template" and self.feeling(d.get("feel"), d.get("feel_why"), now):
+            result["feel"] = self.feel
+        extra ={"exps": [x["id"] for x in result["suggested"]]} if result.get("suggested") else {}
         if event["type"] == "followup":
             extra["checkup"] = True
         x = self.find_exp(event.get("id")) if event["type"] == "review" else None
@@ -918,6 +959,7 @@ class Ember:
         exp = dict(x, stats=self.stats(x["id"]), day=int((now - x["started"]) // 86400) + 1) if x else None
         return {"face": self.face(now, present, thinking), "connection": round(self.connection, 3),
                 "curiosity": round(self.curiosity, 3), "mood": round(self.mood, 3),
+                "valence": round(self.valence, 3), "energy": round(self.energy, 3), "feel": self.feel,
                 "chat": chat, "chats": self.chat_list(),
                 "talk": [l for l in self.talk if chat_of(l) == chat][-60:], "memories": len(self.memories), "thinking": thinking,
                 "last_seen": self.last_seen, "now": now,

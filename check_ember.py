@@ -360,6 +360,52 @@ check("at 9:00 their time, the check-up comes", len(n8.due_checkups(day0 + 86400
 _, user = n8.prompt({"type": "talk", "text": "hi", "chat": "c1"}, day0 + 86400 + 8 * H)
 check("its mind knows their local time", "09:00 (their local time)" in user)
 
+print("Its mood: from how things go between you, and from time apart")
+from mind.core import FEELS, VALENCE_REST
+md = Ember(now=t)
+md.arrive(t)
+md.hear(t + 5, "I finally went to the gym!")
+v0, en0, mood0 = md.valence, md.energy, md.mood
+md.respond({"type": "talk", "text": "I finally went to the gym!", "chat": "c1"}, mind_says(
+    reply="You went! How was it?", face="happy", feel="proud", feel_why="they went to the gym after all"), t + 6)
+check("good news makes it feel proud: valence and energy rise", md.valence > v0 + .3 and md.energy > en0
+      and md.feel == "proud" and md.feel_why == "they went to the gym after all")
+check("...and its mood is better", md.mood > mood0)
+f1 = md.face(t + 60, True)
+check("the feeling shows on its face after the mind's own face fades",
+      f1["expression"] == "happy" and any("it feels proud: they went to the gym" in w for w in f1["why"]))
+check("the face carries its energy for the window", f1["energy"] == round(md.energy, 3))
+_, user = md.prompt({"type": "talk", "text": "hi", "chat": "c1"}, t + 120)
+check("its mind knows how it feels", "Your mood now: proud (they went to the gym after all)" in user)
+check("its mind is told never to guilt them", "never guilt them for being away" in __import__("mind.core").core.SYSTEM)
+md.update(t + 10 * H, present=False)
+check("after hours the feeling eases back", abs(md.valence - VALENCE_REST) < .15, f"{md.valence:.2f}")
+vv = md.valence
+md.respond({"type": "talk", "text": "x", "chat": "c1"}, mind_says(reply="Mm.", feel="furious"), t + 10 * H + 1)
+check("a feeling it doesn't have changes nothing", abs(md.valence - vv) < .001 and md.feel == "proud")
+md.respond({"type": "talk", "text": "it went badly", "chat": "c1"}, mind_says(reply="Oh no.", feel="worried"),
+           t + 10 * H + 2)
+check("their struggle makes it worried, for them", md.face(t + 10 * H + 60, True)["expression"] == "worried")
+md.respond({"type": "talk", "text": "x", "chat": "c1"}, mind_says(reply="I'm sorry.", feel="sad"), t + 10 * H + 70)
+check("sad shows as sad", md.face(t + 10 * H + 120, True)["expression"] == "sad")
+md.update(t + 3 * D, present=False)
+fa = md.face(t + 3 * D, False)
+check("days apart: it misses you, and says why", fa["expression"] == "droopy"
+      and any("it misses you: you've been away" in w for w in fa["why"]))
+low = md.mood
+md.arrive(t + 3 * D + 5)
+check("you come back: it lights up", md.mood > low + .3)
+_, user = md.prompt({"type": "arrive"}, t + 3 * D + 5)
+check("its mind knows it missed them", "You missed them." in user)
+tm = Ember(now=t)
+tm.respond({"type": "talk", "text": "hi"}, None, t + 1)
+check("the template mind leaves its mood alone", tm.valence == VALENCE_REST and tm.feel == "calm")
+old = Ember.from_dict({k: v for k, v in Ember(now=t).to_dict().items() if k not in ("valence", "energy", "feel")})
+check("a save from before moods still loads", old.valence == VALENCE_REST and old.feel == "calm")
+mm = Ember.from_dict(json.loads(json.dumps(md.to_dict())))
+check("its mood survives a save", mm.valence == md.valence and mm.feel == md.feel and mm.feel_t == md.feel_t)
+check("every feeling has a nudge and a face (or none)", all(len(v) == 3 for v in FEELS.values()))
+
 print("Who it is")
 from mind.core import SYSTEM
 check("Ember knows who it is, why it exists and how it helps", "Szurap" not in SYSTEM and all(w in SYSTEM for w in (

@@ -191,6 +191,9 @@ check("Ember answers in that chat", wait(lambda: "I heard: what should I work on
 check("...and the first chat doesn't show it", "I heard: what should I work on" not in
       [l["text"] for l in call(base, "/state?v=0&chat=c1", "tok-a")[1]["talk"]])
 check("the chat list has both, latest first", [c["id"] for c in state("tok-a", 0)["chats"]] == ["c2", "c1"])
+st = state("tok-a", 0)
+check("the window gets its mood and energy, for its look", all(k in st for k in ("mood", "energy", "valence", "feel"))
+      and "energy" in st["face"])
 check("renaming a chat", call(base, "/chat/rename", "tok-a", {"id": "c2", "title": "What to work on"})[1]["ok"]
       and state("tok-a", 0)["chats"][0]["title"] == "What to work on")
 call(base, "/experiment/suggest", "tok-a", {})
