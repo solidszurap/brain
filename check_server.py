@@ -229,6 +229,11 @@ gl = call(base, "/goals", "tok-a")[1]["goals"]
 g = next((x for x in gl if x["id"] == ng.get("id")), None)
 check("make a goal yourself: it's on your goals list, in phases", ng["ok"] and g and g["status"] == "active"
       and g["phase_info"]["count"] == 5 and g["today_step"]["text"] == "Walk 20 min" and g["chat"] == ng["chat"])
+nh = call(base, "/goal/new", "tok-a", {"title": "Tidy the flat", "n": 4, "unit": "hours"})[1]
+gh = next((x for x in call(base, "/goals", "tok-a")[1]["goals"] if x["id"] == nh.get("id")), None)
+check("a goal of 4 hours", nh["ok"] and gh and gh["days"] == round(4 / 24, 4) and gh["length"] == "4 hours"
+      and gh["more"] == "1 more hour", str(gh and (gh["days"], gh.get("length"))))
+check("...it can be dropped", call(base, "/experiment/end", "tok-a", {"id": nh["id"], "how": "dropped"})[1]["ok"])
 n0 = len(call(base, f"/state?v=0&chat={ng['chat']}", "tok-a")[1]["talk"])
 check("today's check", call(base, "/goal/check", "tok-a", {"id": ng["id"], "how": "done", "words": "nice"})[1]["ok"])
 check("...and Ember answers in the goal's chat", wait(lambda: len(call(base, f"/state?v=0&chat={ng['chat']}", "tok-a")[1][
@@ -519,6 +524,12 @@ check("a third message today is refused (402) and not stored",
 check("asking for ideas counts too", call(base4, "/experiment/suggest", "tok-b", {})[0] in (200, 402))
 check("greetings are free", (call(base4, "/state?v=1", "tok-b") and True))
 check("a comped tester (Plus by email) has no limit", plan4("tok-a")["plus"] and plan4("tok-a")["free_left"] is None)
+base5, srv5 = serve(create_app(FileStore(os.path.join(tmp, "users5")), FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock, retry_delay=0.01,
+                               retry_every=0.3, billing=billing, free_per_day=2, plus_emails=("*",)))
+p5 = call(base5, "/state", "tok-b")[1]["plan"]
+check("Plus for everyone (EMBER_PLUS_EMAILS=*): no limit, nothing to buy or manage", p5["plus"] and p5["free_left"] is None
+      and not p5["manage"] and call(base5, "/talk", "tok-b", {"text": "past the limit"})[0] == 200, str(p5))
+srv5.should_exit = True
 T[0] += 86400
 check("the next day, free messages are back", plan4()["free_left"] == 2)
 T[0] -= 86400
@@ -605,6 +616,12 @@ sb.add_call("u1", "2026-11-03", 3000, 200)
 sb.add_call("u1", "2026-11-03", 1000, 100)
 check("usage adds up per day", sb.calls_today("u1", "2026-11-03") == 2 and Fake.tables["usage"][0]["tokens_in"] == 4000)
 check("all users listed", sb.all_uids() == ["u1"])
+sb.save_self("u0", {"memories": []})
+sb.save_self("u2", {"memories": []})
+check("...page by page, past Supabase's 1000 rows a request", sb.all_uids(page=2) == ["u0", "u1", "u2"]
+      and sb.all_uids(page=1) == ["u0", "u1", "u2"])
+for uid in ("u0", "u2"):
+    Fake.tables["embers"] = [r for r in Fake.tables["embers"] if r["user_id"] != uid]
 sb.add_message("u1", "2026-11-03")
 check("free messages are counted per day", sb.messages_today("u1", "2026-11-03") == 1 and sb.calls_today("u1", "2026-11-03") == 2)
 sb.set_plan("u1", {"status": "active", "customer": "cus_1", "subscription": "sub_1"})

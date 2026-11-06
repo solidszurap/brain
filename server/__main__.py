@@ -6,7 +6,7 @@ Online (Render):   python -m server
     EMBER_ALLOWED_EMAILS (comma-separated invite list, or * for everyone); PORT is set by Render.
     Notifications: VAPID_PRIVATE_KEY (tools/make_vapid.py), VAPID_SUBJECT (optional).
     Ember Plus: STRIPE_SECRET_KEY, STRIPE_PRICE_ID, STRIPE_WEBHOOK_SECRET (without them the paywall
-    says Plus is coming soon), EMBER_FREE_PER_DAY (10), EMBER_PLUS_EMAILS (Plus for free, comma-separated),
+    says Plus is coming soon), EMBER_FREE_PER_DAY (10), EMBER_PLUS_EMAILS (Plus for free, comma-separated, or * for everyone),
     EMBER_PRICE_LABEL ("€4.99 / month"), EMBER_TERMS_URL (your ÁSZF page; with a live Stripe key, Plus is only sold once it's set).
 Local (your PC):   python ember.py   (one Ember, yours, in ember_state/, no login)
 """
@@ -69,8 +69,10 @@ def run_online():
                                     "supabase_anon_key": env["SUPABASE_ANON_KEY"]},
                      billing=billing, free_per_day=int(env.get("EMBER_FREE_PER_DAY", "10")),
                      plus_emails=env.get("EMBER_PLUS_EMAILS", "").split(","), push=push)
-    logging.getLogger("ember").info("mind: %s; invite list: %s; payments: %s; notifications: %s", cfg.describe(),
-                                    "everyone" if auth.everyone else f"{len(auth.allowed)} people",
+    plus = [e.strip() for e in env.get("EMBER_PLUS_EMAILS", "").split(",") if e.strip()]
+    logging.getLogger("ember").info("mind: %s; invite list: %s; Plus for free: %s; payments: %s; notifications: %s",
+                                    cfg.describe(), "everyone" if auth.everyone else f"{len(auth.allowed)} people",
+                                    "everyone" if "*" in plus else f"{len(plus)} people",
                                     ("closed: live key, but no EMBER_TERMS_URL yet" if billing.enabled and not billing.selling else ("on (live)" if billing.live else "on (test mode)")) if billing.enabled else "off (Plus coming soon)", "on" if push else "off")
     threading.Thread(target=keep_awake, args=(store,), daemon=True).start()
     # access logs off: request paths are harmless, but keep logs to ids and errors

@@ -8,7 +8,7 @@ A small being with a face that helps you get what you want. If you don't know ye
 
 - **Where it runs:** on a server at Render (Frankfurt). Your Ember (its memories, experiments, the whole conversation) is kept in a Supabase database (Ireland, eu-west-1).
 - **Its mind:** Claude Haiku 5.5, through Anthropic's API.
-- **Who can use it:** it's invite-only while being tested (`EMBER_ALLOWED_EMAILS`).
+- **Who can use it:** `EMBER_ALLOWED_EMAILS` is an invite list, or `*` for anyone with a Google account (the Google login must be published too; DEPLOY.md step 8). Who has logged in: Supabase → Authentication → Users.
 - **Setting it up:** **[DEPLOY.md](DEPLOY.md)**, step by step.
 - **What it costs:** Render Starter about $7 a month; Claude Haiku about $0.0003 per reply, measured ($0.10/$0.50 per million tokens in/out), so $5 of credit is roughly 15,000 replies; Supabase free to start (a free project pauses after a week unused, so the server reads it once a day).
 - **When the mind is busy or down:** Ember says so honestly and answers once it's back. It never fakes an answer.
@@ -22,7 +22,7 @@ A small being with a face that helps you get what you want. If you don't know ye
   - After its answer to your last free one, Ember says so, and the input becomes an **Ember Plus** card: **€4.99 / month**, no daily limit, cancel anytime.
   - Payment goes through **Stripe**: its checkout page to subscribe, its portal ("Manage Ember Plus") to cancel. A signed webhook tells the server, and Ember never sees card details.
   - Deleting your Ember also cancels the subscription.
-  - Comped Plus by email: `EMBER_PLUS_EMAILS`.
+  - Comped Plus by email: `EMBER_PLUS_EMAILS`, or `*` for everyone (Szilard, 2026-11-06: Plus for everyone for now, while sign-up opens).
 - **A safety cap per person** (`EMBER_DAILY_CAP`, 150 replies a day, Plus included) keeps costs in check.
 - **Colours:** the menu (⋯) has five colour versions of the window (Ember, Night, Plum, Forest, Day), kept on each device. Ember's own colour is yours to choose (see Levels and looks); it's amber until you change it.
 - **Levels and looks** (2026-11-06): Ember grows with you.
@@ -91,7 +91,7 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
    - **Suggestions, in the conversation.** Ask it what you could try. Its ideas appear as cards under its message: small experiments, 3 to 14 days each, each with one question. Before it knows 3 things about you, they're starter experiments for finding out what you enjoy, things you can do on your own, and the card says so. After that, every suggestion names the memories it rests on; one that rests on none isn't shown.
    - **Picking one.** "Pick this" on a card makes it that chat's experiment, and the chat takes its name. It shows as one line above the input (title, day, steps done, Start/Stop); click the title for the steps, Finish and Drop. Each chat can have one goal or experiment, so several can run side by side, each in its own chat. One work session runs at a time; it shows in every chat, and its title opens its chat.
    - **Goals of their own** (2026-11-06). "◎ Goals" at the top lists your goals and experiments, with "+ New goal".
-     - **A new goal:** make it yourself (what you want, how you'll know, how long from 1 week to 6 months, your first steps) and it starts right away. Or "Plan it with Ember": a new chat where Ember asks the few things it needs and proposes the plan.
+     - **A new goal:** make it yourself (what you want, how you'll know, how long: any number of hours, days, weeks or months, from an hour to a year; your first steps) and it starts right away. A goal of hours counts the hours left, and keeping going adds an hour (a goal of days or more gets a week). Or "Plan it with Ember": a new chat where Ember asks the few things it needs and proposes the plan.
      - **Each goal has its own page:** what you want and how you'll know; today's step with **Did it / Partly / Not today** (plus a few words); your streak and the last two weeks as dots; this phase's steps, which you can tick or add to; all the phases with their look backs; the plan; and the buttons Plan details with Ember, Talk about it, More days, Finish and look back, and Drop it.
      - **The daily check replaces the old stopwatch.** Ember answers the first check of the day in the goal's chat, shown on the page too: glad when you did it, and a smaller next step when it was partly or not today, without guilt. Being honest earns XP too.
      - **Phases:** a goal longer than two weeks goes in phases of 1–2 weeks, and you only see the current one. When a phase is over, Ember says so. With "Look back and plan the next phase" (or early, "On to the next phase") it looks back on how it went and plans the next phase's steps from that. Goals Ember proposes come with phases. Older goals were split into phases by week.

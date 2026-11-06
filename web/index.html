@@ -314,6 +314,9 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .gpform label { display: block; margin-top: 12px; color: var(--dim); font-size: 14px; }
 .gpform label > * { margin-top: 5px; }
 .gpform textarea { min-height: 80px; resize: vertical; }
+.gpform .howlong { display: flex; gap: 8px; }
+.gpform .howlong input { width: 92px; flex: none; }
+.gpform .howlong select { flex: 1; }
 .gpnote { color: var(--faint); font-size: 13px; margin-top: 10px; }
 .chatitem { display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 14px; padding: 9px 12px; margin-bottom: 4px; color: var(--text); cursor: pointer; font: inherit; }
 .chatitem:hover { background: var(--surface); }
@@ -911,10 +914,25 @@ async function loadGoals() {
   renderGoalList();
   if (goalOpen && goalOpen !== "new") renderGoalPage();
 }
+const GOAL_UNITS = {hours: 1 / 24, days: 1, weeks: 7, months: 30};
+function durText(days) {                       // like the server's span_text: "3 hours", "45 days"
+  if (days < 2 && Math.abs(days - Math.round(days)) >= 1 / 1440) { const h = Math.max(1, Math.round(days * 24)); return `${h} hour${h === 1 ? "" : "s"}`; }
+  const d = Math.round(days); return `${d} day${d === 1 ? "" : "s"}`;
+}
+function leftText(sec) {                       // like the server's left_text
+  if (sec < 3600) { const m = Math.max(1, Math.ceil(sec / 60)); return `${m} minute${m === 1 ? "" : "s"}`; }
+  if (sec < 86400) { const h = Math.round(sec / 3600); return `${h} hour${h === 1 ? "" : "s"}`; }
+  const d = Math.ceil(sec / 86400); return `${d} day${d === 1 ? "" : "s"}`;
+}
+function goalWhen(g) {                         // "day 3 of 14", or for a goal of hours "2 hours left of 3 hours"
+  if (g.days < 1) return g.left > 0 ? `${leftText(g.left)} left of ${g.length || durText(g.days)}` : `${g.length || durText(g.days)} · its time is up`;
+  return `day ${Math.min(g.day, Math.ceil(g.days))} of ${Math.round(g.days)}`;
+}
+const moreText = g => g.more || `${isGoal(g) ? 7 : 3} more days`;
 function goalMeta(g) {
   const kind = isGoal(g) ? "Goal" : "Experiment";
   const ph = g.phase_info && g.phase_info.count > 1 ? ` · phase ${g.phase_info.index + 1} of ${g.phase_info.count}` : "";
-  return g.status === "active" ? `${kind}${ph} · day ${g.day} of ${g.days}` : `${kind} · ${g.status === "done" ? "finished" : "dropped"}`;
+  return g.status === "active" ? `${kind}${ph} · ${goalWhen(g)}` : `${kind} · ${g.status === "done" ? "finished" : "dropped"}`;
 }
 function renderGoalList() {
   const act = GOALS.filter(g => g.status === "active"), past = GOALS.filter(g => g.status !== "active");
@@ -960,7 +978,7 @@ function renderGoalPage() {
       + (goalReplyWait && goalReplyWait.text ? `<div class="gpreply">${esc(goalReplyWait.text)} <a data-gtalk>Talk about it →</a></div>`
          : goalReplyWait ? `<div class="gpreply">Ember is answering… <a data-gtalk>Open the chat →</a></div>` : "")
       + `<div class="gpdots">${dots}<span>last 2 weeks</span></div></div>`;
-    h += `<div class="gpcard"><h3>${multi ? `Phase ${ph.index + 1} of ${ph.count}: ${esc(ph.title)}` : "Steps"}${ph ? `<small>${ph.days_left} day${ph.days_left === 1 ? "" : "s"} left</small>` : ""}</h3>`
+    h += `<div class="gpcard"><h3>${multi ? `Phase ${ph.index + 1} of ${ph.count}: ${esc(ph.title)}` : "Steps"}${ph ? `<small>${ph.left != null ? leftText(ph.left) : leftText(ph.days_left * 86400)} left</small>` : ""}</h3>`
       + `<ul class="steps">${g.steps.map((s, i) => `<li class="${s.done ? "done" : ""}" data-gstep="${i}"><input type="checkbox" ${s.done ? "checked" : ""}><span>${esc(s.text)}</span></li>`).join("")}</ul>`
       + `<form class="gpadd" id="gpAdd"><input type="text" id="gpNewStep" maxlength="160" placeholder="Add a step"><button class="btn ghost">Add</button></form>`
       + (multi && ph.index < ph.count - 1 ? `<div class="gpactions"><button class="btn${ph.up ? "" : " ghost"}" id="gpNext">${ph.up ? "Look back and plan the next phase" : "Ready early? On to the next phase"}</button></div>` : "")
@@ -969,14 +987,14 @@ function renderGoalPage() {
   if (g.phases && g.phases.length > 1) {
     h += `<div class="gpcard"><h3>All phases</h3><ol class="gpphases">` + g.phases.map((p, i) => {
       const now = i === g.phase && active, done = i < g.phase || !active;
-      return `<li class="${now ? "now" : ""}">${done ? "✓ " : now ? "● " : ""}${esc(p.title)} · ${p.days} days`
+      return `<li class="${now ? "now" : ""}">${done ? "✓ " : now ? "● " : ""}${esc(p.title)} · ${durText(p.days)}`
         + (p.look_back ? `<small>${esc(p.look_back)}</small>` : "") + `</li>`;
     }).join("") + `</ol></div>`;
   }
   if (g.plan) h += `<div class="gpcard"><h3>The plan</h3><div>${esc(g.plan)}</div></div>`;
   if (g.review) h += `<div class="gpcard"><h3>Looking back</h3><div>${esc(g.review)}</div></div>`;
   h += `<div class="gpactions"><button class="btn" data-gplan>Plan details with Ember</button><button class="btn ghost" data-gtalk>Talk about it</button>`
-    + (active ? `<button class="btn ghost" id="gpMore">${isGoal(g) ? 7 : 3} more days</button><button class="btn ghost" id="gpFinish">Finish and look back</button>`
+    + (active ? `<button class="btn ghost" id="gpMore">${moreText(g)}</button><button class="btn ghost" id="gpFinish">Finish and look back</button>`
        + `<button class="btn ghost" id="gpDrop">Drop it</button>` : "") + `</div>`;
   $("#gpBody").innerHTML = h;
 }
@@ -986,8 +1004,9 @@ function renderNewGoal() {
     <div class="gpform">
       <label>What do you want?<input id="ngTitle" maxlength="80" placeholder="e.g. Run 5 km without stopping"></label>
       <label>You'll know you're there when (optional)<input id="ngDone" maxlength="200" placeholder="e.g. I run 5 km in one go"></label>
-      <label>How long<select id="ngDays"><option value="7">1 week</option><option value="14">2 weeks</option><option value="30" selected>1 month</option>
-        <option value="60">2 months</option><option value="90">3 months</option><option value="180">6 months</option></select></label>
+      <label>How long<div class="howlong"><input id="ngN" type="number" inputmode="numeric" min="1" max="8760" step="1" value="1" aria-label="How many">
+        <select id="ngUnit" aria-label="Hours, days, weeks or months"><option value="hours">hours</option><option value="days">days</option>
+        <option value="weeks">weeks</option><option value="months" selected>months</option></select></div></label>
       <label>First steps (optional, one per line)<textarea id="ngSteps" maxlength="1200" placeholder="Buy running shoes&#10;Walk-run 20 minutes"></textarea></label>
     </div>
     <div class="gpactions"><button class="btn" id="ngStart">Start it</button><button class="btn ghost" id="ngEmber">Plan it with Ember</button></div>
@@ -1022,7 +1041,10 @@ $("#gpBody").addEventListener("click", async e => {
         else t.disabled = false;
       } else {
         const steps = $("#ngSteps").value.split("\n").map(s => s.trim()).filter(Boolean);
-        const r = await post("/goal/new", {title, done_when: $("#ngDone").value.trim(), days: +$("#ngDays").value, steps});
+        const n = Math.round(+$("#ngN").value), unit = $("#ngUnit").value;
+        const days = n * GOAL_UNITS[unit];
+        if (!(n >= 1) || days > 365) { t.disabled = false; $("#ngN").focus(); say(n >= 1 ? "A goal can be up to a year long." : "How long: at least 1."); return; }
+        const r = await post("/goal/new", {title, done_when: $("#ngDone").value.trim(), n, unit, steps});
         if (r && r.ok) { goalOpen = r.id; await loadGoals(); renderGoalPage(); poll(); }
         else t.disabled = false;
       }
@@ -1090,7 +1112,7 @@ function factsHtml(x) {
   const ch = f.checks;
   const days = ch ? `${ch.done} did it · ${ch.partly} partly · ${ch.skip} not today` : "";
   const sessions = f.sessions ? `${f.sessions} work session${f.sessions === 1 ? "" : "s"} · ${fmtTotal(f.seconds)}${avg ? ` · felt ${avg}/5` : ""}` : "";
-  return `<div class="cards"><div class="xcard"><div class="tag">${x.status === "done" ? "Finished" : "Dropped"} on day ${f.days_lasted} of ${x.days}</div>
+  return `<div class="cards"><div class="xcard"><div class="tag">${x.status === "done" ? "Finished" : "Dropped"}${x.days < 1 ? ` · ${durText(x.days)}` : ` on day ${f.days_lasted} of ${Math.round(x.days)}`}</div>
     <h4>${esc(x.title)}</h4>${x.question ? `<div class="q">${esc(doneWhen(x))}</div>` : ""}
     <div class="meta">${[days, `${f.steps_done}/${f.steps} steps`, sessions].filter(Boolean).join(" · ")}</div></div></div>`;
 }
@@ -1113,7 +1135,7 @@ function renderTalk() {
         <input type="text" id="cwords" placeholder="A few words (optional)" maxlength="2000"><button class="btn" id="csend" ${rating ? "" : "disabled"}>Send</button></div>`;
     }
     if (l.timeup && i === lastTimeup && x && x.id === l.timeup && x.time_up) {
-      html += `<div class="checkin"><button class="btn" id="tfinish">Finish and look back</button><button class="btn ghost" id="textend">${isGoal(x) ? 7 : 3} more days</button></div>`;
+      html += `<div class="checkin"><button class="btn" id="tfinish">Finish and look back</button><button class="btn ghost" id="textend">${moreText(x)}</button></div>`;
     }
     if (l.review && S.exps[l.review]) html += factsHtml(S.exps[l.review]);
     if (l.phase_up && x && x.id === l.phase_up && x.phase_info && x.phase_info.up && i === S.talk.map(m => m.phase_up).lastIndexOf(l.phase_up))
@@ -1217,9 +1239,9 @@ function renderExpCard() {
   if (key === expKey) return;
   expKey = key;
   if (!x || !expOpen) { $("#expcard").innerHTML = ""; return; }
-  const st = x.stats, left = Math.max(0, Math.ceil((x.ends_at - S.now) / 86400));
+  const st = x.stats, left = x.ends_at > S.now;
   const steps = x.steps.map((s, i) => `<li class="${s.done ? "done" : ""}" data-step="${i}"><input type="checkbox" ${s.done ? "checked" : ""}><span>${esc(s.text)}</span></li>`).join("");
-  $("#expcard").innerHTML = `<div class="panel"><div class="meta">${isGoal(x) ? "Goal" : "Experiment"} · day ${Math.min(x.day, x.days)} of ${x.days}${left ? "" : " · its time is up"}</div>
+  $("#expcard").innerHTML = `<div class="panel"><div class="meta">${isGoal(x) ? "Goal" : "Experiment"} · ${goalWhen(x)}${left || x.days < 1 ? "" : " · its time is up"}</div>
     <div class="q">${esc(doneWhen(x))}</div>
     ${x.plan ? `<div class="plan">${esc(x.plan)}</div>` : ""}
     ${steps ? `<ul class="steps">${steps}</ul>` : ""}

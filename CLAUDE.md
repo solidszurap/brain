@@ -28,7 +28,7 @@ python -m server                      # online mode (Render); needs the env vars
     - After a restart, unanswered last lines are re-queued.
   - The POST guard: `X-Ember` header and same host. `/stripe/webhook` is exempt: it checks Stripe's signature instead. Plus `/me/export` and `/me/delete`; delete cancels an active subscription first.
   - Ember Plus:
-    - `is_plus`: local mode, `EMBER_PLUS_EMAILS`, or the plan status in `PLUS_STATUSES`.
+    - `is_plus`: local mode, `EMBER_PLUS_EMAILS` (`*` = everyone), or the plan status in `PLUS_STATUSES`.
     - `spend_free`: `free_per_day` counted messages (talk, suggest, checkin), then 402.
     - `after_reply`: the `LAST_FREE` line, marked `paywall`.
     - `/plus/checkout`, `/plus/portal`, `/stripe/webhook`.
@@ -108,7 +108,8 @@ python -m server                      # online mode (Render); needs the env vars
       - The `phase` event (`from` guards against doubles) gets the phase's facts; `respond` makes its reply the look back and `add_steps` the next phase's steps (`phase_new` line).
       - The mind's `goal` carries `phases` (`_take_goal`: 5-14 days each).
       - `facts` counts checks and phases.
-    - Server: `GET /goals`, `/goal/new {title, done_when, days, steps, with_ember}`, `/goal/check`, `/goal/phase` (`phase_pending`, 2 minutes), `/goal/step`.
+    - Your own goal's length (Szilard, 2026-11-06: "customizable, days, weeks or months or even hours"): `n` of a unit in `UNITS` (hours, days, weeks, months = 30 days), from an hour to a year (`OWN_GOAL_DAYS`). `x["days"]` can then be a fraction and `x["span"]` `{n, unit}` keeps how you said it; `span_text`/`left_text` say lengths, `as_days(sec, whole)` and `whole_days(x)` keep whole-day goals whole. A goal under a day is one phase, counts hours left, and `more_days` gives it 1 more hour (`MORE_HOUR`); `extend` drops `span`. `goal_view` adds `length`, `left`, `more` and `phase_info.left`; the window's `durText`/`leftText`/`goalWhen`/`moreText`.
+    - Server: `GET /goals`, `/goal/new {title, done_when, days or n+unit, steps, with_ember}`, `/goal/check`, `/goal/phase` (`phase_pending`, 2 minutes), `/goal/step`.
     - Window: "◎ Goals" (`#goalsDrawer`, `#goalsDot`), and `#goalPage` (`openGoal`, `renderGoalPage`, `renderNewGoal`, `waitGoalReply` shows Ember's answer to a check). `#sessionbar` is the goal bar; picked cards and `phase_up`/`phase_new` lines have Open goal / Look back and plan.
     - Work sessions stay in the code for old data, but nothing starts them.
   - **Levels and looks** (2026-11-06, Szilard: "your companion who grows with you"; XP from progress, talking and days together; all earned by levelling, nothing tied to Plus).
@@ -146,7 +147,7 @@ python -m server                      # online mode (Render); needs the env vars
    - `mind/core.py` uses the standard library only.
    - The server uses FastAPI, uvicorn, `anthropic` and `cryptography` only (`cryptography` for phone notifications: Szilard's choice, 2026-11-04, over hand-written crypto).
    - Secrets only in `.env` (local) or Render's environment (online). Never print or log keys, or anything users say: logs hold ids and errors only.
-6. **Invite-only** (`EMBER_ALLOWED_EMAILS`) until Szilard decides otherwise.
+6. **Who can log in:** `EMBER_ALLOWED_EMAILS`. On 2026-11-06 Szilard decided to open it to everyone (`*`, plus publishing the Google login) with Plus for everyone for now (`EMBER_PLUS_EMAILS=*`); the steps are DEPLOY.md step 8, done by him in Render and Google Cloud. `SupabaseStore.all_uids` pages by 1000. The single `MindWorker` thread and the never-evicted `Users` cache are fine for a few hundred people, not thousands.
 7. **Free and Plus:** 10 free messages a day (Szilard, 2026-11-06; was 5; progress like daily checks, check-ups and look backs never counts), then Ember Plus at €4.99 a month (Stripe). Never sell data and never show ads. Taking real money needs his registered business and terms of service (ÁSZF); we don't write legal text.
 8. **No long runs.** Verify with `check_ember.py`, `check_server.py`, and by trying it in the browser (phone size 375 px and desktop) on a scratch Ember.
 9. **Saved selves must keep loading.** `Ember.from_dict` only copies known fields, so new fields get their defaults; keep it that way.
@@ -189,7 +190,7 @@ python -m server                      # online mode (Render); needs the env vars
    - Phone notifications are built too (2026-11-04, `server/push.py`), and the key is in Render. iPhone push only works once Ember is added to the home screen.
    - **End-of-experiment reviews are built (2026-11-03).** `update` says once when an experiment's days are up (`timeup` line; the window shows "Finish and look back" / "3 more days" → `/experiment/extend`). `end_experiment` stores `facts` (each session's day, length, rating, words). `/experiment/end` queues a `review` event, which isn't a free message. The reply is kept as `x["review"]` on a `review` line, shown with a facts card, and goes into later prompts.
 3. **Becoming someone:** its character and story grow from your shared history.
-4. **Later:** open sign-up, App Store wrappers.
+4. **Later:** App Store wrappers. (Open sign-up: decided 2026-11-06, DEPLOY.md step 8.)
 - **The mind's model:** Haiku 5.5 was kept on purpose (2026-11-03; Szilard chose it over a mixed setup or Sonnet).
   - Switching is one Render setting: `EMBER_VOICE_MODEL`.
   - If it ever moves to Sonnet or Opus, add prompt caching first. Move the volatile "Now: …" line to the end of the prompt so the instructions and memories form a stable, cacheable start.

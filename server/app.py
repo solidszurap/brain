@@ -223,10 +223,11 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
                billing=None, free_per_day=10, plus_emails=(), checkup_every=300.0, push=None):
     users = Users(store, clock)
     plus_emails = {e.strip().lower() for e in plus_emails if e.strip()}
+    plus_everyone = "*" in plus_emails             # Plus for everyone, for now (Szilard, 2026-11-06)
 
     # ------------------------------------------------------------ Ember Plus
     def is_plus(u):
-        if auth.mode == "local" or (u.email and u.email in plus_emails):
+        if auth.mode == "local" or plus_everyone or (u.email and u.email in plus_emails):
             return True
         plan = users.plan(u)
         return bool(plan and plan.get("status") in PLUS_STATUSES)
@@ -553,7 +554,8 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
                 out = {"ok": bool(event), "chat": event and event["chat"]}
             else:
                 steps = body.get("steps") if isinstance(body.get("steps"), list) else []
-                x = u.ember.new_goal(body.get("title"), body.get("done_when"), body.get("days", 30), steps, now)
+                x = u.ember.new_goal(body.get("title"), body.get("done_when"), body.get("days", 30), steps, now,
+                                     n=body.get("n"), unit=body.get("unit"))
                 out = {"ok": bool(x), "id": x and x["id"], "chat": x and x["chat"]}
             users.save(u)
         return out

@@ -194,7 +194,7 @@ f.update(T + 3 * D + 120, present=True)
 check("when its days are up, it asks once: finish or keep going", len(f.talk) == n + 1
       and f.talk[-1].get("timeup") == f.active()["id"] and f.active()["time_up"])
 check("3 more days", f.extend(f.active()["id"], T + 3 * D + 200) and f.active()["days"] == 6
-      and not f.active()["time_up"] and "6 in all" in f.talk[-1]["text"])
+      and not f.active()["time_up"] and "3 more days of" in f.talk[-1]["text"] and "6 days in all" in f.talk[-1]["text"])
 f.update(T + 6 * D + 300, present=False)
 check("...and it asks again when those are up", f.talk[-1].get("timeup") and f.active()["time_up"])
 
@@ -582,6 +582,35 @@ check("a 2-week goal is one phase", len(g14["phases"]) == 1 and g14["phases"][0]
 g28 = gq.new_goal("Learn to juggle", "", 28, [], t + 30)
 check("phases by week when the days fit", [p["title"] for p in g28["phases"]] == ["Weeks 1-2", "Weeks 3-4"])
 check("no goal without a title", gq.new_goal("  ", "", 30, [], t + 40) is None)
+
+print("Your own goal's length: any number of hours, days, weeks or months")
+gh = gq.new_goal("Finish the essay", "", None, [], t + 50, n=3, unit="hours")
+check("3 hours: ends 3 hours later, one phase, and it says \"3 hours\"", gh["ends_at"] == t + 50 + 3 * 3600
+      and gh["days"] == 0.125 and len(gh["phases"]) == 1 and "in 3 hours" in gq.last_line(gh["chat"])["text"])
+vh = gq.goal_view(gh, t + 50 + 3600)
+check("...its page counts hours left, and offers 1 more hour", vh["left"] == 7200 and vh["length"] == "3 hours"
+      and vh["more"] == "1 more hour" and vh["phase_info"]["left"] == 7200, str(vh.get("more")))
+check("...its mind is told the hours left", "2 hours left of 3 hours" in "\n".join(gq._experiment_context(t + 50 + 3600, gh["chat"])))
+gq.update(t + 50 + 3 * 3600 + 5, False)
+check("...its time-up line says hours, not days", "the 3 hours you gave" in gq.last_line(gh["chat"])["text"])
+check("...and keeping going adds an hour", gq.extend(gh["id"], t + 50 + 3 * 3600 + 10)
+      and abs(gh["ends_at"] - (t + 50 + 4 * 3600 + 10)) < 1
+      and "1 more hour of" in gq.last_line(gh["chat"])["text"] and "4 hours in all" in gq.last_line(gh["chat"])["text"],
+      gq.last_line(gh["chat"])["text"])
+gw = gq.new_goal("Learn chords", "", None, [], t + 60, n=3, unit="weeks")
+check("3 weeks is 21 days, in two phases, said as \"3 weeks\"", gw["days"] == 21 and len(gw["phases"]) == 2
+      and "in 3 weeks" in gq.last_line(gw["chat"])["text"])
+gm = gq.new_goal("Save money", "", None, [], t + 70, n=2, unit="months")
+check("2 months is 60 days", gm["days"] == 60 and sum(p["days"] for p in gm["phases"]) == 60)
+gd = gq.new_goal("Walk daily", "", None, [], t + 80, n=36, unit="hours")
+check("36 hours: a day and a half, said as 36 hours", gd["days"] == 1.5 and abs(gd["ends_at"] - (t + 80 + 36 * 3600)) < 1
+      and sum(p["days"] for p in gd["phases"]) == 1.5)
+gy = gq.new_goal("Too long", "", None, [], t + 90, n=30, unit="months")
+check("at most a year", gy["days"] == 365 and "span" not in gy)
+g0 = gq.new_goal("Odd", "", None, [], t + 95, n="x", unit="days")
+check("a length that isn't a number gives a month", g0["days"] == 30)
+for g_ in (gh, gw, gm, gd, gy, g0):
+    gq.end_experiment(g_["id"], "dropped", t + 100)
 
 print("The daily check instead of the stopwatch")
 x0 = gq.xp

@@ -173,6 +173,45 @@ GOAL_DAYS = (7, 180)        # a goal's days: from a week to about half a year
 MORE_DAYS = {"experiment": 3, "goal": 7}    # days added when its time is up and you keep going
 PHASE_MAX = 14              # a long goal goes in phases of 1-2 weeks; you see one at a time (Szilard, 2026-11-06)
 CHECKS = {"done": "did it", "partly": "partly", "skip": "not today"}   # the daily check on today's step
+UNITS = {"hours": 1 / 24, "days": 1, "weeks": 7, "months": 30}   # your own goal's length: any number of these (Szilard, 2026-11-06)
+OWN_GOAL_DAYS = (1 / 24, 365)    # from an hour to a year
+MORE_HOUR = 1 / 24               # a goal of hours gets one more hour when its time is up
+
+
+def as_days(seconds, whole=False):
+    """Seconds as days: a whole number when it's whole (to the minute) or whole is asked for (a goal of days counts
+    in days), else a fraction (a goal of hours)."""
+    d = seconds / 86400
+    return int(round(d)) if whole or abs(d - round(d)) < 1 / 1440 else round(d, 4)
+
+
+def whole_days(x):
+    """Whether a goal or experiment counts in whole days (all but your own goals with hours in their length)."""
+    return float(x["days"]).is_integer()
+
+
+def span_text(days, span=None):
+    """How long, the way a person says it: "3 hours", "2 weeks", "1 month", "45 days"."""
+    if span and span.get("unit") in UNITS:
+        n, unit = span["n"], span["unit"]
+        return f"{n} {unit[:-1] if n == 1 else unit}"
+    if days < 2 and abs(days - round(days)) >= 1 / 1440:
+        h = max(1, round(days * 24))
+        return f"{h} hour{'' if h == 1 else 's'}"
+    d = round(days)
+    return f"{d} day{'' if d == 1 else 's'}"
+
+
+def left_text(seconds):
+    """Time left: hours (and minutes) under a day, days after that."""
+    if seconds < 3600:
+        m = max(1, math.ceil(seconds / 60))
+        return f"{m} minute{'' if m == 1 else 's'}"
+    if seconds < 86400:
+        h = round(seconds / 3600)
+        return f"{h} hour{'' if h == 1 else 's'}"
+    d = math.ceil(seconds / 86400)
+    return f"{d} day{'' if d == 1 else 's'}"
 STARTERS = [
     {"title": "Three kinds of making", "question": "Which kind of making do you want to come back to?",
      "days": 3, "steps": ["Day 1: make something with your hands", "Day 2: make something on a computer",
@@ -392,7 +431,7 @@ class Ember:
         for x in [x for x in self.experiments if x["status"] == "active" and now >= x["ends_at"] and not x.get("time_up")]:
             x["time_up"] = True      # it says so once; the window shows "finish" and "more days" under it
             if kind_of(x) == "goal":
-                said = (f"That's the {x['days']} days you gave \"{x['title']}\". Did you get there? Shall we finish "
+                said = (f"That's the {span_text(x['days'], x.get('span'))} you gave \"{x['title']}\". Did you get there? Shall we finish "
                         "it and look back, or keep going a bit longer?")
             else:
                 said = (f"That's the {x['days']} days of \"{x['title']}\". Shall we finish it and look back at what "
@@ -877,7 +916,7 @@ class Ember:
             done = sum(s["done"] for s in x["steps"])
             early = ph and now < ph.get("end", now)
             when_ = (f"They want to move on early, on day {int((now - ph.get('start', now)) // 86400) + 1} of its "
-                     f"{ph['days']} days (that's fine: maybe it went quickly, maybe it needs a different step)"
+                     f"{span_text(ph['days'])} (that's fine: maybe it went quickly, maybe it needs a different step)"
                      if early else "is over")
             lines.append(f"Phase {i + 1} of their goal \"{x['title']}\" ({ph['title'] if ph else ''}): {when_}. What "
                          f"happened in it: {done} of {len(x['steps'])} steps done; {len(log)} daily checks ("
@@ -885,7 +924,7 @@ class Ember:
                          + (". Their words: " + "; ".join(f"\"{e['words']}\"" for e in log if e["words"])[:600] if any(
                              e["words"] for e in log) else "") + ".")
             if nxt:
-                lines.append(f"Next is phase {i + 2}: \"{nxt['title']}\" ({nxt['days']} days)"
+                lines.append(f"Next is phase {i + 2}: \"{nxt['title']}\" ({span_text(nxt['days'])})"
                              + (f", planned with these steps: " + "; ".join(s["text"] for s in nxt["steps"]) if nxt.get("steps") else "")
                              + ". In your reply, look back on this phase honestly in one or two sentences (what went "
                              "well, what got in the way), then say what the next phase is about. Put its 3 to 6 steps "
@@ -896,8 +935,10 @@ class Ember:
             f = x.get("facts") or self.facts(x, now)
             how = "finished" if x["status"] == "done" else "dropped"
             if kind_of(x) == "goal":
-                lines.append(f"Their goal \"{x['title']}\" just ended: they {how} it on day {f['days_lasted']} of "
-                             f"{x['days']}. They'd know they were there when: {x['question']}")
+                lines.append(f"Their goal \"{x['title']}\" just ended: they {how} it "
+                             + (f"after {left_text((x.get('ended') or now) - x['started'])} of {span_text(x['days'], x.get('span'))}"
+                                if x["days"] < 1 else f"on day {f['days_lasted']} of {span_text(x['days'], x.get('span'))}")
+                             + f". They'd know they were there when: {x['question']}")
                 lines.append("What actually happened: " + self.facts_text(f))
                 lines.append("Look back on it honestly in 3 to 5 short sentences: how far they got, what helped and "
                              "what got in the way, as the numbers and their words show. Use only these facts, their "
@@ -1247,7 +1288,7 @@ class Ember:
             self._time_phases(x, now)
         first = next((s["text"] for s in x["steps"] if not s["done"]), None)
         if kind_of(x) == "goal":
-            said = f"Your goal: \"{x['title']}\", in {x['days']} days."
+            said = f"Your goal: \"{x['title']}\", in {span_text(x['days'], x.get('span'))}."
             if x.get("question"):
                 said += f" You'll know you're there when: {x['question']}"
             ph = x["phases"]
@@ -1269,6 +1310,13 @@ class Ember:
         if kind_of(x) != "goal" or x.get("phases"):
             return x.get("phases")
         total = int(x["days"])
+        frac = round(x["days"] - total, 4)       # a goal in hours (or days and some hours) keeps the rest
+        if total < 1:
+            x["phases"] = [{"title": "The whole way", "days": x["days"], "steps": [], "look_back": None}]
+            x["phase"] = 0
+            if x.get("started"):
+                self._time_phases(x, x["started"])
+            return x["phases"]
         n = max(1, math.ceil(total / PHASE_MAX))
         base, extra = divmod(total, n)
         phases, d0 = [], 0
@@ -1283,6 +1331,8 @@ class Ember:
                 title = f"Days {d0 + 1}-{d0 + days}"
             phases.append({"title": title, "days": days, "steps": [], "look_back": None})
             d0 += days
+        if frac:
+            phases[-1]["days"] = round(phases[-1]["days"] + frac, 4)
         x["phases"], x["phase"] = phases, 0
         if x.get("started"):
             self._time_phases(x, x["started"])
@@ -1297,7 +1347,7 @@ class Ember:
             p["start"], p["end"] = t, t + p["days"] * 86400
             t = p["end"]
         x["ends_at"] = t
-        x["days"] = round((t - x["started"]) / 86400)
+        x["days"] = as_days(t - x["started"], whole_days(x))
 
     def phase_of(self, x):
         return x["phases"][x.get("phase", 0)] if x.get("phases") else None
@@ -1373,15 +1423,24 @@ class Ember:
         x["steps"].append({"text": text, "done": False})
         return True
 
-    def new_goal(self, title, done_when, days, steps, now):
-        """A goal you make yourself, right away, in its own chat (planning it with Ember is optional)."""
+    def new_goal(self, title, done_when, days, steps, now, n=None, unit=None):
+        """A goal you make yourself, right away, in its own chat (planning it with Ember is optional). Its length is
+        days, or any number n of a unit (hours, days, weeks, months), from an hour to a year."""
         title = " ".join(str(title or "").split())[:80]
         if not title:
             return None
+        span = None
         try:
-            days = max(GOAL_DAYS[0], min(GOAL_DAYS[1], int(days)))
+            if unit in UNITS:
+                n = max(1, int(n))
+                days = n * UNITS[unit]
+                span = {"n": n, "unit": unit}
+            days = max(OWN_GOAL_DAYS[0], min(OWN_GOAL_DAYS[1], float(days)))
         except (TypeError, ValueError):
-            days = 30
+            days, span = 30, None
+        days = as_days(days * 86400)
+        if span and abs(span["n"] * UNITS[span["unit"]] - days) > 1 / 1440:    # it was cut to a year
+            span = None
         c = self.find_chat(self.new_chat(now))
         c["title"] = title[:60]
         x = {"id": f"x{self.next_exp}", "chat": c["id"], "kind": "goal", "title": title,
@@ -1389,6 +1448,8 @@ class Ember:
              "starter": False, "days": days, "own": True,
              "steps": [{"text": str(s).strip()[:160], "done": False} for s in (steps or []) if str(s).strip()][:8],
              "status": "suggested", "created": now, "started": None, "ends_at": None, "ended": None}
+        if span:
+            x["span"] = span
         self.next_exp += 1
         self.experiments.append(x)
         self.pick(x["id"], now)
@@ -1410,7 +1471,12 @@ class Ember:
         """A goal or experiment as its page shows it."""
         v = dict(x, stats=self.stats(x["id"]))
         if x.get("started"):
-            v["day"] = min(x["days"], int((min(now, x.get("ended") or now) - x["started"]) // 86400) + 1)
+            v["day"] = min(math.ceil(x["days"]), int((min(now, x.get("ended") or now) - x["started"]) // 86400) + 1)
+            v["length"] = span_text(x["days"], x.get("span"))
+            n, unit = span_text(self.more_days(x)).split(" ")
+            v["more"] = f"{n} more {unit}"
+            if x["status"] == "active":
+                v["left"] = max(0, x["ends_at"] - now)
         v["today_step"] = self.today_step(x)
         today = self._date(now)
         v["checked_today"] = next((e["how"] for e in x.get("log", []) if e["day"] == today), None)
@@ -1423,6 +1489,7 @@ class Ember:
         if ph:
             v["phase_info"] = {"index": x["phase"], "count": len(x["phases"]), "title": ph["title"],
                                "days_left": max(0, math.ceil((ph.get("end", now) - now) / 86400)),
+                               "left": max(0, ph.get("end", now) - now),
                                "up": bool(ph.get("up"))}
         return v
 
@@ -1454,21 +1521,32 @@ class Ember:
         return True
 
     def extend(self, eid, now, days=None):
-        """Its days are up and you want to keep going: a few more days (a week for a goal)."""
+        """Its days are up and you want to keep going: a few more days (a week for a goal, an hour for a goal of
+        hours)."""
         x = self.find_exp(eid)
         if not x or x["status"] != "active":
             return False
-        days = days or MORE_DAYS[kind_of(x)]
+        days = days or self.more_days(x)
+        whole = whole_days(x)
         x["ends_at"] = max(x["ends_at"], now) + days * 86400
-        x["days"] = round((x["ends_at"] - x["started"]) / 86400)
+        x["days"] = as_days(x["ends_at"] - x["started"], whole)
+        x.pop("span", None)                      # its length is now what it adds up to
         x["time_up"] = False
         if x.get("phases"):                      # the last phase gets the extra days
             last = x["phases"][-1]
             last["end"] = x["ends_at"]
-            last["days"] = round((last["end"] - last["start"]) / 86400)
+            last["days"] = as_days(last["end"] - last["start"], whole)
             last.pop("up", None)
-        self._say(now, "ember", f"{days} more days of \"{x['title']}\", so {x['days']} in all.", "eager", chat_of(x))
+        n, unit = span_text(days).split(" ")
+        self._say(now, "ember", f"{n} more {unit} of \"{x['title']}\", so {span_text(x['days'])} in all.",
+                  "eager", chat_of(x))
         return True
+
+    def more_days(self, x):
+        """How much "keep going" adds: 3 days to an experiment, a week to a goal, an hour to a goal of hours."""
+        if kind_of(x) == "goal" and x["days"] < 1:
+            return MORE_HOUR
+        return MORE_DAYS[kind_of(x)]
 
     def facts(self, x, now):
         """What actually happened in an experiment: numbers from its sessions, and your own words after them."""
@@ -1563,7 +1641,9 @@ class Ember:
             st = self.stats(x["id"])
             day = int((now - x["started"]) // 86400) + 1
             if kind_of(x) == "goal":
-                out += ["", f"Their goal, which you work on together: \"{x['title']}\" (day {day} of {x['days']}). "
+                when_ = (f"{left_text(max(0, x['ends_at'] - now))} left of {span_text(x['days'], x.get('span'))}"
+                         if x["days"] < 1 else f"day {day} of {span_text(x['days'], x.get('span'))}")
+                out += ["", f"Their goal, which you work on together: \"{x['title']}\" ({when_}). "
                             f"They'll know they're there when: {x['question']}" + (f" Why: {x['why']}" if x["why"] else "")]
                 if x.get("plan"):
                     out.append(f"The plan you agreed: {x['plan']}")

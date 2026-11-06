@@ -239,8 +239,14 @@ class SupabaseStore:
                    "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())},
                   prefer="resolution=merge-duplicates,return=minimal")
 
-    def all_uids(self):
-        return [r["user_id"] for r in self._req("GET", "/rest/v1/embers?select=user_id") or []]
+    def all_uids(self, page=1000):
+        """Everyone, page by page (Supabase gives at most 1000 rows per request)."""
+        out = []
+        while True:
+            rows = self._req("GET", f"/rest/v1/embers?select=user_id&order=user_id&limit={page}&offset={len(out)}") or []
+            out += [r["user_id"] for r in rows]
+            if len(rows) < page:
+                return out
 
     def export(self, uid):
         usage = self._req("GET", "/rest/v1/usage" + self._q(user_id=f"eq.{uid}",

@@ -106,7 +106,7 @@ Taking real money needs a registered business (for example egyéni vállalkozó)
       - with an account that isn't in `EMBER_PLUS_EMAILS`, use up the 10 free messages and buy Plus with your own card;
       - check that Plus switches on, that Stripe asks you to accept the ÁSZF, and that the invoice is made;
       - then refund the payment in Stripe and cancel via Manage Ember Plus.
-   8. **Open sign-up is a separate step:** until you change `EMBER_ALLOWED_EMAILS` to `*`, only invited people can use Ember at all.
+   8. **Open sign-up is a separate step** (step 8 below): until you change `EMBER_ALLOWED_EMAILS` to `*`, only invited people can use Ember at all.
 
 ## 6b. Phone notifications (Ember's check-ups)
 
@@ -122,10 +122,29 @@ Taking real money needs a registered business (for example egyéni vállalkozó)
 3. **Share → Add to Home Screen**. Now Ember has its own icon and opens full screen.
 4. Optional, and only before you talk to the online Ember: bring your local Ember over with `tools/import_local.py`. It replaces the online one; the steps (suspend the service, import, resume) are at the top of that file.
 
+## 8. Opening Ember to everyone
+
+Anyone with a Google account can then log in and get their own Ember. Do these in order.
+
+1. **Anthropic → Limits:** check the monthly spend limit (step 3.3) and set it to what you're willing to spend at most, e.g. $30. It's the one cap over everyone together. If it's reached, Ember tells people it can't think right now, until next month or until you raise it. Each person is also capped at `EMBER_DAILY_CAP` (150) replies a day, which is under $0.10 a day even for the busiest person.
+2. **Push the code** (`git push`), so the server understands `*` for Plus.
+3. **Google Cloud** (project `ember-513617`) → **Google Auth Platform → Audience** (older menus: APIs & Services → OAuth consent screen) → **Publish app** → Confirm. Ember asks Google only for the name and email, so Google doesn't need to review it. While it's "in testing", only the test users can log in. If Google asks for verification, don't fill anything in; ask us first.
+4. **Render → ember → Environment:**
+   - `EMBER_ALLOWED_EMAILS` = `*` (everyone can log in);
+   - `EMBER_PLUS_EMAILS` = `*` (everyone has Plus for free, for now).
+
+   Save; Render restarts. Its log should say "invite list: everyone; Plus for free: everyone".
+5. **Try it** with a Google account that was never a test user.
+
+To go back: put your own Gmail back in `EMBER_PLUS_EMAILS` to end free Plus (everyone else then gets 10 free messages a day). To close sign-up again, put the invite list back in `EMBER_ALLOWED_EMAILS`: people who aren't on it see "not invited", and their Embers are kept.
+
 ## Afterwards
 
-- **Free messages:** `EMBER_FREE_PER_DAY` (10) per day for people without Plus. Comped Plus: `EMBER_PLUS_EMAILS`.
-- **New tester:** add their Gmail to `EMBER_ALLOWED_EMAILS` in Render (Environment). Render restarts by itself. Also add them as a test user in Google (step 2.2).
+- **Who has logged in:** Supabase → your project → **Authentication → Users**. It lists everyone who has ever signed in: their email, when they first signed in, and when they last signed in. Their **UID** there is the `user_id` in the database tables.
+- **How much each person uses it:** Supabase → **Table Editor → `usage`**: replies (`calls`), counted messages and tokens per person per day.
+- **Free messages:** `EMBER_FREE_PER_DAY` (10) per day for people without Plus. Comped Plus: `EMBER_PLUS_EMAILS`, or `*` for everyone.
+- **New tester** (while it's invite-only): add their Gmail to `EMBER_ALLOWED_EMAILS` in Render (Environment). Render restarts by itself. Also add them as a test user in Google (step 2.2).
+- **How many people it can take:** one server answers one thought at a time, and it keeps everyone's Ember in memory. That's fine for a few hundred people. Well before a thousand, tell us, and we change that.
 - **Changes:** every `git push` to `main` redeploys Ember automatically.
 - **Costs:** see Anthropic's console (Usage) and Render's billing. The `usage` table in Supabase shows calls and tokens per person per day.
 - **If something breaks:** Render → your service → **Logs**. Logs contain ids and errors only, never what anyone said.
