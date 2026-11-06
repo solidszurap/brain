@@ -30,8 +30,10 @@ services:
       - key: EMBER_FREE_PER_DAY
         value: "10"
       - key: EMBER_PRICE_LABEL
-        value: "€4.99 / month"
+        value: "$4.99 / month"
       - key: EMBER_PLUS_EMAILS         # Plus for free: Gmails, comma-separated, or * for everyone
+        sync: false
+      - key: EMBER_UNLOCK_EMAILS       # testers: every look unlocked, XP unchanged
         sync: false
       - key: STRIPE_SECRET_KEY
         sync: false

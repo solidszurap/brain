@@ -504,14 +504,14 @@ from server.app import LAST_FREE
 
 st = ThreadingHTTPServer(("127.0.0.1", 0), FakeStripe)
 threading.Thread(target=st.serve_forever, daemon=True).start()
-billing = Billing("sk_test_x", "price_plus", "whsec_x", "€4.99 / month", api=f"http://127.0.0.1:{st.server_address[1]}")
+billing = Billing("sk_test_x", "price_plus", "whsec_x", "$4.99 / month", api=f"http://127.0.0.1:{st.server_address[1]}")
 store4 = FileStore(os.path.join(tmp, "users4"))
 base4, srv4 = serve(create_app(store4, FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock, retry_delay=0.01,
                                retry_every=0.3, billing=billing, free_per_day=2, plus_emails=("a@x.hu",)))
 plan4 = lambda tok="tok-b": call(base4, "/state", tok)[1]["plan"]
 lines4 = lambda tok="tok-b": call(base4, "/state", tok)[1]["talk"]
 check("a new person starts with today's free messages", plan4() == {"plus": False, "free_left": 2, "free_per_day": 2,
-                                                                  "price": "€4.99 / month", "payments": True, "manage": False})
+                                                                  "price": "$4.99 / month", "payments": True, "manage": False})
 check("first free message: answered", call(base4, "/talk", "tok-b", {"text": "hello"})[0] == 200
       and wait(lambda: lines4()[-1]["text"] == "I heard: hello"))
 call(base4, "/talk", "tok-b", {"text": "second"})
@@ -525,10 +525,17 @@ check("asking for ideas counts too", call(base4, "/experiment/suggest", "tok-b",
 check("greetings are free", (call(base4, "/state?v=1", "tok-b") and True))
 check("a comped tester (Plus by email) has no limit", plan4("tok-a")["plus"] and plan4("tok-a")["free_left"] is None)
 base5, srv5 = serve(create_app(FileStore(os.path.join(tmp, "users5")), FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock, retry_delay=0.01,
-                               retry_every=0.3, billing=billing, free_per_day=2, plus_emails=("*",)))
+                               retry_every=0.3, billing=billing, free_per_day=2, plus_emails=("*",),
+                               unlock_emails=("b@x.hu",)))
 p5 = call(base5, "/state", "tok-b")[1]["plan"]
 check("Plus for everyone (EMBER_PLUS_EMAILS=*): no limit, nothing to buy or manage", p5["plus"] and p5["free_left"] is None
       and not p5["manage"] and call(base5, "/talk", "tok-b", {"text": "past the limit"})[0] == 200, str(p5))
+lk = lambda tok: call(base5, "/looks", tok)[1]
+check("a tester (EMBER_UNLOCK_EMAILS) can wear the highest look at level 1, without any XP",
+      lk("tok-b")["all_unlocked"] and call(base5, "/look", "tok-b", {"part": "color", "value": "aurora"})[1]["ok"]
+      and call(base5, "/state", "tok-b")[1]["look"]["color"] == "aurora" and lk("tok-b")["level"]["level"] == 1)
+check("...anyone else can't", not lk("tok-a")["all_unlocked"]
+      and not call(base5, "/look", "tok-a", {"part": "color", "value": "aurora"})[1]["ok"])
 srv5.should_exit = True
 T[0] += 86400
 check("the next day, free messages are back", plan4()["free_left"] == 2)
@@ -546,13 +553,13 @@ check("progress is free: out of free messages, you can still make a goal and che
       and call(base4, "/goal/check", "tok-b", {"id": gq["id"], "how": "done"})[1]["ok"] and plan4()["free_left"] == 0)
 
 print("Real money: only once the terms (ÁSZF) are online")
-live = Billing("sk_live_x", "price_live", "whsec_l", "€4.99 / month", api=f"http://127.0.0.1:{st.server_address[1]}")
+live = Billing("sk_live_x", "price_live", "whsec_l", "$4.99 / month", api=f"http://127.0.0.1:{st.server_address[1]}")
 base7, srv7 = serve(create_app(FileStore(os.path.join(tmp, "users7")), FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock,
                                billing=live, free_per_day=2))
 check("a live Stripe key without EMBER_TERMS_URL sells nothing yet", live.live and not live.selling
       and call(base7, "/plus/checkout", "tok-b", {})[0] == 503 and not call(base7, "/state", "tok-b")[1]["plan"]["payments"])
 srv7.should_exit = True
-live_t = Billing("sk_live_x", "price_live", "whsec_l", "€4.99 / month", api=f"http://127.0.0.1:{st.server_address[1]}",
+live_t = Billing("sk_live_x", "price_live", "whsec_l", "$4.99 / month", api=f"http://127.0.0.1:{st.server_address[1]}",
                  terms_url="https://example.hu/aszf")
 base8, srv8 = serve(create_app(FileStore(os.path.join(tmp, "users8")), FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock,
                                billing=live_t, free_per_day=2))

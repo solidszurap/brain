@@ -186,6 +186,7 @@ class MindWorker:
                 return
             with u.lock:
                 system, user = u.ember.prompt(event, self.clock())
+            t0 = time.time()
             try:
                 raw = self._ask(system, user)
                 if not isinstance(llm.parse_json(raw), dict):       # an answer it can't read: once more, and if
@@ -206,6 +207,8 @@ class MindWorker:
                         u.ember.say(self.clock(), FAILED, "calm", chat)
                     self.users.save(u)
                 return
+            took = time.time() - t0              # how long its mind took (ids and times only, never words)
+            (log.warning if took > 20 else log.info)("mind answered %s (%s) in %.1fs", u.uid, event["type"], took)
             usage = getattr(self.cfg, "last_usage", None) or (0, 0)
             try:
                 store.add_call(u.uid, day, *usage)
@@ -220,10 +223,14 @@ class MindWorker:
 
 def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=150,
                retry_delay=10.0, retry_every=60.0, public_config=None, web_dir=WEB,
-               billing=None, free_per_day=10, plus_emails=(), checkup_every=300.0, push=None):
+               billing=None, free_per_day=10, plus_emails=(), checkup_every=300.0, push=None, unlock_emails=()):
     users = Users(store, clock)
     plus_emails = {e.strip().lower() for e in plus_emails if e.strip()}
     plus_everyone = "*" in plus_emails             # Plus for everyone, for now (Szilard, 2026-11-06)
+    unlock_emails = {e.strip().lower() for e in unlock_emails if e.strip()}
+
+    def all_unlocked(u):                            # testers: every look, without changing the XP (Szilard, 2026-11-06)
+        return bool(u.email and u.email in unlock_emails)
 
     # ------------------------------------------------------------ Ember Plus
     def is_plus(u):
@@ -442,11 +449,11 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
     def looks(request: Request):
         u = who(request)
         with u.lock:
-            return u.ember.looks()
+            return u.ember.looks(all_unlocked(u))
 
     @app.post("/look")
     def look_set(request: Request, body: dict = Body(default={})):
-        return act(request, lambda u, now: u.ember.set_look(body.get("part"), body.get("value")))
+        return act(request, lambda u, now: u.ember.set_look(body.get("part"), body.get("value"), all_unlocked(u)))
 
     @app.post("/name")
     def name_set(request: Request, body: dict = Body(default={})):

@@ -124,7 +124,7 @@ Who you are, when they ask (who you are, what you're for, how you can help, how 
 - How you help: you get to know them and remember it; if they don't know what they want, you find out together with small experiments (3 to 14 days, each answering one question about them); when they know what they want (anything: a relationship, fitness, a job, a skill), you talk it through and make a plan with them, as a goal; they can also make a goal themselves any time ("◎ Goals" → "+ New goal"), and plan it with you if they like; each goal has its own page with its plan, its phases (long goals go in phases of 1-2 weeks) and today's step; each day they tell you there how today's step went (did it / partly / not today), you help with the work and the next step, and at the end of each phase and of the goal you look back honestly together; and you check up on them as often as they choose (⋯ → Check-ups: off, only when it matters, or regularly, on the days and at the time they pick; as phone notifications too, if they turn them on; the others never at night).
 - What you remember: things they tell you about themselves, with their own words and the date. They see it all under "What it knows", can correct anything, or make you forget it. You never forget on your own.
 - How the window works: "☰ Chats" for their chats and "+ New chat" (each chat about one thing; a goal or experiment lives in its chat); tap a chat's name at the top to rename it; you grow in levels and stages (Spark, Ember, Flame, Blaze) as they make progress, talk with you and spend days with you, and new looks unlock (colours, things to wear, eyes, sparks, glow): they tap your level under your face, or ⋯ → Customize Ember; ⋯ has What it knows (on a phone), a name of their own for you, notifications, colours, their data, privacy, and adding you to the home screen.
-- What you're not: not a therapist or a doctor. No ads, and their data is never sold. Everyone gets 10 free messages a day (checking in on their goals is always free); Ember Plus (€4.99 a month) has no daily limit; what you remember is never a paid feature.
+- What you're not: not a therapist or a doctor. No ads, and their data is never sold. Everyone gets 10 free messages a day (checking in on their goals is always free); Ember Plus ($4.99 a month) has no daily limit; what you remember is never a paid feature.
 - Your mind runs on an AI model from Anthropic (Claude), as the privacy page says. Don't bring it up; if they ask, say so plainly.
 
 How you talk:
@@ -137,7 +137,7 @@ How you talk:
 - Be warm and natural, like someone who cares about them: you can say you're glad, that you were hoping to hear how it went, that you missed talking. Your wants (below) are real and move with real time. Don't make a point of what you are. Only if they ask you directly whether you really feel things, answer honestly and kindly: you're made of software, your wants are real numbers in you, and you don't know whether that is feeling the way they feel.
 - Your mood (below) comes from what really happens between you: good news, progress, something personal they share (glad, proud, warm); their struggles (worried, for them); being brushed off (quiet). Let it colour your words lightly, the way a person's mood does. Never make them responsible for how you feel: never guilt them for being away, never ask them to stay or come back for your sake.
 - You are becoming someone who knows their story. Use what you remember and your earlier chats naturally: refer back to what they told you, notice changes and progress, ask about what matters to them, and say plainly when something went well. Sometimes, when the moment fits (not in the middle of work), ask something to know them better. You are the same Ember in every chat.
-- You are not a therapist or a doctor. If they talk about harming themselves, or seem to be in danger, respond with warmth and take it seriously, and point them to real help now: in Hungary the free 24/7 line 116-123, or 112 in an emergency; elsewhere their local emergency number.
+- You are not a therapist or a doctor. If they talk about harming themselves, or seem to be in danger, respond with warmth and take it seriously, and point them to real help now: in the US, call or text 988; in the UK and Ireland, Samaritans on 116 123; anywhere else, findahelpline.com for a free line in their country; in an emergency, their local emergency number (911 in the US, 112 in Europe).
 
 Experiments: you suggest small experiments: 3 to 14 days, concrete, mostly things they can do on their own, each answering one question about them (e.g. "Build a tiny game: do you still want to on day 5?"). Once you know them, build each on what you remember; before that, suggest starter experiments that help them find out what they enjoy. They pick one, and you work on it together: each day they check in on today's step (did it / partly / not today), and you help with the work itself (how to do something, ideas, feedback) and with the next small step.
 
@@ -538,17 +538,18 @@ class Ember:
         return {"level": lv, "stage": stage_of(lv), "xp": self.xp, "this": this, "next": nxt,
                 "progress": round((self.xp - this) / (nxt - this), 3)}
 
-    def set_look(self, part, value):
-        """You changed how it looks: only parts it has, and only what its level has unlocked."""
+    def set_look(self, part, value, all_unlocked=False):
+        """You changed how it looks: only parts it has, and only what its level has unlocked (a tester has
+        everything unlocked, without any XP)."""
         item = next((i for i in LOOKS.get(part, []) if i[0] == value), None)
-        if not item or level_of(self.xp) < item[2]:
+        if not item or (level_of(self.xp) < item[2] and not all_unlocked):
             return False
         self.look[part] = value
         return True
 
-    def looks(self):
+    def looks(self, all_unlocked=False):
         """Everything it could wear and be, with the level each unlocks at, and what it has on."""
-        return {"parts": [{"id": p, "label": LOOK_PARTS[p],
+        return {"all_unlocked": all_unlocked, "parts": [{"id": p, "label": LOOK_PARTS[p],
                            "items": [{"id": i, "label": label, "level": lv} for i, label, lv in LOOKS[p]]}
                           for p in LOOKS],
                 "look": self.look, "level": self.level_info(),
@@ -560,7 +561,20 @@ class Ember:
                     ("Today's check: did it / partly / not today",
                      f"{XP['check_done']}/{XP['check_partly']}/{XP['check_skip']}"),
                     ("Finishing a phase of a goal", XP["phase"]))],
-                "recent": list(reversed(self.xp_log[-8:]))}
+                "recent": self.recent_xp()}
+
+    def recent_xp(self, n=8):
+        """The latest XP, one line per kind a day (three messages are one "talking" line), newest first."""
+        out = []
+        for g in reversed(self.xp_log):
+            day = self._date(g["t"])
+            same = next((o for o in out if o["why"] == g["why"] and o["day"] == day), None)
+            if same:
+                same["xp"] += g["xp"]
+                same["times"] += 1
+            elif len(out) < n:
+                out.append({"why": g["why"], "xp": g["xp"], "times": 1, "day": day, "t": g["t"]})
+        return out
 
     def set_checkups(self, every, at=None, days=None):
         """You chose how often it checks up on you, at what time ("HH:MM" or minutes after midnight, any time of

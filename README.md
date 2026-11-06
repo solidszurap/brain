@@ -21,10 +21,11 @@ A small being with a face that helps you get what you want. If you don't know ye
   - **Missing you is separate:** it grows while you're away and eases when you're back, which is what moves its face.
   - **Older Embers:** the bond was worked out from your history.
 - **Free and Plus.** Everyone gets **10 free messages a day** (`EMBER_FREE_PER_DAY`). A message is anything you send that makes Ember think; its greetings are free.
-  - After its answer to your last free one, Ember says so, and the input becomes an **Ember Plus** card: **€4.99 / month**, no daily limit, cancel anytime.
+  - After its answer to your last free one, Ember says so, and the input becomes an **Ember Plus** card: **$4.99 / month**, no daily limit, cancel anytime.
   - Payment goes through **Stripe**: its checkout page to subscribe, its portal ("Manage Ember Plus") to cancel. A signed webhook tells the server, and Ember never sees card details.
   - Deleting your Ember also cancels the subscription.
   - Comped Plus by email: `EMBER_PLUS_EMAILS`, or `*` for everyone (Szilard, 2026-11-06: Plus for everyone for now, while sign-up opens).
+- **Testers** in `EMBER_UNLOCK_EMAILS` can wear every look without levelling up (their XP stays real).
 - **A safety cap per person** (`EMBER_DAILY_CAP`, 150 replies a day, Plus included) keeps costs in check.
 - **Colours:** the menu (⋯) has five colour versions of the window (Ember, Night, Plum, Forest, Day), kept on each device. Ember's own colour is yours to choose (see Levels and looks); it's amber until you change it.
 - **Levels and looks** (2026-11-06): Ember grows with you.
@@ -77,7 +78,7 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
 - **It keeps things moving.** Each chat is about something, and Ember keeps it heading there. After two or three questions it says what it understood and proposes something: a plan, a next step, an experiment. If it has asked three questions in a row with nothing moving, it's told to propose instead of asking again.
 - **It reads the room.** When you share something hard, it doesn't smile at you. It says what it heard, stays with it, and asks whether you want to work through it or just needed to say it. Its face shows worry or sadness, never a grin on top of bad news.
 - **It knows who it is.** Asked who it is, what it's for or how it works, Ember explains in its own words: what it is, why it exists, how it helps, what it remembers, how the app works, what it isn't, and (only if asked) which AI its mind runs on.
-- **Not a therapist.** If someone talks about harming themselves, Ember points to real help (in Hungary 116-123, or 112).
+- **Not a therapist.** If someone talks about harming themselves, Ember points to real help (988 in the US, Samaritans 116 123 in the UK and Ireland, findahelpline.com elsewhere, and the local emergency number).
 
 ## Build order
 
@@ -122,7 +123,7 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
 5. **Phone notifications (done).** Ember's check-ups also arrive as phone notifications (Web Push): ⋯ → Turn on notifications (on iPhone, from the home-screen app). Never at night: nothing between 22:00 and 8:00 on your clock (the window tells Ember your time zone); those wait for the morning. Tapping one opens its chat. Turn them off in the same place. When you open Ember and they're not on yet, a small card asks once ("Turn on" / "Not now"; Not now asks again after a week): iPhone only allows the question after a tap.
 6. **Becoming someone.** Its character and its story of the two of you grow from your shared history.
 
-**Making money:** 10 free messages a day, then Ember Plus at €4.99 a month through Stripe (built; needs a Stripe account and a registered business to take real money). No ads, no selling data.
+**Making money:** 10 free messages a day, then Ember Plus at $4.99 a month through Stripe (built; needs a Stripe account and a registered business to take real money). No ads, no selling data.
 
 ## Files
 

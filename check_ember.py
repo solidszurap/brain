@@ -618,6 +618,15 @@ check("a length that isn't a number gives a month", g0["days"] == 30)
 for g_ in (gh, gw, gm, gd, gy, g0):
     gq.end_experiment(g_["id"], "dropped", t + 100)
 
+rx = Ember(now=t)
+for k in range(3):
+    rx.gain("talking", 2, t + k)
+rx.gain("a step done", 5, t + 5)
+rx.gain("talking", 2, t + D)
+r = rx.recent_xp()
+check("recent XP: one line per kind a day, newest first", [(g["why"], g["xp"], g["times"]) for g in r]
+      == [("talking", 2, 1), ("a step done", 5, 1), ("talking", 6, 3)], str(r))
+
 print("The daily check instead of the stopwatch")
 x0 = gq.xp
 ev = gq.daily_check(g90["id"], "done", "felt good", t + 3600)

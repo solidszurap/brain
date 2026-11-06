@@ -62,14 +62,14 @@ In Supabase, go to **Authentication → URL Configuration**:
 - **Site URL**: your Render address from step 4.4.
 - **Redirect URLs**: add the same address.
 
-## 6. Stripe: Ember Plus payments (€4.99 / month)
+## 6. Stripe: Ember Plus payments ($4.99 / month)
 
 Taking real money needs a registered business (for example egyéni vállalkozó) and, for a Hungarian online service, terms of service (ÁSZF) with a refund/cancellation section and your contact details on the site. Get those from an accountant or lawyer; Ember's code doesn't write them. You can do everything below in **test mode** first: test mode moves no money.
 
 1. Go to **stripe.com** and sign up, with your business's details when you go live.
 2. **Product catalog → Add product**:
    - Name: `Ember Plus`.
-   - Price: **€4.99**, **Recurring**, **Monthly**.
+   - Price: **$4.99 USD**, **Recurring**, **Monthly**. Optional: under the price, **Add another currency** (e.g. EUR 4.99), so people in Europe pay in euros; Stripe picks the currency by where the customer is.
    - Save, then open the price and **copy** its id (`price_...`). That's `STRIPE_PRICE_ID`.
 3. **Developers → API keys**. **Copy** the **Secret key** (`sk_test_...` in test mode, `sk_live_...` later). That's `STRIPE_SECRET_KEY`.
 4. **Developers → Webhooks → Add endpoint**:
@@ -87,14 +87,14 @@ Taking real money needs a registered business (for example egyéni vállalkozó)
       - With an accountant, settle your VAT (e.g. alanyi adómentesség) and how each payment gets an invoice reported to NAV (e.g. Billingo or Számlázz.hu). Stripe's receipts are not Hungarian invoices. Later we can connect the invoicing service to Ember's Stripe webhook so invoices go out by themselves.
    2. **ÁSZF and an updated privacy notice,** from a lawyer or a trusted template service. They cover:
       - who sells (your name, address, tax number, email);
-      - the price (€4.99 a month) and that it renews monthly;
+      - the price ($4.99 a month) and that it renews monthly;
       - how to cancel (any time, via Manage Ember Plus);
       - the 14-day withdrawal right for digital services;
       - that Stripe processes the payments.
 
       Put it online. Or send us the text, and we put it at `/terms` exactly as it is.
    3. **Stripe → activate your account:** business details, bank account and identity check.
-   4. **Switch to live mode** and redo steps 2–5 there: the product Ember Plus at €4.99 monthly; the secret key; the webhook to `/stripe/webhook` with the same 4 events; the customer portal. Live mode has its own product, price, keys and webhook secret.
+   4. **Switch to live mode** and redo steps 2–5 there: the product Ember Plus at $4.99 monthly; the secret key; the webhook to `/stripe/webhook` with the same 4 events; the customer portal. Live mode has its own product, price, keys and webhook secret.
    5. **Stripe → Settings → Public details:** your terms URL and a support email. **Settings → Emails:** turn on receipts for successful payments.
    6. **Render → Environment:**
       - paste the live `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID` and `STRIPE_WEBHOOK_SECRET` (never into a chat);
@@ -142,6 +142,8 @@ To go back: put your own Gmail back in `EMBER_PLUS_EMAILS` to end free Plus (eve
 
 - **Who has logged in:** Supabase → your project → **Authentication → Users**. It lists everyone who has ever signed in: their email, when they first signed in, and when they last signed in. Their **UID** there is the `user_id` in the database tables.
 - **How much each person uses it:** Supabase → **Table Editor → `usage`**: replies (`calls`), counted messages and tokens per person per day.
+- **Try every look:** add your Gmail to `EMBER_UNLOCK_EMAILS` in Render. Every look is unlocked for you; your level and XP don't change.
+- **If Ember is slow:** Render → Logs, search for `mind answered`: each answer's time is there (a warning when it took over 20 seconds).
 - **Free messages:** `EMBER_FREE_PER_DAY` (10) per day for people without Plus. Comped Plus: `EMBER_PLUS_EMAILS`, or `*` for everyone.
 - **New tester** (while it's invite-only): add their Gmail to `EMBER_ALLOWED_EMAILS` in Render (Environment). Render restarts by itself. Also add them as a test user in Google (step 2.2).
 - **How many people it can take:** one server answers one thought at a time, and it keeps everyone's Ember in memory. That's fine for a few hundred people. Well before a thousand, tell us, and we change that.

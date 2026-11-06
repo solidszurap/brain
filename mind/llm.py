@@ -120,9 +120,9 @@ def _call_claude(cfg, system, user):
     import anthropic
     client = _claude.get(cfg.key)
     if client is None:
-        client = _claude[cfg.key] = anthropic.Anthropic(api_key=cfg.key, max_retries=3, timeout=60.0)
+        client = _claude[cfg.key] = anthropic.Anthropic(api_key=cfg.key, max_retries=2, timeout=30.0)   # a reply takes seconds; never wait minutes
     try:
-        r = client.messages.create(model=cfg.model, max_tokens=16000, system=system,
+        r = client.messages.create(model=cfg.model, max_tokens=4000, system=system,     # a reply is ~600 tokens
                                    output_config={"effort": "low"},
                                    messages=[{"role": "user", "content": user}])
     except (anthropic.RateLimitError, anthropic.APIConnectionError) as e:

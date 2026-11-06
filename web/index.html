@@ -300,6 +300,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .gpcard input[type=text], .gpform input, .gpform select, .gpform textarea { width: 100%; box-sizing: border-box; background: var(--surface); color: var(--text);
   border: 1px solid var(--edge2); border-radius: 12px; padding: 9px 12px; font: inherit; font-size: 16px; }
 .gpwords { margin-top: 10px; }
+.gpxp { margin-top: 8px; font-size: 14px; font-weight: 600; color: var(--accent); }
 .gpdots { display: flex; gap: 4px; margin-top: 12px; align-items: center; }
 .gpdots i { width: 14px; height: 14px; border-radius: 4px; background: var(--line); }
 .gpdots i.done { background: var(--accent); } .gpdots i.partly { background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
@@ -657,7 +658,7 @@ function renderLooks() {
     + `<i><b style="width:${Math.round(L.progress * 100)}%"></b></i></div>`;
   for (const p of c.parts) {
     h += `<div class="lookpart"><h3>${esc(p.label)}</h3><div class="lookrow">` + p.items.map(it => {
-      const locked = it.level > L.level, on = look[p.id] === it.id;
+      const locked = it.level > L.level && !c.all_unlocked, on = look[p.id] === it.id;
       const sw = p.id === "color" ? `<span class="sw" style="background:${SWATCH[it.id] || "#ff9a3c"}"></span>` : "";
       return `<button class="lookitem${on ? " on" : ""}${locked ? " locked" : ""}" data-part="${esc(p.id)}" data-item="${esc(it.id)}"`
         + `${locked ? " disabled" : ""}>${sw}${esc(it.label)}${locked ? ` <small>Lv ${it.level}</small>` : ""}</button>`;
@@ -667,7 +668,8 @@ function renderLooks() {
     + c.how.map(x => `<li><span>${esc(x.what)}</span><b>+${esc(String(x.xp))} XP</b></li>`).join("") + `</ul>`
     + `<h3>Stages</h3><ul class="how"><li><span>Spark</span><b>Level 1</b></li><li><span>Ember</span><b>Level 5</b></li>`
     + `<li><span>Flame</span><b>Level 10</b></li><li><span>Blaze</span><b>Level 20</b></li></ul>`;
-  if (c.recent.length) h += `<h3>Lately</h3><ul class="how">` + c.recent.map(x => `<li><span>${esc(x.why)}</span><b>+${x.xp} XP</b></li>`).join("") + `</ul>`;
+  if (c.recent.length) h += `<h3>XP you earned recently</h3><ul class="how">` + c.recent.map(x =>
+    `<li><span>${esc(x.why)}${x.times > 1 ? ` ×${x.times}` : ""} <small>${esc(xpDay(x.t))}</small></span><b>+${x.xp} XP</b></li>`).join("") + `</ul>`;
   $("#lookBody").innerHTML = h + `</div>`;
 }
 function openLooks() {
@@ -756,6 +758,12 @@ $("#colours").addEventListener("click", e => { const b = e.target.closest("butto
 setTheme(document.documentElement.dataset.theme || "");
 
 function fmtTime(t) { return new Date(t * 1000).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}); }
+function xpDay(t) {                         // "today", "yesterday", or "3 Nov"
+  const d = new Date(t * 1000), now = new Date(), y = new Date(now - 864e5);
+  if (d.toDateString() === now.toDateString()) return "today";
+  if (d.toDateString() === y.toDateString()) return "yesterday";
+  return d.toLocaleDateString([], {day: "numeric", month: "short"});
+}
 function fmtDay(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: "long", day: "numeric", month: "long"}); }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c])); }
 
@@ -914,7 +922,7 @@ $("#sessionbar").addEventListener("click", async e => {
 });
 
 // ------------------------------------------------------------------ goals: the list, a goal's own page, a new goal
-let GOALS = [], goalOpen = null, goalReplyWait = null;
+let GOALS = [], goalOpen = null, goalReplyWait = null, checkNote = null;   // checkNote: what today's check earned
 async function loadGoals() {
   const r = await api("/goals").catch(() => null);
   if (!r || !r.ok) return;
@@ -962,7 +970,7 @@ function openGoal(id) {
   $("#goalPage").classList.add("on");
   if (id === "new") renderNewGoal(); else { renderGoalPage(); loadGoals(); }
 }
-function closeGoal() { goalOpen = null; goalReplyWait = null; $("#goalPage").classList.remove("on"); }
+function closeGoal() { goalOpen = null; goalReplyWait = null; checkNote = null; $("#goalPage").classList.remove("on"); }
 
 function renderGoalPage() {
   const g = GOALS.find(x => x.id === goalOpen);
@@ -970,6 +978,7 @@ function renderGoalPage() {
   const typing = $("#gpWords") ? $("#gpWords").value : "";
   const el = document.activeElement;
   if (el && (el.id === "gpWords" || el.id === "gpNewStep") && $("#gpTitle").textContent === g.title) return;   // not under your fingers
+  if ($("#gpBody [data-armed]") && $("#gpTitle").textContent === g.title) return;   // "click again to drop it" must survive a redraw
   $("#gpTitle").textContent = g.title;
   const active = g.status === "active", ph = g.phase_info, multi = ph && ph.count > 1;
   const dots = g.recent.map(d => `<i class="${d.how || ""}" title="${esc(d.day)}${d.how ? ": " + ({done: "did it", partly: "partly", skip: "not today"}[d.how]) : ""}"></i>`).join("");
@@ -982,6 +991,7 @@ function renderGoalPage() {
                       : `<div class="gpstep none">No step for today yet: add one below, or plan the next steps with Ember.</div>`)
       + `<div class="gpchecks">` + [["done", "✔ Did it"], ["partly", "◐ Partly"], ["skip", "✕ Not today"]].map(([k, l]) =>
           `<button class="btn ${g.checked_today === k ? "" : "ghost"}${g.checked_today === k ? " on" : ""}" data-check="${k}">${l}</button>`).join("") + `</div>`
+      + (checkNote && checkNote.id === g.id ? `<div class="gpxp">${esc(checkNote.text)}</div>` : "")
       + `<input type="text" class="gpwords" id="gpWords" maxlength="300" placeholder="A few words, if you like" value="${esc(typing)}">`
       + (goalReplyWait && goalReplyWait.text ? `<div class="gpreply">${esc(goalReplyWait.text)} <a data-gtalk>Talk about it →</a></div>`
          : goalReplyWait ? `<div class="gpreply">Ember is answering… <a data-gtalk>Open the chat →</a></div>` : "")
@@ -1023,7 +1033,7 @@ function renderNewGoal() {
 }
 async function waitGoalReply(g, since) {           // Ember's answer to today's check, from the goal's chat
   goalReplyWait = {id: g.id, text: null};
-  for (let i = 0; i < 20 && goalReplyWait && goalReplyWait.id === g.id; i++) {
+  for (let i = 0; i < 60 && goalReplyWait && goalReplyWait.id === g.id; i++) {      // up to 90 s
     await new Promise(r => setTimeout(r, 1500));
     const r = await api(`/state?v=0&chat=${encodeURIComponent(g.chat)}`).catch(() => null);
     if (!r || !r.ok) continue;
@@ -1065,10 +1075,13 @@ $("#gpBody").addEventListener("click", async e => {
   if (!b) return;
   if (b.dataset.check) {
     b.disabled = true;
-    const since = Date.now() / 1000 - 1;
+    const since = Date.now() / 1000 - 1, xp0 = S && S.level ? S.level.xp : null, again = !!g.checked_today;
     const r = await post("/goal/check", {id: g.id, how: b.dataset.check, words: $("#gpWords").value.trim()});
-    if (r && r.ok) { $("#gpWords").value = ""; waitGoalReply(g, since); }
-    await loadGoals(); poll();
+    if (r && r.ok) { $("#gpWords").value = ""; if (!again) waitGoalReply(g, since); }
+    await poll();
+    const got = xp0 != null && S && S.level ? S.level.xp - xp0 : 0;
+    checkNote = {id: g.id, text: r && r.ok ? (got > 0 ? `+${got} XP` : "Changed. Only the first check of the day earns XP.") : "Couldn't save that. Try again."};
+    await loadGoals();
   } else if (b.hasAttribute("data-gtalk")) goToChat(g);
   else if (b.hasAttribute("data-gplan")) goToChat(g, "Let's plan the details of this goal together.");
   else if (b.dataset.gstep !== undefined) {

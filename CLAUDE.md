@@ -27,6 +27,7 @@ python -m server                      # online mode (Render); needs the env vars
     - If the mind still fails: the `UNREACHABLE` line once, then a retry every `retry_every`.
     - A non-retryable error gives the `FAILED` line.
     - The daily cap gives the `CAPPED` line.
+    - Each answer's time is logged (`mind answered <id> (<event>) in Ns`, a warning over 20 s). Claude calls time out after 30 s with 2 SDK retries (2026-11-06, after a goal check was answered 2 minutes late).
     - After a restart, unanswered last lines are re-queued.
   - The POST guard: `X-Ember` header and same host. `/stripe/webhook` is exempt: it checks Stripe's signature instead. Plus `/me/export` and `/me/delete`; delete cancels an active subscription first.
   - Ember Plus:
@@ -41,7 +42,7 @@ python -m server                      # online mode (Render); needs the env vars
   - `live` (an `sk_live_` key) and `terms_url` (`EMBER_TERMS_URL`) combine into `selling`: a live key sells nothing until the terms URL is set (Szilard, 2026-11-06, before taking real money). `/plus/checkout` then returns 503, and `plan.payments` is false.
   - With `terms_url`, checkout sends `consent_collection[terms_of_service]=required`. `/config` gives `terms_url` for the ⋯ menu's "Terms (ÁSZF)" and the paywall line.
   - Going live is DEPLOY.md 6.8.
-  - Plus is just "no daily limit", at €4.99 a month. Progress (daily checks, phase look backs, reviews, check-ups, greetings) never counts as a message.
+  - Plus is just "no daily limit", at $4.99 a month (dollars since 2026-11-06: the US is the main market, and the app is global). Progress (daily checks, phase look backs, reviews, check-ups, greetings) never counts as a message.
 - `server/billing.py`: `Billing` (Stripe via urllib: `checkout`, `portal`, `cancel`, `verify` with a 5-minute tolerance, `plan_from_event`). The stores have `get_plan`/`set_plan` and `add_message`/`messages_today`.
 - `server/auth.py`: `SupabaseAuth` (`/auth/v1/user`, 5-minute cache, `EMBER_ALLOWED_EMAILS` or `*`) and `LocalAuth`.
 - `server/__main__.py`: `run_online` (env, refuses to start without a usable mind; starts `keep_awake`, one Supabase read a day) and `run_local` (used by `ember.py`).
@@ -112,7 +113,7 @@ python -m server                      # online mode (Render); needs the env vars
       - `facts` counts checks and phases.
     - Your own goal's length (Szilard, 2026-11-06: "customizable, days, weeks or months or even hours"): `n` of a unit in `UNITS` (hours, days, weeks, months = 30 days), from an hour to a year (`OWN_GOAL_DAYS`). `x["days"]` can then be a fraction and `x["span"]` `{n, unit}` keeps how you said it; `span_text`/`left_text` say lengths, `as_days(sec, whole)` and `whole_days(x)` keep whole-day goals whole. A goal given in hours (`hourly`) or under a day (`by_hours`) counts hours left, and `more_days` gives it 1 more hour (`MORE_HOUR`); under a day it is one phase; `extend` drops `span`. `goal_view` adds `length`, `hourly`, `left`, `more` and `phase_info.left`; the window's `durText`/`leftText`/`goalWhen`/`moreText`.
     - Server: `GET /goals`, `/goal/new {title, done_when, days or n+unit, steps, with_ember}`, `/goal/check`, `/goal/phase` (`phase_pending`, 2 minutes), `/goal/step`.
-    - Window: "◎ Goals" (`#goalsDrawer`, `#goalsDot`), and `#goalPage` (`openGoal`, `renderGoalPage`, `renderNewGoal`, `waitGoalReply` shows Ember's answer to a check). `#sessionbar` is the goal bar; picked cards and `phase_up`/`phase_new` lines have Open goal / Look back and plan.
+    - Window: "◎ Goals" (`#goalsDrawer`, `#goalsDot`), and `#goalPage` (`openGoal`, `renderGoalPage`, `renderNewGoal`, `waitGoalReply` shows Ember's answer to a check, waiting up to 90 s; `checkNote` shows the XP a check earned). `#sessionbar` is the goal bar; picked cards and `phase_up`/`phase_new` lines have Open goal / Look back and plan.
     - Work sessions stay in the code for old data, but nothing starts them.
   - **Levels and looks** (2026-11-06, Szilard: "your companion who grows with you"; XP from progress, talking and days together; all earned by levelling, nothing tied to Plus).
     - `core.py`:
@@ -121,7 +122,7 @@ python -m server                      # online mode (Render); needs the env vars
       - `gain()` is called from `hear` (`_talk_xp`, answering a `checkup`), `respond`/`set_step` (`_step_xp`, once per step via `step["xp"]`), `pick`, `end_experiment`, `stop_session` (5 min or more), `checkin` and `update` (days together).
       - A new level sets `levelup_due`; `_announce_levelup` says one `levelup` line in the latest chat. It is called from `update`, and at the end of `respond`, never between your line and its answer.
       - `from_dict` without `xp` runs `_backfill_xp`, which counts the history quietly.
-      - `set_look` accepts only unlocked items; `looks()` is the catalog for `/looks`; `/look {part, value}`.
+      - `set_look` accepts only unlocked items (testers in `EMBER_UNLOCK_EMAILS` get every look, XP unchanged: `all_unlocked`); `looks()` is the catalog for `/looks`; `/look {part, value}`.
       - `snapshot` has `level` and `look`; the prompt has one level line.
     - Window:
       - `draw()` uses `BODY`/`bodyHues` (colours; aurora shifts), `STAGE` (size, glow, room above), `flame()`, `wear()`, the `look.eyes`/`look.cheeks` variants, `particle()` (sparks, stars, hearts, petals, snow) and the glow styles (halo, aura).
@@ -150,7 +151,7 @@ python -m server                      # online mode (Render); needs the env vars
    - The server uses FastAPI, uvicorn, `anthropic` and `cryptography` only (`cryptography` for phone notifications: Szilard's choice, 2026-11-04, over hand-written crypto).
    - Secrets only in `.env` (local) or Render's environment (online). Never print or log keys, or anything users say: logs hold ids and errors only.
 6. **Who can log in:** `EMBER_ALLOWED_EMAILS`. Still invite-only with testers (2026-11-06: Szilard started opening it, then said "don't publish it yet"). A tester goes into Google's test users (Audience) and `EMBER_ALLOWED_EMAILS`. The code is ready for opening (`*` in both `EMBER_ALLOWED_EMAILS` and `EMBER_PLUS_EMAILS`); the steps are DEPLOY.md step 8. Google's Publish button stays disabled until Branding has a home page, a privacy link and `ember-dztb.onrender.com` as an authorized domain. `SupabaseStore.all_uids` pages by 1000. The single `MindWorker` thread and the never-evicted `Users` cache are fine for a few hundred people, not thousands.
-7. **Free and Plus:** 10 free messages a day (Szilard, 2026-11-06; was 5; progress like daily checks, check-ups and look backs never counts), then Ember Plus at €4.99 a month (Stripe). Never sell data and never show ads. Taking real money needs his registered business and terms of service (ÁSZF); we don't write legal text.
+7. **Free and Plus:** 10 free messages a day (Szilard, 2026-11-06; was 5; progress like daily checks, check-ups and look backs never counts), then Ember Plus at $4.99 a month (Stripe). Never sell data and never show ads. Taking real money needs his registered business and terms of service (ÁSZF); we don't write legal text.
 8. **No long runs.** Verify with `check_ember.py`, `check_server.py`, and by trying it in the browser (phone size 375 px and desktop) on a scratch Ember.
 9. **Saved selves must keep loading.** `Ember.from_dict` only copies known fields, so new fields get their defaults; keep it that way.
 10. **Commits:** small, straight to main, only when Szilard asks (don't ask him whether to commit). He pushes. Update README.md in the same change.

@@ -22,7 +22,7 @@ class BillingError(Exception):
 
 
 class Billing:
-    def __init__(self, secret_key=None, price_id=None, webhook_secret=None, price_label="€4.99 / month",
+    def __init__(self, secret_key=None, price_id=None, webhook_secret=None, price_label="$4.99 / month",
                  api="https://api.stripe.com", terms_url=None):
         self.key, self.price, self.whsec = secret_key, price_id, webhook_secret
         self.price_label, self.api = price_label, api.rstrip("/")
