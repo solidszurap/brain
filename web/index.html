@@ -176,7 +176,9 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 /* the menu (⋯) */
 .menuwrap { position: relative; }
 .menu { display: none; position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; min-width: 240px; background: var(--overlay); border: 1px solid var(--edge); border-radius: 22px; padding: 6px;
-  box-shadow: 0 16px 40px rgba(0,0,0,.45); }
+  box-shadow: 0 16px 40px rgba(0,0,0,.45);
+  max-height: calc(100dvh - env(safe-area-inset-top) - var(--topbar, 56px) - 24px); overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch; }   /* taller than a phone screen: it scrolls inside itself */
 .menu.on { display: block; animation: pop .18s ease-out; }
 @keyframes pop { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: none; } }
 .menu button, .menu a { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--text); padding: 10px 14px; border-radius: 16px; font: inherit; font-size: 15px; cursor: pointer; text-decoration: none; }
@@ -537,13 +539,17 @@ async function boot() {
     $("#logoutBtn").style.display = "none";
     $("#whoami").textContent = "On this computer";
   }
-  showCover(null);
+  enter();
+}
+function enter() {          // the logo stays up until Ember's first state is drawn, so no empty window flashes by
+  showCover("boot");
+  gate = null;
   start();
 }
 function setSession(session) {
   token = session ? session.access_token : null;
   if (session) $("#whoami").textContent = session.user.email;
-  if (token && gate === "login") { showCover(null); start(); }
+  if (token && gate === "login") enter();
 }
 $("#googleBtn").onclick = () => sb && sb.auth.signInWithOAuth({provider: "google", options: {redirectTo: location.origin}});
 
@@ -567,8 +573,10 @@ async function poll() {
     S = await r.json();
     offline = false;
     render();
+    $("#boot").classList.remove("on");
   } catch (e) {
     if (gate) return;
+    $("#boot").classList.remove("on");
     offline = true;
     $("#note").innerHTML = CFG.mode === "online"
       ? `<span class="problem">Can't reach Ember right now. Check your internet; it will reconnect by itself.</span>`
@@ -925,7 +933,7 @@ function leftText(sec) {                       // like the server's left_text
   const d = Math.ceil(sec / 86400); return `${d} day${d === 1 ? "" : "s"}`;
 }
 function goalWhen(g) {                         // "day 3 of 14", or for a goal of hours "2 hours left of 3 hours"
-  if (g.days < 1) return g.left > 0 ? `${leftText(g.left)} left of ${g.length || durText(g.days)}` : `${g.length || durText(g.days)} · its time is up`;
+  if (g.hourly || g.days < 1) return g.left > 0 ? `${leftText(g.left)} left of ${g.length || durText(g.days)}` : `${g.length || durText(g.days)} · its time is up`;
   return `day ${Math.min(g.day, Math.ceil(g.days))} of ${Math.round(g.days)}`;
 }
 const moreText = g => g.more || `${isGoal(g) ? 7 : 3} more days`;
@@ -1112,7 +1120,7 @@ function factsHtml(x) {
   const ch = f.checks;
   const days = ch ? `${ch.done} did it · ${ch.partly} partly · ${ch.skip} not today` : "";
   const sessions = f.sessions ? `${f.sessions} work session${f.sessions === 1 ? "" : "s"} · ${fmtTotal(f.seconds)}${avg ? ` · felt ${avg}/5` : ""}` : "";
-  return `<div class="cards"><div class="xcard"><div class="tag">${x.status === "done" ? "Finished" : "Dropped"}${x.days < 1 ? ` · ${durText(x.days)}` : ` on day ${f.days_lasted} of ${Math.round(x.days)}`}</div>
+  return `<div class="cards"><div class="xcard"><div class="tag">${x.status === "done" ? "Finished" : "Dropped"}${x.hourly || x.days < 1 ? ` · ${durText(x.days)}` : ` on day ${f.days_lasted} of ${Math.round(x.days)}`}</div>
     <h4>${esc(x.title)}</h4>${x.question ? `<div class="q">${esc(doneWhen(x))}</div>` : ""}
     <div class="meta">${[days, `${f.steps_done}/${f.steps} steps`, sessions].filter(Boolean).join(" · ")}</div></div></div>`;
 }
@@ -1241,7 +1249,7 @@ function renderExpCard() {
   if (!x || !expOpen) { $("#expcard").innerHTML = ""; return; }
   const st = x.stats, left = x.ends_at > S.now;
   const steps = x.steps.map((s, i) => `<li class="${s.done ? "done" : ""}" data-step="${i}"><input type="checkbox" ${s.done ? "checked" : ""}><span>${esc(s.text)}</span></li>`).join("");
-  $("#expcard").innerHTML = `<div class="panel"><div class="meta">${isGoal(x) ? "Goal" : "Experiment"} · ${goalWhen(x)}${left || x.days < 1 ? "" : " · its time is up"}</div>
+  $("#expcard").innerHTML = `<div class="panel"><div class="meta">${isGoal(x) ? "Goal" : "Experiment"} · ${goalWhen(x)}${left || x.hourly || x.days < 1 ? "" : " · its time is up"}</div>
     <div class="q">${esc(doneWhen(x))}</div>
     ${x.plan ? `<div class="plan">${esc(x.plan)}</div>` : ""}
     ${steps ? `<ul class="steps">${steps}</ul>` : ""}

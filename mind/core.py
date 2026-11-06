@@ -185,6 +185,11 @@ def as_days(seconds, whole=False):
     return int(round(d)) if whole or abs(d - round(d)) < 1 / 1440 else round(d, 4)
 
 
+def by_hours(x):
+    """A goal counted in hours: you gave it hours, or it's under a day. It shows hours left and keeps going by an hour."""
+    return bool(x.get("hourly")) or x["days"] < 1
+
+
 def whole_days(x):
     """Whether a goal or experiment counts in whole days (all but your own goals with hours in their length)."""
     return float(x["days"]).is_integer()
@@ -937,7 +942,7 @@ class Ember:
             if kind_of(x) == "goal":
                 lines.append(f"Their goal \"{x['title']}\" just ended: they {how} it "
                              + (f"after {left_text((x.get('ended') or now) - x['started'])} of {span_text(x['days'], x.get('span'))}"
-                                if x["days"] < 1 else f"on day {f['days_lasted']} of {span_text(x['days'], x.get('span'))}")
+                                if by_hours(x) else f"on day {f['days_lasted']} of {span_text(x['days'], x.get('span'))}")
                              + f". They'd know they were there when: {x['question']}")
                 lines.append("What actually happened: " + self.facts_text(f))
                 lines.append("Look back on it honestly in 3 to 5 short sentences: how far they got, what helped and "
@@ -1450,6 +1455,8 @@ class Ember:
              "status": "suggested", "created": now, "started": None, "ends_at": None, "ended": None}
         if span:
             x["span"] = span
+            if span["unit"] == "hours":
+                x["hourly"] = True
         self.next_exp += 1
         self.experiments.append(x)
         self.pick(x["id"], now)
@@ -1473,6 +1480,7 @@ class Ember:
         if x.get("started"):
             v["day"] = min(math.ceil(x["days"]), int((min(now, x.get("ended") or now) - x["started"]) // 86400) + 1)
             v["length"] = span_text(x["days"], x.get("span"))
+            v["hourly"] = by_hours(x)
             n, unit = span_text(self.more_days(x)).split(" ")
             v["more"] = f"{n} more {unit}"
             if x["status"] == "active":
@@ -1544,7 +1552,7 @@ class Ember:
 
     def more_days(self, x):
         """How much "keep going" adds: 3 days to an experiment, a week to a goal, an hour to a goal of hours."""
-        if kind_of(x) == "goal" and x["days"] < 1:
+        if kind_of(x) == "goal" and by_hours(x):
             return MORE_HOUR
         return MORE_DAYS[kind_of(x)]
 
@@ -1642,7 +1650,7 @@ class Ember:
             day = int((now - x["started"]) // 86400) + 1
             if kind_of(x) == "goal":
                 when_ = (f"{left_text(max(0, x['ends_at'] - now))} left of {span_text(x['days'], x.get('span'))}"
-                         if x["days"] < 1 else f"day {day} of {span_text(x['days'], x.get('span'))}")
+                         if by_hours(x) else f"day {day} of {span_text(x['days'], x.get('span'))}")
                 out += ["", f"Their goal, which you work on together: \"{x['title']}\" ({when_}). "
                             f"They'll know they're there when: {x['question']}" + (f" Why: {x['why']}" if x["why"] else "")]
                 if x.get("plan"):

@@ -605,6 +605,12 @@ check("2 months is 60 days", gm["days"] == 60 and sum(p["days"] for p in gm["pha
 gd = gq.new_goal("Walk daily", "", None, [], t + 80, n=36, unit="hours")
 check("36 hours: a day and a half, said as 36 hours", gd["days"] == 1.5 and abs(gd["ends_at"] - (t + 80 + 36 * 3600)) < 1
       and sum(p["days"] for p in gd["phases"]) == 1.5)
+check("...a goal given in hours keeps going by an hour, even when it's a day or more",
+      gq.goal_view(gd, t + 90)["more"] == "1 more hour" and gq.goal_view(gd, t + 90)["hourly"])
+g24 = gq.new_goal("A day off", "", None, [], t + 85, n=24, unit="hours")
+check("...24 hours too, and its mind hears hours left", g24["days"] == 1 and gq.goal_view(g24, t + 90)["more"] == "1 more hour"
+      and "left of 24 hours" in "\n".join(gq._experiment_context(t + 3600, g24["chat"])))
+gq.end_experiment(g24["id"], "dropped", t + 100)
 gy = gq.new_goal("Too long", "", None, [], t + 90, n=30, unit="months")
 check("at most a year", gy["days"] == 365 and "span" not in gy)
 g0 = gq.new_goal("Odd", "", None, [], t + 95, n="x", unit="days")
