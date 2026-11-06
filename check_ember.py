@@ -856,12 +856,32 @@ e2 = Ember.from_dict(d)
 check("everything survives a save", e2.memories == e.memories and e2.talk == e.talk and e2.pokes == 1)
 check("the outbox isn't saved in its self", "outbox" not in d)
 with tempfile.TemporaryDirectory() as tmp:
-    for f in ("life.pkl.gz", "life_log.jsonl", "ember.json"):
+    for f in ("life.pkl.gz", "life_log.jsonl", "ember.json", "plan.json", "feedback.jsonl"):
         open(os.path.join(tmp, f), "w").close()
     dest = program.archive_old_life(tmp, now=back)
     check("the grid-world life is moved to the archive, not deleted",
           sorted(os.listdir(dest)) == ["life.pkl.gz", "life_log.jsonl"] and os.path.exists(os.path.join(tmp, "ember.json")))
+    check("...but today's files stay (the plan, the feedback)",
+          os.path.exists(os.path.join(tmp, "plan.json")) and os.path.exists(os.path.join(tmp, "feedback.jsonl")))
     check("archiving twice does nothing", program.archive_old_life(tmp, now=back) is None)
+
+print("The owner page's numbers")
+t0 = 1_800_000_000
+o = Ember(now=t0)
+o.hear(t0 + 60, "first day")
+o.hear(t0 + 120, "still the first day")
+v = o.owner_view(t0 + 200)
+check("one day, two messages, not back yet", v["days"] == 1 and v["said"] == 2 and v["today"]
+      and not v["back_day2"] and not v["back_week2"], str(v))
+o.hear(t0 + 86400 * 2, "came back")
+o.hear(t0 + 86400 * 9, "and again a week later")
+v = o.owner_view(t0 + 86400 * 9 + 10)
+check("back on another day, and after the first week", v["days"] == 3 and v["back_day2"] and v["back_week2"], str(v))
+check("numbers only: none of their words", "came back" not in json.dumps(v) and "first day" not in json.dumps(v))
+old = o.to_dict()
+old.pop("you_days"), old.pop("you_said")
+b = Ember.from_dict(old)
+check("an Ember saved before this counts its days from the talk it kept", b.you_said == 4 and len(b.you_days) == 3)
 
 print()
 print("All checks passed." if not failed else f"{len(failed)} FAILED: {failed}")

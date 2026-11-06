@@ -7,7 +7,7 @@ Online (Render):   python -m server
     Notifications: VAPID_PRIVATE_KEY (tools/make_vapid.py), VAPID_SUBJECT (optional).
     Ember Plus: STRIPE_SECRET_KEY, STRIPE_PRICE_ID, STRIPE_WEBHOOK_SECRET (without them the paywall
     says Plus is coming soon), EMBER_FREE_PER_DAY (10), EMBER_PLUS_EMAILS (Plus for free, comma-separated, or * for everyone),
-    EMBER_UNLOCK_EMAILS (testers: every look unlocked, XP unchanged), EMBER_PRICE_LABEL ("$4.99 / month"), EMBER_TERMS_URL (your ÁSZF page; with a live Stripe key, Plus is only sold once it's set).
+    EMBER_UNLOCK_EMAILS (testers: every look unlocked, XP unchanged), EMBER_OWNER_EMAILS (who can open the owner page), EMBER_PRICE_LABEL ("$4.99 / month"), EMBER_TERMS_URL (your ÁSZF page; with a live Stripe key, Plus is only sold once it's set).
 Local (your PC):   python ember.py   (one Ember, yours, in ember_state/, no login)
 """
 import logging
@@ -69,7 +69,8 @@ def run_online():
                                     "supabase_anon_key": env["SUPABASE_ANON_KEY"]},
                      billing=billing, free_per_day=int(env.get("EMBER_FREE_PER_DAY", "10")),
                      plus_emails=env.get("EMBER_PLUS_EMAILS", "").split(","), push=push,
-                     unlock_emails=env.get("EMBER_UNLOCK_EMAILS", "").split(","))
+                     unlock_emails=env.get("EMBER_UNLOCK_EMAILS", "").split(","),
+                     owner_emails=env.get("EMBER_OWNER_EMAILS", "").split(","))
     plus = [e.strip() for e in env.get("EMBER_PLUS_EMAILS", "").split(",") if e.strip()]
     logging.getLogger("ember").info("mind: %s; invite list: %s; Plus for free: %s; payments: %s; notifications: %s",
                                     cfg.describe(), "everyone" if auth.everyone else f"{len(auth.allowed)} people",

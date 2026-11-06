@@ -9,6 +9,7 @@ Per user: the Ember's self (one JSON document), every conversation line (append
 only), counts per day (mind calls, the cost guard; messages, the free limit), and
 their plan (Ember Plus, as Stripe last reported it).
 """
+import datetime
 import json
 import os
 import shutil
@@ -142,6 +143,20 @@ class FileStore:
         except OSError:
             return []
 
+    # the owner page: everyone at once
+    def all_feedback(self, limit=100):
+        out = [dict(f, user_id=uid) for uid in self.all_uids() for f in self.feedback(uid)]
+        return sorted(out, key=lambda f: -f.get("t", 0))[:limit]
+
+    def usage_since(self, day):
+        return [{"user_id": uid, "day": d, **u} for uid in self.all_uids() for d, u in self._usage(uid).items() if d >= day]
+
+    def all_plans(self):
+        return {uid: p for uid in self.all_uids() for p in [self.get_plan(uid)] if p}
+
+    def emails(self):
+        return {}                                # no logins on this computer
+
     def export(self, uid):
         return {"ember": self.load_self(uid), "conversation": self.lines(uid), "usage": self._usage(uid),
                 "plan": self.get_plan(uid), "feedback": self.feedback(uid)}
@@ -154,6 +169,14 @@ class FileStore:
         for name in os.listdir(src):
             if name != "archive":
                 shutil.move(os.path.join(src, name), os.path.join(dest, name))
+
+
+def _iso_t(s):
+    """Supabase's timestamps (2026-11-06T21:47:01.123+00:00) as seconds since 1970; None if unreadable."""
+    try:
+        return datetime.datetime.fromisoformat(str(s).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
 
 
 # ---------------------------------------------------------------- Supabase
@@ -270,6 +293,42 @@ class SupabaseStore:
                                                                    order="id")) or []
         except StoreError:
             return []
+
+    # the owner page: everyone at once
+    def _pages(self, path, page=1000):
+        out = []
+        while True:
+            rows = self._req("GET", f"{path}&limit={page}&offset={len(out)}") or []
+            out += rows
+            if len(rows) < page:
+                return out
+
+    def all_feedback(self, limit=100):
+        try:
+            rows = self._req("GET", "/rest/v1/feedback" + self._q(select="user_id,email,kind,text,created_at",
+                                                                   order="id.desc", limit=str(limit))) or []
+        except StoreError:                       # no feedback table yet
+            return []
+        for r in rows:
+            r["t"] = _iso_t(r.pop("created_at", None))
+        return rows
+
+    def usage_since(self, day):
+        return self._pages("/rest/v1/usage" + self._q(select="user_id,day,calls,messages,tokens_in,tokens_out",
+                                                       day=f"gte.{day}", order="day"))
+
+    def all_plans(self):
+        return {r["user_id"]: r for r in self._pages("/rest/v1/plans" + self._q(select="user_id,status", order="user_id"))}
+
+    def emails(self):
+        """Every login's email, from Supabase's own list of users."""
+        out, page = {}, 1
+        while True:
+            got = (self._req("GET", f"/auth/v1/admin/users?page={page}&per_page=1000") or {}).get("users") or []
+            out.update({u["id"]: u.get("email") for u in got})
+            if len(got) < 1000:
+                return out
+            page += 1
 
     def export(self, uid):
         usage = self._req("GET", "/rest/v1/usage" + self._q(user_id=f"eq.{uid}",

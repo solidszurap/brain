@@ -25,7 +25,7 @@ def archive_old_life(state_dir=STATE_DIR, now=None):
     """The grid-world Ember's files move to ember_state/archive/<date>_grid_ember/. Never deleted."""
     if not os.path.isdir(state_dir):
         return None
-    keep = {"ember.json", "ember.json.bak", "conversation.jsonl", "usage.json", "archive"}
+    keep = {"ember.json", "ember.json.bak", "conversation.jsonl", "usage.json", "plan.json", "feedback.jsonl", "archive"}
     old = [f for f in os.listdir(state_dir) if f not in keep]
     if not old:
         return None

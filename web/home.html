@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ember: your companion who checks up on you</title>
+<meta name="description" content="Ember is a small companion that helps you find what you want, turns it into small daily steps, checks up on you, and remembers your story in your own words.">
+<meta name="theme-color" content="#1b120c">
+<meta property="og:title" content="Ember: your companion who checks up on you">
+<meta property="og:description" content="It helps you find what you want, gets you there step by step, and remembers your story.">
+<meta property="og:image" content="/icons/icon-512.png">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<style>
+:root {
+  --night: #1b120c; --char: #2a1d15; --char2: #34251b; --edge: #43322560;
+  --flame: #ff9a4d; --glow: #ffcf8a; --ash: #b49d88; --cream: #f6e9da; --btn: #ffa862;
+  --round: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --text: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html { background: var(--night); color-scheme: dark; }
+body { margin: 0; color: var(--cream); font: 17px/1.6 var(--text); -webkit-font-smoothing: antialiased;
+  /* the only light on the page is Ember's: a warm pool around it that fades as you read down */
+  background: radial-gradient(70rem 46rem at 50% 15rem, #ff8a3a2e, #ff8a3a0d 45%, transparent 70%) no-repeat, var(--night); }
+a { color: var(--glow); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--glow); outline-offset: 3px; border-radius: 10px; }
+
+/* the hero: Ember itself */
+.hero { text-align: center; padding: calc(40px + env(safe-area-inset-top)) 22px 64px; }
+.creature { width: 184px; height: 184px; margin: 0 auto 26px; display: block; background: none; border: 0; padding: 0; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; position: relative; }
+.creature::before { content: ""; position: absolute; inset: -60px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, #ffb36b55, #ff8a3a22 55%, transparent); animation: rise 1.6s ease-out both; }
+.creature svg { position: relative; width: 100%; height: 100%; overflow: visible; }
+.body { transform-origin: 50% 90%; transform-box: view-box; animation: breathe 4.2s ease-in-out 1.6s infinite; }
+.eyes { transform-origin: center; transform-box: fill-box; animation: wake 1.4s ease-out both, blink 5.6s 2.4s infinite; }
+.creature.hop .body { animation: hop .55s cubic-bezier(.3, 1.6, .5, 1); }
+.creature.hop .smile { d: path("M214 330 Q256 372 298 330"); }
+.smile { transition: d .3s; }
+@keyframes rise { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
+@keyframes wake { 0%, 35% { transform: scaleY(.08); } 55% { transform: scaleY(1); } 70% { transform: scaleY(.15); } 85%, 100% { transform: scaleY(1); } }
+@keyframes blink { 0%, 95%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+@keyframes breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.025, .985); } }
+@keyframes hop { 0% { transform: none; } 35% { transform: translateY(-26px) scale(.97, 1.04); } 70% { transform: translateY(2px) scale(1.04, .96); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .creature::before, .body, .eyes, .creature.hop .body { animation: none; } }
+
+h1 { font: 800 clamp(34px, 8.4vw, 58px)/1.04 var(--round); letter-spacing: -.025em; margin: 0 auto 18px; max-width: 13ch; text-wrap: balance; }
+.lede { color: var(--ash); font-size: 18.5px; max-width: 34em; margin: 0 auto 30px; text-wrap: pretty; }
+.go { display: inline-flex; align-items: center; gap: 11px; background: var(--btn); color: #2a1a0c; text-decoration: none;
+  font: 700 17px/1 var(--text); padding: 16px 26px; border-radius: 999px; box-shadow: 0 10px 30px #ff8a3a40; }
+.go svg { background: #fff; border-radius: 50%; padding: 4px; width: 26px; height: 26px; }
+.go:hover { background: #ffb57a; }
+.small { color: var(--ash); font-size: 14.5px; margin: 16px auto 0; max-width: 24em; text-wrap: balance; }
+
+/* the reading column */
+main { max-width: 38rem; margin: 0 auto; padding: 0 22px; }
+section { padding: 52px 0 8px; }
+h2 { font: 800 clamp(26px, 5.6vw, 34px)/1.15 var(--round); letter-spacing: -.015em; margin: 0 0 10px; }
+.intro { color: var(--ash); margin: 0 0 30px; }
+
+/* a week with Ember: three real moments, in order */
+.week { list-style: none; margin: 0; padding: 0; position: relative; }
+.week::before { content: ""; position: absolute; left: 7px; top: 10px; bottom: 26px; width: 2px;
+  background: linear-gradient(var(--flame), #ff9a4d00); opacity: .55; }
+.day { position: relative; padding: 0 0 34px 34px; }
+.day::before { content: ""; position: absolute; left: 0; top: 5px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--night); border: 3px solid var(--flame); }
+.when { font: 700 15px/1.3 var(--round); color: var(--glow); margin: 0 0 12px; }
+.when span { color: var(--ash); font: 400 14px var(--text); margin-left: 6px; }
+.msg { max-width: min(30em, 84%); padding: 10px 15px; border-radius: 20px; margin: 0 0 8px; width: fit-content; font-size: 16px; line-height: 1.5; }
+.msg.you { margin-left: auto; background: #4a2f1c; border-bottom-right-radius: 6px; }
+.msg.ember { background: var(--char); border: 1px solid var(--edge); border-bottom-left-radius: 6px; }
+.goal { display: inline-block; margin: 2px 0 8px; padding: 9px 14px; border-radius: 14px; border: 1px dashed #ff9a4d88; color: var(--glow); font-size: 15px; }
+.goal b { color: var(--cream); }
+.checks { display: flex; gap: 8px; flex-wrap: wrap; margin: 2px 0 10px; }
+.checks span { padding: 8px 15px; border-radius: 999px; background: var(--char); border: 1px solid var(--edge); font-size: 15px; color: var(--ash); }
+.checks .on { background: var(--btn); color: #2a1a0c; border-color: var(--btn); font-weight: 650; }
+.xp { display: inline-block; font: 700 14px var(--round); color: #2a1a0c; background: var(--glow); border-radius: 999px; padding: 3px 11px; margin-left: 4px; vertical-align: 1px; }
+
+/* what it's for: plain paragraphs, each led by the situation it's for */
+.for p { margin: 0 0 18px; }
+.for b { font-family: var(--round); font-weight: 750; color: var(--glow); }
+
+.price p { margin: 0 0 14px; }
+.price .last { color: var(--ash); }
+.end { text-align: center; padding: 56px 0 24px; }
+.end h2 { margin-bottom: 22px; }
+footer { text-align: center; color: var(--ash); font-size: 14.5px; padding: 28px 22px calc(36px + env(safe-area-inset-bottom)); }
+footer a { color: var(--ash); margin: 0 10px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <button class="creature" id="ember" aria-label="Ember. Tap to say hi.">
+    <svg viewBox="0 0 512 512" aria-hidden="true">
+      <defs>
+        <radialGradient id="fire" cx="42%" cy="34%" r="70%">
+          <stop offset="0" stop-color="#ffd896"/><stop offset=".45" stop-color="#ff9e55"/><stop offset="1" stop-color="#e2692a"/>
+        </radialGradient>
+      </defs>
+      <g class="body">
+        <path d="M256 70 C300 132 412 206 412 304 A156 156 0 0 1 100 304 C100 206 212 132 256 70 Z" fill="url(#fire)"/>
+        <circle cx="168" cy="330" r="22" fill="#ff7a5c" opacity=".45"/>
+        <circle cx="344" cy="330" r="22" fill="#ff7a5c" opacity=".45"/>
+        <g class="eyes">
+          <ellipse cx="196" cy="276" rx="30" ry="33" fill="#2a140a"/><ellipse cx="316" cy="276" rx="30" ry="33" fill="#2a140a"/>
+          <circle cx="205" cy="264" r="10" fill="#fff6e6"/><circle cx="325" cy="264" r="10" fill="#fff6e6"/>
+        </g>
+        <path class="smile" d="M220 334 Q256 356 292 334" fill="none" stroke="#2a140a" stroke-width="13" stroke-linecap="round"/>
+      </g>
+    </svg>
+  </button>
+  <h1>A small companion that checks up on you.</h1>
+  <p class="lede">Tell Ember what you want, or that you don't know yet. It helps you find it, turns it into small daily steps, and asks how they went. And it remembers your story, in your own words.</p>
+  <a class="go" href="/?login=google"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</a>
+  <p class="small">Free to start. No ads, and your words are never sold.</p>
+</header>
+
+<main>
+  <section aria-labelledby="weekTitle">
+    <h2 id="weekTitle">A week with Ember</h2>
+    <p class="intro">Here's how it goes when you tell it you want to start running.</p>
+    <ol class="week">
+      <li class="day">
+        <p class="when">Monday <span>you talk it through</span></p>
+        <p class="msg you">I want to start running, but I always quit after a week.</p>
+        <p class="msg ember">What usually makes you stop?</p>
+        <p class="msg you">I go too hard, it hurts, and then I skip a day and that's it.</p>
+        <p class="msg ember">Then let's start gentle. Six weeks, in three phases. This week: walk and run for 20 minutes, three times.</p>
+        <p class="goal">Your goal: <b>Run 5 km without stopping</b>, in 6 weeks</p>
+      </li>
+      <li class="day">
+        <p class="when">Wednesday, 18:00 <span>it checks up on you</span></p>
+        <p class="msg ember">Today's step: walk and run for 20 minutes. How did it go?</p>
+        <div class="checks" aria-label="Your answer: Partly"><span>Did it</span><span class="on">Partly</span><span>Not today</span></div>
+        <p class="msg you">Only 10 minutes. It started raining.</p>
+        <p class="msg ember">Ten minutes in the rain still counts. Same plan on Friday? <span class="xp">+6 XP</span></p>
+      </li>
+      <li class="day">
+        <p class="when">Sunday <span>it looks back with you</span></p>
+        <p class="msg ember">First phase done. You went out three times, and you said going slow made it fun for once. Next phase: 25 minutes, with 2-minute runs.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="for" aria-labelledby="forTitle">
+    <h2 id="forTitle">Made for when you're stuck</h2>
+    <p><b>When you don't know what you want.</b> Ember suggests small experiments based on what you've told it, so you find out by trying, not by thinking in circles.</p>
+    <p><b>When you know, but don't get there.</b> A goal becomes phases and one step a day. Ember checks in at the time you choose, and changes the plan with you when life gets in the way.</p>
+    <p><b>When you want someone who remembers.</b> Every memory keeps the exact words you said and the day you said them. You can read, correct or delete all of it.</p>
+    <p><b>When a little reward helps.</b> Ember grows as you make progress. Earn levels and choose how it looks.</p>
+  </section>
+
+  <section class="price" aria-labelledby="priceTitle">
+    <h2 id="priceTitle">What it costs</h2>
+    <p>Ember is free, with 10 messages a day. Daily checks, check-ups and look backs never count toward that.</p>
+    <p>Ember Plus removes the limit for $4.99 a month. Cancel anytime.</p>
+    <p class="last">No ads, ever, and your data is never sold. You can download everything, or delete it all in one tap. For ages 16 and up.</p>
+  </section>
+
+  <section class="end">
+    <h2>Say hello to Ember</h2>
+    <a class="go" href="/?login=google"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</a>
+  </section>
+</main>
+
+<footer>
+  <a href="/privacy">Privacy</a><a href="/">Open Ember</a>
+</footer>
+
+<script>
+// tap Ember: it hops and smiles (answers you; nothing moves on its own except breathing and blinking)
+const e = document.getElementById("ember");
+e.addEventListener("click", () => { e.classList.remove("hop"); void e.offsetWidth; e.classList.add("hop"); });
+e.addEventListener("animationend", ev => { if (ev.animationName === "hop") setTimeout(() => e.classList.remove("hop"), 500); });
+</script>
+</body>
+</html>

@@ -255,6 +255,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .lvline span { color: var(--dim); font-size: 13px; }
 .lvline i { grid-column: 1 / -1; display: block; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
 .lvline i b { display: block; height: 100%; background: var(--accent); }
+.whatis { color: var(--accent); font-size: 14px; }
 .fbkinds { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 10px; }
 #fbText { width: 100%; box-sizing: border-box; min-height: 130px; resize: vertical; background: var(--surface); color: var(--text);
   border: 1px solid var(--edge2); border-radius: 14px; padding: 10px 12px; font: inherit; font-size: 16px; }
@@ -293,6 +294,23 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .page header button { background: var(--raised); border: 1px solid var(--edge); color: var(--text); border-radius: 999px; padding: 7px 14px; font: inherit; cursor: pointer; }
 .page header h2 { margin: 0; font-size: 15px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); font-weight: 500; }
 .page .body { flex: 1; overflow-y: auto; padding: 14px 16px calc(24px + env(safe-area-inset-bottom)); width: min(720px, 100%); margin: 0 auto; box-sizing: border-box; }
+/* the owner page (⋯ → Owner): who uses Ember and whether they come back */
+.ostats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+@media (min-width: 560px) { .ostats { grid-template-columns: repeat(4, 1fr); } }
+.ostat { background: var(--raised); border: 1px solid var(--edge); border-radius: 18px; padding: 12px 14px; }
+.ostat b { display: block; font-size: 26px; }
+.ostat span { color: var(--dim); font-size: 13px; }
+.oline { color: var(--dim); font-size: 14px; line-height: 1.5; margin: 0; }
+.oline b { color: var(--text); }
+.ofb { border-top: 1px solid var(--edge); padding: 10px 0; }
+.ofb:first-of-type { border-top: 0; padding-top: 0; }
+.ofb small { color: var(--dim); font-size: 12.5px; display: block; margin-bottom: 3px; }
+.ofb p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.operson { border-top: 1px solid var(--edge); padding: 9px 0; font-size: 14px; }
+.operson:first-of-type { border-top: 0; padding-top: 0; }
+.operson b { overflow-wrap: anywhere; }
+.operson div { color: var(--dim); font-size: 13px; margin-top: 2px; }
+.otag { display: inline-block; font-size: 11.5px; padding: 1px 7px; border-radius: 999px; background: var(--surface); color: var(--accent); margin-left: 6px; }
 .gpk { color: var(--accent); font-size: 13px; }
 .gph1 { font-size: 22px; margin: 4px 0 4px; line-height: 1.25; }
 .gpdw { color: var(--ember2); margin-bottom: 4px; }
@@ -404,6 +422,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
       <button data-menu="look">Customize Ember</button>
       <button data-menu="install">Add Ember to your home screen</button>
       <button data-menu="feedback">Send feedback</button>
+      <button data-menu="owner" id="ownerItem" style="display:none">Owner: who uses Ember</button>
       <button data-menu="notify" id="notifyItem" style="display:none">Turn on notifications</button>
       <div class="checkups" id="nameRow"><span>Its name</span>
         <div class="row">
@@ -477,6 +496,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
   <p>It helps you find what you want, gets you there step by step, and remembers your story.</p>
   <button class="gbtn" id="googleBtn"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>
   <small>By continuing you agree that Ember keeps what you tell it, as described in the <a href="/privacy">privacy page</a>. 16+.</small>
+  <a class="whatis" href="/home">What is Ember?</a>
 </div>
 <div class="cover" id="notInvited">
   <img src="/icons/icon-192.png" alt="">
@@ -518,6 +538,10 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
   <div class="body" id="gpBody"></div>
 </section>
 <div id="xpToast" role="status" aria-live="polite"></div>
+<section class="page" id="ownerPage" aria-label="Owner">
+  <header><button id="ownerBack">← Ember</button><h2>Who uses Ember</h2><button id="ownerReload">Refresh</button></header>
+  <div class="body" id="ownerBody"></div>
+</section>
 <aside class="drawer left" id="chatsDrawer">
   <header><h2>Your chats</h2><button data-close>×</button></header>
   <div class="body"><button class="btn newchat" id="newChat">+ New chat</button><div id="chatlist"></div></div>
@@ -563,7 +587,14 @@ async function boot() {
     const {data} = await sb.auth.getSession();
     setSession(data.session);
     sb.auth.onAuthStateChange((_e, session) => setSession(session));
-    if (!token) { showCover("login"); return; }
+    if (!token) {
+      showCover("login");
+      if (new URLSearchParams(location.search).get("login") === "google") {   // from the front page: straight to Google
+        history.replaceState(null, "", "/");
+        $("#googleBtn").click();
+      }
+      return;
+    }
   } else {
     $("#logoutBtn").style.display = "none";
     $("#whoami").textContent = "On this computer";
@@ -628,6 +659,8 @@ document.addEventListener("click", async e => {
     openLooks();
   } else if (what === "feedback") {
     openFeedback();
+  } else if (what === "owner") {
+    openOwner();
   } else if (what === "install") {
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
     $("#installSteps").innerHTML = ios
@@ -723,6 +756,47 @@ $("#lookBody").addEventListener("click", async e => {
     if (part === "sparks") burst(14);                  // show off the new sparks
   }
 });
+// the owner page: counts only (never what anyone said), the feedback people sent, and the cost
+function ago(t) {
+  if (!t) return "never";
+  const m = Math.max(0, (Date.now() / 1000 - t) / 60);
+  return m < 2 ? "just now" : m < 60 ? `${Math.round(m)} min ago` : m < 48 * 60 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`;
+}
+const dateOf = t => t ? new Date(t * 1000).toLocaleDateString(undefined, {month: "short", day: "numeric"}) : "?";
+const pct = (n, of) => of ? ` (${Math.round(100 * n / of)}%)` : "";
+async function openOwner() {
+  $("#menu").classList.remove("on");
+  closeDrawers();
+  $("#ownerPage").classList.add("on");
+  $("#ownerBody").innerHTML = `<p class="oline">Counting…</p>`;
+  const r = await api("/owner/data").catch(() => null);
+  if (!r || !r.ok) { $("#ownerBody").innerHTML = `<p class="oline">Couldn't load it right now. Try Refresh.</p>`; return; }
+  const O = await r.json(), R = O.retention, C = O.cost;
+  const kinds = {idea: "💡 Idea", problem: "🐞 Something's wrong", other: "💬 Other"};
+  const plusTag = {everyone: "", gift: "Plus (gift)", paying: "Plus (paying)"};
+  let h = `<div class="ostats">
+      <div class="ostat"><b>${O.people}</b><span>people</span></div>
+      <div class="ostat"><b>${O.today}</b><span>active today</span></div>
+      <div class="ostat"><b>${O.week}</b><span>active this week</span></div>
+      <div class="ostat"><b>${O.new_week}</b><span>new this week</span></div></div>`;
+  h += `<div class="gpcard"><h3>Do they come back?</h3>` + (R.joined_before
+    ? `<p class="oline">Of the <b>${R.joined_before}</b> who started over a week ago: <b>${R.back_day2}</b>${pct(R.back_day2, R.joined_before)} came back on another day, and <b>${R.back_week2}</b>${pct(R.back_week2, R.joined_before)} were still coming after their first week.</p>`
+    : `<p class="oline">Nobody started over a week ago yet, so it's too early to tell.</p>`) + `</div>`;
+  h += `<div class="gpcard"><h3>Cost <small>estimated, Claude Haiku</small></h3>
+    <p class="oline">Today: <b>$${C.today.usd.toFixed(2)}</b> · ${C.today.calls} replies<br>Last 30 days: <b>$${C.month.usd.toFixed(2)}</b> · ${C.month.calls} replies</p></div>`;
+  h += `<div class="gpcard"><h3>Feedback <small>${O.feedback.length ? "newest first" : ""}</small></h3>` + (O.feedback.length
+    ? O.feedback.map(f => `<div class="ofb"><small>${kinds[f.kind] || esc(f.kind)} · ${esc(f.email || "someone")} · ${esc(ago(f.t))}</small><p>${esc(f.text)}</p></div>`).join("")
+    : `<p class="oline">None yet. People send it from ⋯ → Send feedback.</p>`) + `</div>`;
+  h += `<div class="gpcard"><h3>People <small>last active first</small></h3>` + O.list.map(p =>
+    `<div class="operson"><b>${esc(p.email || "(no email)")}</b>${plusTag[p.plus] ? `<span class="otag">${plusTag[p.plus]}</span>` : ""}
+      <div>Started ${esc(dateOf(p.joined))} · last ${esc(ago(p.last))} · ${p.days} day${p.days === 1 ? "" : "s"} · ${p.said} messages</div>
+      <div>Level ${p.level} · ${p.goals ? `${p.goals} goal${p.goals > 1 ? "s" : ""}, ${p.streak}-day streak` : "no goal"} · ${p.memories} ${p.memories === 1 ? "memory" : "memories"}${p.notify ? " · notifications on" : ""}</div></div>`).join("") + `</div>`;
+  h += `<p class="oline" style="margin-top:12px">Numbers only: what people say to Ember stays private. Updated ${esc(ago(O.at))}.</p>`;
+  $("#ownerBody").innerHTML = h;
+}
+$("#ownerBack").onclick = () => $("#ownerPage").classList.remove("on");
+$("#ownerReload").onclick = openOwner;
+
 // feedback: an idea, a problem or anything else, sent to the feedback table with their email
 const FB_HINT = {idea: "What would make Ember better for you?", problem: "What went wrong, and what were you doing when it happened?",
                  other: "Anything you'd like to tell us."};
@@ -833,6 +907,7 @@ function fmtDay(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c])); }
 
 function render() {
+  $("#ownerItem").style.display = S.owner ? "" : "none";
   renderCheckups();
   renderLevel();
   $("#note").innerHTML = S.problem

@@ -146,7 +146,7 @@ check("no login: refused", call(base, "/state")[0] == 401)
 check("not on the invite list: refused", call(base, "/state", "tok-x")[0] == 403)
 check("a POST without Ember's header: refused", call(base, "/talk", "tok-a", {"text": "hi"}, header=False)[0] == 403)
 check("the window, manifest and service worker are served",
-      all(urllib.request.urlopen(base + p).status == 200 for p in ("/", "/manifest.webmanifest", "/sw.js", "/privacy")))
+      all(urllib.request.urlopen(base + p).status == 200 for p in ("/", "/home", "/manifest.webmanifest", "/sw.js", "/privacy")))
 check("config says online", call(base, "/config")[1]["mode"] == "online")
 
 print("Each person has their own Ember")
@@ -448,6 +448,8 @@ class Fake(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path, q = self._parse()
+        if path == "/auth/v1/admin/users":
+            return self._send(200, {"users": [{"id": "u1", "email": "a@x.hu"}]})
         if path == "/auth/v1/user":
             tok = self.headers.get("Authorization", "")[7:]
             return self._send(200, {"id": "sb-1", "email": "Me@X.hu"}) if tok == "good" else self._send(401, {})
@@ -548,7 +550,7 @@ check("greetings are free", (call(base4, "/state?v=1", "tok-b") and True))
 check("a comped tester (Plus by email) has no limit", plan4("tok-a")["plus"] and plan4("tok-a")["free_left"] is None)
 base5, srv5 = serve(create_app(FileStore(os.path.join(tmp, "users5")), FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock, retry_delay=0.01,
                                retry_every=0.3, billing=billing, free_per_day=2, plus_emails=("*",),
-                               unlock_emails=("b@x.hu",)))
+                               unlock_emails=("b@x.hu",), owner_emails=("A@x.hu ",)))
 p5 = call(base5, "/state", "tok-b")[1]["plan"]
 check("Plus for everyone (EMBER_PLUS_EMAILS=*): no limit, nothing to buy or manage", p5["plus"] and p5["free_left"] is None
       and not p5["manage"] and call(base5, "/talk", "tok-b", {"text": "past the limit"})[0] == 200, str(p5))
@@ -558,6 +560,26 @@ check("a tester (EMBER_UNLOCK_EMAILS) can wear the highest look at level 1, with
       and call(base5, "/state", "tok-b")[1]["look"]["color"] == "aurora" and lk("tok-b")["level"]["level"] == 1)
 check("...anyone else can't", not lk("tok-a")["all_unlocked"]
       and not call(base5, "/look", "tok-a", {"part": "color", "value": "aurora"})[1]["ok"])
+print("The owner page")
+call(base5, "/feedback", "tok-b", {"kind": "problem", "text": "the button is stuck"})
+T[0] += 5
+call(base5, "/feedback", "tok-a", {"kind": "idea", "text": "a weekly summary"})
+T[0] -= 5
+check("only the owner (EMBER_OWNER_EMAILS, case and spaces ignored) is told about it",
+      call(base5, "/state", "tok-a")[1]["owner"] and not call(base5, "/state", "tok-b")[1]["owner"])
+check("anyone else gets 404", call(base5, "/owner/data", "tok-b")[0] == 404)
+check("...and without a login, 401", call(base5, "/owner/data")[0] == 401)
+status, own = call(base5, "/owner/data", "tok-a")
+pb = next((p for p in own["list"] if p["email"] == "b@x.hu"), {}) if own else {}
+check("the owner sees how many people, and who was here today", status == 200 and own["people"] == 2 and own["today"] >= 1
+      and own["week"] >= 1 and own["new_week"] == 2, str(own and {k: own[k] for k in ("people", "today", "week", "new_week")}))
+check("...each person: email, messages, days, level, Plus", pb.get("said") == 1 and pb.get("days") == 1
+      and pb.get("level") >= 1 and pb.get("plus") == "everyone", str(pb))
+check("...whether they come back (nobody is a week old yet)", own["retention"] == {"joined_before": 0, "back_day2": 0, "back_week2": 0})
+check("...feedback with the email, newest first", [f["text"] for f in own["feedback"]] == ["a weekly summary", "the button is stuck"]
+      and own["feedback"][1]["email"] == "b@x.hu" and own["feedback"][1]["kind"] == "problem")
+check("...and the cost", own["cost"]["today"]["calls"] >= 1 and own["cost"]["month"]["usd"] >= 0)
+check("...but never what anyone said to Ember", "past the limit" not in json.dumps(own) and "I heard" not in json.dumps(own))
 srv5.should_exit = True
 T[0] += 86400
 check("the next day, free messages are back", plan4()["free_left"] == 2)
@@ -656,6 +678,10 @@ check("free messages are counted per day", sb.messages_today("u1", "2026-11-03")
 sb.set_plan("u1", {"status": "active", "customer": "cus_1", "subscription": "sub_1"})
 sb.set_plan("u1", {"status": "canceled", "customer": "cus_1", "subscription": "sub_1"})
 check("the plan is one row, updated", sb.get_plan("u1")["status"] == "canceled" and len(Fake.tables["plans"]) == 1)
+check("the owner page: every plan, every email, the usage since a day",
+      sb.all_plans() == {"u1": {"user_id": "u1", "status": "canceled"}} and sb.emails() == {"u1": "a@x.hu"}
+      and [r["calls"] for r in sb.usage_since("2026-11-01")] == [2])
+check("...and no feedback table yet is just no feedback", sb.all_feedback() == [])
 check("export has everything", sb.export("u1")["ember"] == {"memories": [1, 2]} and len(sb.export("u1")["conversation"]) == 2)
 check("without a feedback table yet, the export still works", sb.export("u1")["feedback"] == [])
 try:

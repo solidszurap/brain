@@ -36,6 +36,8 @@ MAX_BODY = 16384
 FEEDBACK_KINDS = ("idea", "problem", "other")
 FEEDBACK_MAX = 2000
 FEEDBACK_PER_HOUR = 10
+OWNER_FOR = 60.0             # the owner page's numbers are worked out at most once a minute
+PRICE_IN, PRICE_OUT = 0.10 / 1e6, 0.50 / 1e6   # $ per token, Claude Haiku 5.5 (the owner page's cost estimate)
 UNREACHABLE = "My mind can't be reached right now. I'll answer as soon as it's back."
 FAILED = "Something went wrong when I tried to think about that, so I couldn't answer it. Could you say it another way?"
 CAPPED = ("I've reached today's limit for thinking (it keeps Ember affordable). "
@@ -227,11 +229,17 @@ class MindWorker:
 
 def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=150,
                retry_delay=10.0, retry_every=60.0, public_config=None, web_dir=WEB,
-               billing=None, free_per_day=10, plus_emails=(), checkup_every=300.0, push=None, unlock_emails=()):
+               billing=None, free_per_day=10, plus_emails=(), checkup_every=300.0, push=None, unlock_emails=(),
+               owner_emails=()):
     users = Users(store, clock)
     plus_emails = {e.strip().lower() for e in plus_emails if e.strip()}
     plus_everyone = "*" in plus_emails             # Plus for everyone, for now (Szilard, 2026-11-06)
     unlock_emails = {e.strip().lower() for e in unlock_emails if e.strip()}
+
+    owner_emails = {e.strip().lower() for e in owner_emails if e.strip()}
+
+    def is_owner(u):                                # the owner page: Szilard (EMBER_OWNER_EMAILS); locally, you
+        return auth.mode == "local" or bool(u.email and u.email in owner_emails)
 
     def all_unlocked(u):                            # testers: every look, without changing the XP (Szilard, 2026-11-06)
         return bool(u.email and u.email in unlock_emails)
@@ -366,6 +374,10 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
     def index():
         return page("index.html", "text/html; charset=utf-8")
 
+    @app.get("/home")
+    def home():                                     # the public front page (also Google Branding's home page)
+        return page("home.html", "text/html; charset=utf-8")
+
     @app.get("/privacy")
     def privacy():
         return page("privacy.html", "text/html; charset=utf-8")
@@ -417,6 +429,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
                      "price": billing.price_label if billing else None,
                      "payments": bool(billing and billing.selling),
                      "manage": bool(billing and billing.enabled and plan and plan.get("customer"))}
+        s["owner"] = is_owner(u)
         return s
 
     @app.get("/memory")
@@ -647,6 +660,63 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
             u.feedback_sent = sent + [now]
         log.info("feedback from %s (%s)", u.uid, kind)       # never what they wrote
         return {"ok": True}
+
+    # ------------------------------------------------------------ the owner page
+    owner_cache = {}
+
+    def owner_numbers(now):
+        """Who uses Ember and whether they come back: counts only, never what anyone said or wants."""
+        emails = store.emails()
+        plans = store.all_plans()
+        people = []
+        for uid in store.all_uids():
+            u = users.cache.get(uid)
+            if u:
+                with u.lock:
+                    v = u.ember.owner_view(now)
+            else:
+                d = store.load_self(uid)
+                if not d:
+                    continue
+                v = Ember.from_dict(d).owner_view(now)
+            email = emails.get(uid) or (u.email if u else None)
+            plan = plans.get(uid) or {}
+            v.update(email=email, plus="everyone" if plus_everyone else "gift" if email and email.lower() in plus_emails
+                     else "paying" if plan.get("status") in PLUS_STATUSES else "")
+            people.append(v)
+        people.sort(key=lambda p: -(p["last"] or p["joined"] or 0))
+        old = [p for p in people if p["joined"] <= now - 7 * 86400]
+        day0, day29 = today(now), today(now - 29 * 86400)
+        rows = store.usage_since(day29)
+
+        def cost(rs):
+            t = {k: sum(r.get(k) or 0 for r in rs) for k in ("calls", "messages", "tokens_in", "tokens_out")}
+            t["usd"] = round(t["tokens_in"] * PRICE_IN + t["tokens_out"] * PRICE_OUT, 4)
+            return t
+        feedback = [{"t": f.get("t"), "kind": f.get("kind"), "text": f.get("text"),
+                     "email": f.get("email") or emails.get(f.get("user_id"))} for f in store.all_feedback(50)]
+        return {"at": now, "people": len(people), "today": sum(p["today"] for p in people),
+                "week": sum(1 for p in people if p["last"] and p["last"] >= now - 7 * 86400),
+                "new_week": sum(1 for p in people if p["joined"] >= now - 7 * 86400),
+                "retention": {"joined_before": len(old), "back_day2": sum(p["back_day2"] for p in old),
+                              "back_week2": sum(p["back_week2"] for p in old)},
+                "cost": {"today": cost([r for r in rows if str(r["day"]) == day0]), "month": cost(rows)},
+                "list": people, "feedback": feedback}
+
+    @app.get("/owner/data")
+    def owner_data(request: Request):
+        u = who(request)
+        if not is_owner(u):
+            raise HTTPException(404, "not found")
+        now = clock()
+        if not owner_cache or now - owner_cache["at"] > OWNER_FOR:
+            try:
+                owner_cache.clear()
+                owner_cache.update(owner_numbers(now))
+            except StoreError as e:
+                log.error("owner page failed: %s", e)
+                raise HTTPException(503, "couldn't read the database right now; try again") from None
+        return owner_cache
 
     # ------------------------------------------------------------ your data
     @app.get("/me/export")

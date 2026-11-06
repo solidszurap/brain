@@ -328,6 +328,8 @@ class Ember:
         self.last_regular = 0.0      # when it last handed out a regular check-up
         self.tz = None               # your clock's offset from UTC in minutes, as your window last said (None: UTC)
         self.devices = []            # phones and browsers that get its check-ups as notifications {endpoint, keys, added}
+        self.you_days = []           # the days (_day) you wrote or checked in, for the owner page's "came back" (counts only)
+        self.you_said = 0            # how many messages you've written, ever
 
     # ------------------------------------------------------------- saving
     def to_dict(self):
@@ -357,7 +359,28 @@ class Ember:
         if "missing" not in d:                                 # saved when "connection" meant missing you
             e.missing = d.get("connection", 0.3)
             e._backfill_bond()
+        if "you_days" not in d:                                # saved before the owner page: from the talk it kept
+            mine = [l["t"] for l in e.talk if l["who"] == "you"]
+            e.you_days = sorted({e._day(t) for t in mine})
+            e.you_said = len(mine)
         return e
+
+    def _you_came(self, now):
+        """You were here and did something (wrote, or checked in on a goal): this day counts."""
+        d = self._day(now)
+        if not self.you_days or self.you_days[-1] != d:
+            self.you_days = (self.you_days + [d])[-400:]
+
+    def owner_view(self, now):
+        """Numbers about this person for the owner page: never their words, their goals' names or what it remembers."""
+        first = self._day(self.born)
+        active = [x for x in self.experiments if x["status"] == "active" and kind_of(x) == "goal"]
+        return {"joined": self.born, "last": self.last_you_t, "days": len(self.you_days), "said": self.you_said,
+                "today": bool(self.you_days) and self.you_days[-1] == self._day(now),
+                "back_day2": any(d > first for d in self.you_days), "back_week2": any(d >= first + 7 for d in self.you_days),
+                "level": self.level_info()["level"], "goals": len(active),
+                "streak": max([self.streak(x, now) for x in active] or [0]),
+                "memories": len(self.memories), "notify": bool(self.devices)}
 
     def _backfill_bond(self):
         """How close you've become, from your history: the days you talked, the messages, what it learned."""
@@ -686,6 +709,8 @@ class Ember:
         before = self.last_line(c["id"])
         self._say(now, "you", text, chat=c["id"])
         self.last_you_t = now
+        self.you_said += 1
+        self._you_came(now)
         self.missing *= 0.85
         self.bump = min(1.0, self.bump + 0.1)
         self._talk_xp(now)
@@ -1425,6 +1450,7 @@ class Ember:
             x["xp_day"] = day
             self.closer(BOND_CHECK)
             self.last_you_t = now
+            self._you_came(now)
             self.gain("today's check", XP["check_" + how], now)
         self.update(now, present=True)
         said = f"[today: {CHECKS[how]}" + (f" · {step['text']}" if step else "") + "]" + (f" {words}" if words else "")
