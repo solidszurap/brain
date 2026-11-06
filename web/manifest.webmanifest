@@ -1,7 +1,7 @@
 {
   "name": "Ember",
   "short_name": "Ember",
-  "description": "Your companion who grows with you. It helps you find what you want, gets you there step by step, and checks in on you.",
+  "description": "Your companion who checks up on you and grows with you. It helps you find what you want and gets you there step by step.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

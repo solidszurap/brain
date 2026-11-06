@@ -1,6 +1,6 @@
 # Ember
 
-**Your companion who grows with you.**
+**Your companion who checks up on you and grows with you.**
 
 A small being with a face that helps you get what you want. If you don't know yet what to work towards, it helps you find out (experiments); when you know what you want, it helps you get there (goals). It works alongside you, and over time becomes someone who knows your story. It is a web app: you open it on your phone, log in with Google, and add it to your home screen, where it opens like an app.
 
