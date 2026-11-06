@@ -49,6 +49,7 @@ A small being with a face that helps you get what you want. If you don't know ye
 - **Many people at once** (2026-11-06): Ember's mind answers up to 4 people at the same time (`EMBER_MIND_THREADS`), while each person's messages are still answered in order. An Ember nobody has used for an hour is saved and leaves the server's memory; it loads again the moment it's needed.
 - **Owner page:** the Ember tab → "Who uses Ember", only for `EMBER_OWNER_EMAILS`: how many people, who's active, whether they come back after a day and after a week, the cost, the feedback, and one line per person. Counts only, never what anyone said.
 - **Feedback:** the Ember tab → Send feedback (an idea, something's wrong, or something else) goes to the `feedback` table with their email, level and Plus; at most 10 an hour per person. It's in their export, and deleted with their Ember.
+- **Terms:** `/terms` ([web/terms.html](web/terms.html)): the terms and conditions, with Ember Plus, cancelling, the 14-day withdrawal right, Stripe and feedback.
 - **Your data:** the Ember tab has Privacy ([web/privacy.html](web/privacy.html)), "Download my data" (everything, as JSON), and "Delete my Ember", which deletes everything and the account, for good. Logs hold ids and errors only, never what anyone said.
 
 ## Run it on your own computer

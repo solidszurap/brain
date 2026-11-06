@@ -65,6 +65,7 @@ class User:
         self.lock = threading.RLock()
         self.seen_at = 0.0           # last poll from a visible window
         self.used_at = 0.0           # last request or thought (an Ember idle for IDLE_FOR leaves memory)
+        self.uses = 0                # counts every use, so eviction can tell it was used while it was saving
         self.saved_at = 0.0
         self.jobs = 0                # thoughts queued or in progress for this person
         self.thinking_in = None      # the chat its latest thought will answer in
@@ -90,6 +91,7 @@ class Users:
                 u.email = email
             if touch:
                 u.used_at = self.clock()
+                u.uses += 1
             return u
 
     def evict(self, idle=None):
@@ -98,13 +100,12 @@ class Users:
         idle = IDLE_FOR if idle is None else idle
         now, gone = self.clock(), 0
         with self.lock:
-            idle_ones = [u for u in self.cache.values() if u.jobs == 0 and now - u.used_at >= idle]
-        for u in idle_ones:
+            idle_ones = [(u, u.uses) for u in self.cache.values() if u.jobs == 0 and now - u.used_at >= idle]
+        for u, uses in idle_ones:
             with u.lock:                            # saved first, while it's still the one in memory
-                used = u.used_at
                 self.save(u)
             with self.lock:                         # then it leaves, unless someone used it meanwhile
-                if self.cache.get(u.uid) is u and u.used_at == used and u.jobs == 0:
+                if self.cache.get(u.uid) is u and u.uses == uses and u.jobs == 0:
                     del self.cache[u.uid]
                     gone += 1
         return gone
@@ -412,6 +413,10 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
     @app.get("/home")
     def home():                                     # the public front page (also Google Branding's home page)
         return page("home.html", "text/html; charset=utf-8")
+
+    @app.get("/terms")
+    def terms():                                    # terms and conditions (TermsFeed's text plus Plus, cancelling, withdrawal)
+        return page("terms.html", "text/html; charset=utf-8")
 
     @app.get("/privacy")
     def privacy():

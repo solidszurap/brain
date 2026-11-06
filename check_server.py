@@ -146,7 +146,7 @@ check("no login: refused", call(base, "/state")[0] == 401)
 check("not on the invite list: refused", call(base, "/state", "tok-x")[0] == 403)
 check("a POST without Ember's header: refused", call(base, "/talk", "tok-a", {"text": "hi"}, header=False)[0] == 403)
 check("the window, manifest and service worker are served",
-      all(urllib.request.urlopen(base + p).status == 200 for p in ("/", "/home", "/manifest.webmanifest", "/sw.js", "/privacy")))
+      all(urllib.request.urlopen(base + p).status == 200 for p in ("/", "/home", "/manifest.webmanifest", "/sw.js", "/privacy", "/terms")))
 check("config says online", call(base, "/config")[1]["mode"] == "online")
 
 print("Each person has their own Ember")

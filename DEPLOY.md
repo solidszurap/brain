@@ -92,13 +92,13 @@ Taking real money needs a registered business (for example egyéni vállalkozó)
       - the 14-day withdrawal right for digital services;
       - that Stripe processes the payments.
 
-      Put it online. Or send us the text, and we put it at `/terms` exactly as it is.
+      Done for the terms (2026-11-07): they're at `https://ember-dztb.onrender.com/terms` (TermsFeed's text plus Ember Plus, cancelling, the 14-day withdrawal right, Stripe and feedback). Have the ÁSZF part checked by a lawyer or accountant before going live.
    3. **Stripe → activate your account:** business details, bank account and identity check.
    4. **Switch to live mode** and redo steps 2–5 there: the product Ember Plus at $4.99 monthly; the secret key; the webhook to `/stripe/webhook` with the same 4 events; the customer portal. Live mode has its own product, price, keys and webhook secret.
    5. **Stripe → Settings → Public details:** your terms URL and a support email. **Settings → Emails:** turn on receipts for successful payments.
    6. **Render → Environment:**
       - paste the live `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID` and `STRIPE_WEBHOOK_SECRET` (never into a chat);
-      - set `EMBER_TERMS_URL` to your ÁSZF page;
+      - set `EMBER_TERMS_URL` to `https://ember-dztb.onrender.com/terms`;
       - set `EMBER_FREE_PER_DAY` to `10`, or delete it (10 is the default).
 
       Save, and Render restarts. Its log should say "payments: on (live)".
