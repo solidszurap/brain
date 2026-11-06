@@ -10,6 +10,7 @@ import json
 import os
 import re
 import urllib.error
+import threading
 import urllib.request
 
 # Gemini's free tier (2026-10): gemini-3.5-flash-lite allows about 500 requests a day.
@@ -112,6 +113,14 @@ def call_llm(cfg, system, user, max_tokens=1500, json_mode=False):
 
 
 _claude = {}
+_here = threading.local()       # each mind thread's own last usage (several think at once on the server)
+
+
+def take_usage(cfg):
+    """(input tokens, output tokens) of this thread's last Claude call, then forgets it."""
+    u = getattr(_here, "usage", None)
+    _here.usage = None
+    return u or getattr(cfg, "last_usage", None)
 
 
 def _call_claude(cfg, system, user):
@@ -129,7 +138,7 @@ def _call_claude(cfg, system, user):
         raise LLMError(f"Claude is busy or unreachable: {type(e).__name__}", retryable=True) from None
     except anthropic.APIStatusError as e:
         raise LLMError(f"Claude API error {e.status_code}", retryable=e.status_code >= 500) from None
-    cfg.last_usage = (r.usage.input_tokens, r.usage.output_tokens)
+    cfg.last_usage = _here.usage = (r.usage.input_tokens, r.usage.output_tokens)
     if r.stop_reason == "refusal":
         raise LLMError("Claude declined to answer this one", retryable=False)
     return "".join(b.text for b in r.content if b.type == "text")

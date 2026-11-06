@@ -14,6 +14,7 @@ import os
 import queue
 import threading
 import time
+import zlib
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 
@@ -31,6 +32,7 @@ log = logging.getLogger("ember")
 WEB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web")
 PRESENT_FOR = 3.0            # you're here if your visible window asked within this many seconds
 SAVE_EVERY = 60.0
+IDLE_FOR = 3600.0            # an Ember nobody has used for an hour leaves memory (saved; it loads again when needed)
 MAX_TEXT = 2000
 MAX_BODY = 16384
 FEEDBACK_KINDS = ("idea", "problem", "other")
@@ -62,6 +64,7 @@ class User:
         self.plan = False            # Ember Plus as Stripe last reported it (False: not loaded yet)
         self.lock = threading.RLock()
         self.seen_at = 0.0           # last poll from a visible window
+        self.used_at = 0.0           # last request or thought (an Ember idle for IDLE_FOR leaves memory)
         self.saved_at = 0.0
         self.jobs = 0                # thoughts queued or in progress for this person
         self.thinking_in = None      # the chat its latest thought will answer in
@@ -73,7 +76,8 @@ class Users:
         self.store, self.clock = store, clock
         self.cache, self.lock = {}, threading.Lock()
 
-    def get(self, uid, email=None):
+    def get(self, uid, email=None, touch=True):
+        """touch=False: a look from the background (check-ups, a restart), which doesn't keep it in memory."""
         with self.lock:
             u = self.cache.get(uid)
             if u is None:
@@ -84,7 +88,26 @@ class Users:
                     self.save(u)
             if email:
                 u.email = email
+            if touch:
+                u.used_at = self.clock()
             return u
+
+    def evict(self, idle=None):
+        """Embers nobody has used for `idle` seconds leave memory (saved first), so memory stays flat as
+        people join. One that's thinking, or was used since, stays. Returns how many left."""
+        idle = IDLE_FOR if idle is None else idle
+        now, gone = self.clock(), 0
+        with self.lock:
+            idle_ones = [u for u in self.cache.values() if u.jobs == 0 and now - u.used_at >= idle]
+        for u in idle_ones:
+            with u.lock:                            # saved first, while it's still the one in memory
+                used = u.used_at
+                self.save(u)
+            with self.lock:                         # then it leaves, unless someone used it meanwhile
+                if self.cache.get(u.uid) is u and u.used_at == used and u.jobs == 0:
+                    del self.cache[u.uid]
+                    gone += 1
+        return gone
 
     def plan(self, u):
         if u.plan is False:
@@ -111,30 +134,36 @@ class Users:
 
 
 class MindWorker:
-    """One thought at a time. If the mind is busy or unreachable, Ember says so once and
-    the thought is tried again every `retry_every` seconds until it works."""
+    """Several thoughts at once (`threads`), but one person's thoughts always in order on the same thread,
+    so an answer is never thought up from a self that's about to change. If the mind is busy or unreachable,
+    Ember says so once and the thought is tried again every `retry_every` seconds until it works."""
 
-    def __init__(self, users, cfg, call, clock, daily_cap, retry_delay=10.0, retry_every=60.0, after=None):
+    def __init__(self, users, cfg, call, clock, daily_cap, retry_delay=10.0, retry_every=60.0, after=None, threads=4):
         self.users, self.cfg, self.call, self.clock, self.after = users, cfg, call, clock, after
         self.daily_cap, self.retry_delay, self.retry_every = daily_cap, retry_delay, retry_every
-        self.q, self.pending, self.plock = queue.Queue(), [], threading.Lock()
+        self.qs = [queue.Queue() for _ in range(max(1, int(threads)))]
+        self.pending, self.plock = [], threading.Lock()
 
     def start(self):
-        threading.Thread(target=self._work, daemon=True).start()
+        for q in self.qs:
+            threading.Thread(target=self._work, args=(q,), daemon=True).start()
         threading.Thread(target=self._retry, daemon=True).start()
+
+    def queue_of(self, uid):
+        return self.qs[zlib.crc32(uid.encode()) % len(self.qs)]
 
     def put(self, uid, event):
         u = self.users.get(uid)
         with u.lock:
             u.jobs += 1
             u.thinking_in = u.ember.event_chat(event)
-        self.q.put((uid, event))
+        self.queue_of(uid).put((uid, event))
 
     def requeue_unanswered(self):
         """After a restart: anyone whose last line in a chat is theirs and unanswered gets an answer."""
         for uid in self.users.store.all_uids():
             try:
-                e = self.users.get(uid).ember
+                e = self.users.get(uid, touch=False).ember
             except StoreError as err:
                 log.error("couldn't load %s: %s", uid, err)
                 continue
@@ -143,9 +172,9 @@ class MindWorker:
                 if last and last["who"] == "you":
                     self.put(uid, {"type": "talk", "text": last["text"], "chat": c["id"]})
 
-    def _work(self):
+    def _work(self, q):
         while True:
-            uid, event = self.q.get()
+            uid, event = q.get()
             u = self.users.get(uid)
             try:
                 self._think(u, event)
@@ -215,7 +244,7 @@ class MindWorker:
                 return
             took = time.time() - t0              # how long its mind took (ids and times only, never words)
             (log.warning if took > 20 else log.info)("mind answered %s (%s) in %.1fs", u.uid, event["type"], took)
-            usage = getattr(self.cfg, "last_usage", None) or (0, 0)
+            usage = llm.take_usage(self.cfg) or (0, 0)
             try:
                 store.add_call(u.uid, day, *usage)
             except StoreError as e:
@@ -230,7 +259,7 @@ class MindWorker:
 def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=150,
                retry_delay=10.0, retry_every=60.0, public_config=None, web_dir=WEB,
                billing=None, free_per_day=10, plus_emails=(), checkup_every=300.0, push=None, unlock_emails=(),
-               owner_emails=()):
+               owner_emails=(), mind_threads=4):
     users = Users(store, clock)
     plus_emails = {e.strip().lower() for e in plus_emails if e.strip()}
     plus_everyone = "*" in plus_emails             # Plus for everyone, for now (Szilard, 2026-11-06)
@@ -300,14 +329,14 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
                     users.save(u)
         threading.Thread(target=send, daemon=True).start()
 
-    worker = MindWorker(users, cfg, call, clock, daily_cap, retry_delay, retry_every, after=after_reply)
+    worker = MindWorker(users, cfg, call, clock, daily_cap, retry_delay, retry_every, after=after_reply, threads=mind_threads)
 
     def checkups():
         """Ember checks up on you even while you're away: every few minutes, the check-ups that are due."""
         while True:
             try:
                 for uid in store.all_uids():
-                    u = users.get(uid)
+                    u = users.get(uid, touch=False)
                     with u.lock:
                         due = u.ember.due_checkups(clock())
                         if due:
@@ -316,6 +345,12 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
                         worker.put(uid, event)
             except Exception as e:                  # keep checking whatever happens
                 log.error("check-ups failed: %s", type(e).__name__)
+            try:
+                gone = users.evict()
+                if gone:
+                    log.info("%d idle Embers left memory, %d stay", gone, len(users.cache))
+            except Exception as e:
+                log.error("eviction failed: %s", type(e).__name__)
             time.sleep(checkup_every)
 
     @asynccontextmanager

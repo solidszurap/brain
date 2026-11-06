@@ -737,6 +737,57 @@ time.sleep(0.4)
 check("it reads the store again and again", ok_store.n >= 3)
 check("a failed read doesn't stop it", bad_store.n >= 3)
 
+print("Many people at once")
+from server.app import IDLE_FOR, MindWorker, Users      # noqa: E402
+TU = [1_800_000_000.0]
+us = Users(FileStore(os.path.join(tmp, "users_many")), lambda: TU[0])
+mw = MindWorker(us, FakeCfg(), None, lambda: TU[0], 150, threads=4)
+check("one person's thoughts always go to the same thread, in order",
+      all(mw.queue_of("user-%d" % i) is mw.queue_of("user-%d" % i) for i in range(50)))
+check("...and different people spread over the threads", len({id(mw.queue_of("user-%d" % i)) for i in range(50)}) == 4)
+inside, most, mlock = [0], [0], threading.Lock()
+
+
+def slow_mind(cfg, system, user, json_mode=False):
+    with mlock:
+        inside[0] += 1
+        most[0] = max(most[0], inside[0])
+    time.sleep(0.3)
+    with mlock:
+        inside[0] -= 1
+    return json.dumps({"reply": "hi", "face": "happy"})
+
+
+mw2 = MindWorker(us, FakeCfg(), slow_mind, lambda: TU[0], 150, threads=4)
+mw2.start()
+for i in range(4):
+    mw2.put("user-%d" % i, {"type": "talk", "text": "hello"})
+check("several people's answers are thought up at the same time",
+      wait(lambda: all(us.get("user-%d" % i).jobs == 0 for i in range(4))) and most[0] >= 2, f"at most {most[0]} at once")
+mw3 = MindWorker(us, FakeCfg(), slow_mind, lambda: TU[0], 150, threads=4)
+mw3.start()
+inside[0] = most[0] = 0
+for _ in range(3):
+    mw3.put("user-0", {"type": "talk", "text": "again"})
+check("...but one person's, one at a time", wait(lambda: us.get("user-0").jobs == 0) and most[0] == 1)
+us.get("user-0").ember.name = "Pip"
+TU[0] += IDLE_FOR - 1
+check("an Ember used within the hour stays in memory", us.evict() == 0 and "user-0" in us.cache)
+TU[0] += 2
+us.get("user-1")                                # used just now: stays
+gone = us.evict()
+check("Embers idle for an hour leave memory", "user-0" not in us.cache and "user-2" not in us.cache and gone == 3)
+check("...but not one that was just used", "user-1" in us.cache)
+check("...saved first: it comes back as it was", us.get("user-0").ember.name == "Pip")
+busy = us.get("user-3")
+busy.jobs = 1
+TU[0] += IDLE_FOR * 2
+us.evict()
+check("...and never while it's thinking", "user-3" in us.cache)
+busy.jobs = 0
+us.get("user-5", touch=False)
+check("a look from the background (check-ups, a restart) doesn't keep it in memory", us.evict() >= 1 and "user-5" not in us.cache)
+
 print()
 print("All checks passed." if not failed else f"{len(failed)} FAILED: {failed}")
 sys.stdout.flush()

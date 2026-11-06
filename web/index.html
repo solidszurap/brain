@@ -23,6 +23,11 @@
   --btn: #ffa862;
   --lift: 0 10px 30px rgba(0, 0, 0, .28);
   --topbar: 62px;              /* the top bar's height below the clock */
+  --tabbar: 58px;              /* the tab bar's height above the home indicator */
+  /* headings, names, buttons and numbers in a rounded face, like the front page (/home); body text in the system font */
+  --round: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN", "Arial Rounded MT Bold", system-ui, sans-serif;
+  /* the front page's names for the same colours */
+  --flame: var(--ember); --glow: var(--ember2); --ash: var(--dim); --cream: var(--text); --char: var(--surface);
   --glow1: rgba(255, 138, 58, .2); --glow2: rgba(255, 190, 125, .09); --glow3: rgba(214, 88, 48, .11);
 }
 /* colour versions, picked in the menu; Ember itself and its buttons stay orange in all of them */
@@ -52,7 +57,7 @@ html, body { margin: 0; }
    colour, and blurs the page there when it doesn't: so the body is plain and the glow is a layer of its own */
 body { position: fixed; inset: 0; background: var(--bg); color: var(--text);
   font: 15px/1.5 system-ui, "Segoe UI", sans-serif; display: grid; grid-template-rows: minmax(0, 1fr) auto auto; overflow: hidden;
-  padding: calc(env(safe-area-inset-top) + var(--topbar)) env(safe-area-inset-right) max(8px, calc(env(safe-area-inset-bottom) - 16px)) env(safe-area-inset-left); box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  padding: calc(env(safe-area-inset-top) + var(--topbar)) env(safe-area-inset-right) calc(var(--tabbar) + env(safe-area-inset-bottom) + 4px) env(safe-area-inset-left); box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background: radial-gradient(55% 34% at 50% 27%, var(--glow1), transparent 72%),
     radial-gradient(45% 35% at 92% 78%, var(--glow2), transparent 70%),
@@ -74,7 +79,6 @@ button { font: inherit; }
 .top .title button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .top .title button:hover { background: var(--surface); }
 .top .title button i { flex: none; font-style: normal; color: var(--faint); font-size: 13px; margin-left: 5px; }
-.menu .knows { display: none; }
 .top .title input { width: 100%; max-width: 260px; background: var(--surface); color: var(--text); border: 1px solid var(--accent); border-radius: 12px;
   padding: 6px 10px; font: inherit; font-size: 16px; text-align: center; }
 .tbtn { background: var(--raised); border: 1px solid var(--edge);
@@ -82,7 +86,27 @@ button { font: inherit; }
 .tbtn:hover { border-color: var(--edge2); }
 .tbtn .dot { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: none; box-shadow: 0 0 8px var(--accent); }
 .tbtn .dot.on { display: block; }
+.tbtn.icon { width: 42px; height: 42px; padding: 0; display: grid; place-items: center; font-size: 19px; line-height: 1; flex: none; }
+.tbtn.icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 
+/* the tab bar: Talk, Goals, Ember. Plain, like the top bar */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 14; display: flex; justify-content: center; background: var(--bg); border-top: 1px solid var(--edge);
+  height: calc(var(--tabbar) + env(safe-area-inset-bottom)); padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.tabs .in { display: flex; width: min(520px, 100%); }
+.tabs button { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  background: none; border: 0; color: var(--faint); font: 600 12px/1.1 var(--round); cursor: pointer; padding: 4px 6px 0; }
+.tabs button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabs button:hover { color: var(--dim); }
+.tabs button svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.tabs button.on { color: var(--accent); }
+.tabs button.on svg { fill: color-mix(in srgb, var(--accent) 24%, transparent); }
+.tabs .dot { position: absolute; top: 6px; left: calc(50% + 9px); width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: none; box-shadow: 0 0 8px var(--accent); }
+.tabs .dot.on { display: block; }
+/* while you type on a phone, the keyboard gets the room */
+@media (pointer: coarse) {
+  body.typing .tabs { display: none; }
+  body.typing { padding-bottom: max(8px, calc(env(safe-area-inset-bottom) - 16px)); }
+}
 /* the stage: Ember above, your conversation below it */
 .stage { min-height: 0; display: flex; flex-direction: column; align-items: center; padding: 0 16px; }
 .facewrap { position: relative; flex: none; }
@@ -107,8 +131,8 @@ button { font: inherit; }
 #chat.ft { --ft: 44px; }
 #chat.fb { --fb: 28px; }
 #talk { display: flex; flex-direction: column; gap: 10px; }
-.msg { max-width: 82%; padding: 9px 14px; border-radius: 20px; white-space: pre-wrap; word-wrap: break-word; border: 1px solid var(--edge); }
-.msg.ember { background: var(--surface); align-self: flex-start; border-top-left-radius: 6px; font-size: 16px; }
+.msg { max-width: 82%; padding: 10px 15px; border-radius: 20px; white-space: pre-wrap; word-wrap: break-word; border: 1px solid var(--edge); font-size: 16px; line-height: 1.55; }
+.msg.ember { background: var(--surface); align-self: flex-start; border-top-left-radius: 6px; }
 .msg.you { background: rgba(255, 150, 80, .15); border-color: rgba(255, 190, 140, .2); align-self: flex-end; border-bottom-right-radius: 6px; }
 .msg .t { display: block; font-size: 11px; color: var(--faint); margin-top: 2px; }
 .msg.new { animation: rise .45s ease-out; }
@@ -122,13 +146,14 @@ button { font: inherit; }
 
 /* experiment cards and the check-in, inside the conversation */
 .cards { display: flex; flex-direction: column; gap: 8px; align-self: flex-start; width: min(560px, 92%); margin-top: -2px; }
-.xcard { background: var(--raised); border: 1px solid var(--edge); border-radius: 20px; padding: 12px 14px; }
-.xcard h4 { margin: 0; font-size: 15px; }
+.xcard { background: var(--raised); border: 1px solid var(--edge); border-radius: 20px; padding: 14px 16px; box-shadow: var(--lift); }
+.xcard h4 { margin: 2px 0 0; font-size: 17px; line-height: 1.3; }
 .xcard .q { color: var(--ember2); margin: 3px 0; }
 .xcard .meta { color: var(--dim); font-size: 13px; }
 .xcard.picked { border-color: var(--accent); }
 .xcard.gone { opacity: .5; }
-.xcard .tag { font-size: 12px; color: var(--accent); }
+.xcard .tag { font-size: 12.5px; color: var(--accent); font-weight: 600; }
+.xcard .row { margin-top: 12px; }
 .plan { font-size: 14px; color: var(--text); margin: 6px 0 4px; }
 .checkin { align-self: flex-start; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; width: min(560px, 92%); margin-top: -2px; }
 .checkin .rate { display: flex; gap: 4px; }
@@ -173,37 +198,46 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 #paywall small { display: block; color: var(--faint); margin-top: 8px; }
 #paywall .pwterms a { color: var(--dim); }
 
-/* the menu (⋯) */
-.menuwrap { position: relative; }
-.menu { display: none; position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; min-width: 240px; background: var(--overlay); border: 1px solid var(--edge); border-radius: 22px; padding: 6px;
-  box-shadow: 0 16px 40px rgba(0,0,0,.45);
-  max-height: calc(100dvh - env(safe-area-inset-top) - var(--topbar, 56px) - 24px); overflow-y: auto; overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch; }   /* taller than a phone screen: it scrolls inside itself */
-.menu.on { display: block; animation: pop .18s ease-out; }
-@keyframes pop { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: none; } }
-.menu button, .menu a { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--text); padding: 10px 14px; border-radius: 16px; font: inherit; font-size: 15px; cursor: pointer; text-decoration: none; }
-.menu button:hover, .menu a:hover { background: var(--raised); }
-.menu .danger { color: var(--danger); }
-.menu hr { border: 0; border-top: 1px solid var(--edge); margin: 6px 10px; }
-.menu .who { font-size: 12px; color: var(--faint); padding: 6px 12px 2px; overflow: hidden; text-overflow: ellipsis; }
-.menu .checkups { padding: 8px 14px 6px; font-size: 15px; }
-.menu .checkups .row { display: flex; gap: 6px; margin-top: 6px; }
-.menu .checkups select { flex: 1; min-width: 0; background: var(--surface); color: var(--text); border: 1px solid var(--edge2); border-radius: 12px;
-  padding: 7px 8px; font: inherit; font-size: 16px; }
-.menu .checkups { min-width: 264px; }
-.menu .checkups #ckTime { flex: none; width: 118px; min-width: 0; padding: 7px 8px; }
-.menu .checkups .days { display: flex; gap: 5px; margin-top: 7px; }
-.menu .checkups .days button { flex: 1; width: auto; min-width: 0; height: 32px; padding: 0; text-align: center; border-radius: 10px;
-  border: 1px solid var(--edge2); background: var(--surface); color: var(--dim); font-size: 13px; font-weight: 600; }
-.menu .checkups .days button.on { background: var(--btn, #ffb36b); border-color: transparent; color: #2a1406; }
-.menu .checkups input { flex: 1; min-width: 0; background: var(--surface); color: var(--text); border: 1px solid var(--edge2); border-radius: 12px;
-  padding: 7px 10px; font: inherit; font-size: 16px; }
-.menu .checkups .row button.btn { width: auto; flex: none; padding: 7px 14px; border-radius: 12px; text-align: center; }
-.menu .checkups small { display: block; color: var(--faint); font-size: 12px; margin-top: 5px; line-height: 1.35; max-width: 250px; }
-.menu .colours { display: flex; align-items: center; gap: 8px; padding: 8px 14px 6px; font-size: 15px; }
-.menu .colours span { flex: 1; }
-.menu .colours button { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 2px solid var(--edge2); cursor: pointer; }
-.menu .colours button.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--bg), 0 0 10px rgba(255, 150, 70, .5); }
+/* the Ember tab: grouped rows. A chevron opens something; a control on the right changes something */
+.ehero { display: flex; align-items: center; gap: 14px; padding: 6px 2px 2px; }
+#miniFace { width: 112px; height: 112px; flex: none; }
+.ehinfo { flex: 1; min-width: 0; }
+.ehinfo h1 { margin: 0; font: 800 30px/1.1 var(--round); letter-spacing: -.02em; overflow-wrap: anywhere; }
+.ehlv { display: flex; align-items: center; gap: 10px; color: var(--dim); font: 600 14px var(--round); margin: 6px 0 12px; }
+.ehlv i { flex: 1; max-width: 130px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.ehlv b { display: block; height: 100%; width: 0; background: var(--accent); }
+.ghead { font: 600 13.5px/1.3 system-ui, "Segoe UI", sans-serif; color: var(--dim); margin: 24px 6px 8px; }
+.group { background: var(--surface); border: 1px solid var(--edge); border-radius: 18px; overflow: hidden; }
+.group > * + * { border-top: 1px solid var(--edge); }
+.grow { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 12px 16px; background: none; border: 0; border-radius: 0;
+  color: var(--text); font: inherit; font-size: 16px; text-align: left; text-decoration: none; cursor: pointer; box-sizing: border-box; }
+button.grow:hover, a.grow:hover { background: var(--raised); }
+.grow .gl { flex: 1; min-width: 0; }
+.grow .gv { color: var(--dim); font-size: 15px; text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grow.go::after { content: "\203A"; margin-left: auto; padding-left: 10px; color: var(--faint); font-size: 24px; line-height: 1; }
+.grow.danger { color: var(--danger); }
+.grow.plus { color: var(--accent); font-weight: 600; }
+div.grow { cursor: default; }
+.group > * + *, .group > .grow + .grow { border-top: 1px solid var(--edge); }
+.gpad { padding: 14px 16px; }
+.checkups { font-size: 16px; }
+.checkups .gl { display: block; }
+.checkups .row { display: flex; flex-wrap: nowrap; gap: 8px; margin-top: 8px; }
+.checkups select, .checkups input { flex: 1; min-width: 0; background: var(--bg); color: var(--text); border: 1px solid var(--edge2); border-radius: 12px;
+  padding: 9px 10px; font: inherit; font-size: 16px; }
+.checkups input:focus, .checkups select:focus { outline: none; border-color: var(--accent); }
+.checkups #ckTime { flex: none; width: 124px; }
+.checkups .days { display: flex; gap: 6px; margin-top: 10px; }
+.checkups .days button { flex: 1; min-width: 0; height: 38px; padding: 0; text-align: center; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--edge2); background: var(--bg); color: var(--dim); font: 700 14px var(--round); }
+.checkups .days button.on { background: var(--btn); border-color: transparent; color: #2a1406; }
+.checkups .row .btn { flex: none; padding: 8px 18px; border-radius: 12px; }
+.checkups small { display: block; color: var(--faint); font-size: 13px; margin-top: 8px; line-height: 1.4; }
+.colours { gap: 10px; }
+.colours button { width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 2px solid var(--edge2); cursor: pointer; flex: none; }
+.colours button.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--bg), 0 0 10px rgba(255, 150, 70, .5); }
+.phead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 2px 16px; }
+.phead h1 { margin: 0; font: 800 30px/1.1 var(--round); letter-spacing: -.02em; }
 
 /* the login screen, and other full-screen notes */
 .cover { position: fixed; inset: 0; z-index: 30; background: var(--bg); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; text-align: center; }
@@ -220,14 +254,14 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 
 .btn { background: var(--btn); color: #2a1a0c; border: 0; border-radius: 999px; padding: 8px 16px; font-weight: 600; cursor: pointer;
   box-shadow: 0 4px 14px rgba(255, 140, 60, .28); }
-.btn.ghost { background: var(--raised); color: var(--text); border: 1px solid var(--edge); font-weight: 500; }
+.btn.ghost { background: var(--raised); color: var(--text); border: 1px solid var(--edge2); font-weight: 600; box-shadow: none; }
 .btn:disabled { opacity: .45; cursor: default; }
 .armed { color: var(--danger) !important; border-color: var(--danger) !important; }
 
 /* drawers */
-.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 10; }
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 15; }
 .scrim.on { opacity: 1; pointer-events: auto; }
-.drawer { position: fixed; top: 0; bottom: 0; width: min(440px, 92vw); background: var(--overlay); border: 0 solid var(--edge); z-index: 11; display: flex; flex-direction: column; transition: transform .28s ease; padding-top: env(safe-area-inset-top); }
+.drawer { position: fixed; top: 0; bottom: 0; width: min(440px, 92vw); background: var(--overlay); border: 0 solid var(--edge); z-index: 16; display: flex; flex-direction: column; transition: transform .28s ease; padding-top: env(safe-area-inset-top); }
 .drawer.left { left: 0; border-right-width: 1px; transform: translateX(-102%); }
 .drawer.right { right: 0; border-left-width: 1px; transform: translateX(102%); }
 .drawer.wide { width: min(620px, 96vw); }
@@ -237,13 +271,20 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .drawer header button { background: none; border: 0; color: var(--dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 2px 6px; }
 .drawer .body { flex: 1; overflow-y: auto; padding: 16px; }
 /* the level under its face, and the customizer: a sheet from the bottom, so Ember above it shows every change */
-.lvbadge { position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%); display: flex; align-items: center; gap: 7px;
+.facebar { position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.namebtn { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--edge); background: var(--raised); color: var(--text);
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: var(--lift); max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
+.namebtn::after { content: " \270E"; color: var(--dim); font-weight: 400; }
+.namebtn:hover::after { color: var(--text); }
+.namebtn input { font: inherit; font-size: 16px; font-weight: 600; width: 9em; background: transparent; border: 0; outline: 0; color: var(--text); padding: 0; text-align: center; }
+.namebtn.editing::after { content: none; }
+.lvbadge { display: flex; align-items: center; gap: 7px;
   padding: 3px 10px; border-radius: 999px; border: 1px solid var(--edge); background: var(--raised); color: var(--dim);
   font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; box-shadow: var(--lift); }
 .lvbadge:hover { color: var(--text); }
 .lvbadge i { display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
 .lvbadge b { display: block; height: 100%; width: 0; background: var(--accent); }
-.sheet { position: fixed; left: 0; right: 0; bottom: 0; margin: 0 auto; width: min(760px, 100%); height: min(58dvh, 560px); z-index: 12;
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; margin: 0 auto; width: min(760px, 100%); height: min(58dvh, 560px); z-index: 17;
   background: var(--overlay); border: 1px solid var(--edge); border-bottom: 0; border-radius: 24px 24px 0 0; display: flex; flex-direction: column;
   transform: translateY(105%); transition: transform .28s ease; box-shadow: 0 -16px 40px rgba(0,0,0,.4); padding-bottom: env(safe-area-inset-bottom); }
 .sheet.on { transform: none; }
@@ -277,23 +318,25 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .how li b { color: var(--text); font-weight: 600; }
 /* your chats */
 .newchat { width: 100%; margin-bottom: 12px; }
-@media (max-width: 520px) { #openChats, #openGoals { padding: 7px 11px; } .top { gap: 6px; } }
-/* goals: the list (a drawer), and a goal's own page over the chat */
-.goalitem { display: block; width: 100%; text-align: left; background: var(--raised); border: 1px solid var(--edge); border-radius: 16px;
-  padding: 10px 12px; margin-bottom: 8px; color: var(--text); cursor: pointer; font: inherit; }
-.goalitem:hover { border-color: var(--edge2); }
-.goalitem .gt { font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+/* goals: the Goals tab's list, and a goal's own page */
+.goalitem { display: block; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--edge); border-radius: 18px;
+  padding: 14px 16px; margin-bottom: 10px; color: var(--text); cursor: pointer; font: inherit; }
+.goalitem:hover { border-color: var(--edge2); background: var(--raised); }
+.goalitem .gt { font-weight: 700; font-size: 17px; display: flex; justify-content: space-between; gap: 8px; }
 .goalitem .gt i { font-style: normal; color: var(--accent); }
 .goalitem .gm { color: var(--dim); font-size: 13px; margin-top: 2px; }
-.goalitem .gs { font-size: 13.5px; margin-top: 4px; }
+.goalitem .gs { font-size: 15px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--edge); }
 .goalitem.past { opacity: .6; background: none; }
-.golabel { color: var(--faint); font-size: 12px; margin: 14px 2px 6px; text-transform: uppercase; letter-spacing: .06em; }
-.page { position: fixed; inset: 0; z-index: 13; background: var(--bg); display: none; flex-direction: column; padding-top: env(safe-area-inset-top); }
+.golabel { color: var(--dim); font-size: 13.5px; font-weight: 600; margin: 24px 6px 8px; }
+/* pages: the Goals and Ember tabs, and the pages they open (a goal, what it knows, the owner page). The tab bar stays below them */
+.page { position: fixed; top: 0; left: 0; right: 0; bottom: calc(var(--tabbar) + env(safe-area-inset-bottom)); z-index: 13; background: var(--bg);
+  display: none; flex-direction: column; padding-top: env(safe-area-inset-top); }
 .page.on { display: flex; }
-.page header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--edge); }
-.page header button { background: var(--raised); border: 1px solid var(--edge); color: var(--text); border-radius: 999px; padding: 7px 14px; font: inherit; cursor: pointer; }
-.page header h2 { margin: 0; font-size: 15px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); font-weight: 500; }
-.page .body { flex: 1; overflow-y: auto; padding: 14px 16px calc(24px + env(safe-area-inset-bottom)); width: min(720px, 100%); margin: 0 auto; box-sizing: border-box; }
+.page header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; min-height: var(--topbar); box-sizing: border-box; }
+.page header button { background: var(--raised); border: 1px solid var(--edge); color: var(--text); border-radius: 999px; padding: 7px 14px; font: 600 15px var(--round); cursor: pointer; flex: none; }
+.page header h2 { margin: 0; font-size: 17px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-weight: 700; }
+.page .body { flex: 1; overflow-y: auto; padding: 14px 16px 28px; width: min(720px, 100%); margin: 0 auto; box-sizing: border-box; }
+.page.tabpage .body { padding-top: 18px; width: min(640px, 100%); }
 /* the owner page (⋯ → Owner): who uses Ember and whether they come back */
 .ostats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 @media (min-width: 560px) { .ostats { grid-template-columns: repeat(4, 1fr); } }
@@ -321,21 +364,21 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .gpstep { font-size: 17px; font-weight: 600; margin: 2px 0 10px; }
 .gpstep.none { font-weight: 400; color: var(--dim); font-size: 15px; }
 .gpchecks { display: flex; gap: 8px; flex-wrap: wrap; }
-.gpchecks button { flex: 1; min-width: 92px; }
+.gpchecks button { flex: 1; min-width: 0; padding: 11px 6px; white-space: nowrap; }
 .gpchecks button.on { box-shadow: inset 0 0 0 2px var(--accent); }
 .gpcard input[type=text], .gpform input, .gpform select, .gpform textarea { width: 100%; box-sizing: border-box; background: var(--surface); color: var(--text);
   border: 1px solid var(--edge2); border-radius: 12px; padding: 9px 12px; font: inherit; font-size: 16px; }
 .gpwords { margin-top: 10px; }
-#xpToast { position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); z-index: 25; transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
+#xpToast { position: fixed; left: 50%; bottom: calc(var(--tabbar) + 20px + env(safe-area-inset-bottom)); z-index: 25; transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
   background: var(--btn); color: #2a1a0c; font-weight: 700; font-size: 15px; padding: 9px 18px; border-radius: 999px; box-shadow: var(--lift); white-space: nowrap;
   transition: opacity .25s, transform .25s; }
 #xpToast.on { opacity: 1; transform: translate(-50%, 0); }
 .gpxp { margin-top: 8px; font-size: 14px; font-weight: 600; color: var(--accent); }
 .gpdots { display: flex; gap: 4px; margin-top: 12px; align-items: center; }
-.gpdots i { width: 14px; height: 14px; border-radius: 4px; background: var(--line); }
+.gpdots i { flex: 1 1 0; min-width: 6px; max-width: 14px; aspect-ratio: 1; border-radius: 4px; background: var(--line); }
 .gpdots i.done { background: var(--accent); } .gpdots i.partly { background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 .gpdots i.skip { background: var(--surface); box-shadow: inset 0 0 0 1px var(--edge2); }
-.gpdots span { margin-left: 8px; color: var(--dim); font-size: 13px; }
+.gpdots span { margin-left: 8px; color: var(--dim); font-size: 13px; white-space: nowrap; }
 .gpreply { margin-top: 10px; background: var(--surface); border-radius: 14px; padding: 9px 12px; font-size: 14.5px; }
 .gpreply a { color: var(--accent); cursor: pointer; }
 .gpadd { display: flex; gap: 8px; margin-top: 10px; }
@@ -389,7 +432,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 /* what it knows */
 .sub { color: var(--dim); margin: 0 0 18px; }
 .story .sub { margin: 4px 0 0; }
-.kind { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin: 20px 0 8px; }
+.kind { font: 700 14px var(--round); color: var(--accent); margin: 22px 2px 8px; }
 .card { background: var(--surface); border: 1px solid var(--edge); border-radius: 18px; padding: 11px 14px; margin-bottom: 8px; display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
 .card .cbody { flex: 1; min-width: 200px; }
 .card .src { font-size: 13px; color: var(--dim); margin-top: 3px; }
@@ -400,70 +443,26 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 @media (max-width: 560px) {
   .top { padding-left: calc(10px + env(safe-area-inset-left)); padding-right: calc(10px + env(safe-area-inset-right)); gap: 6px; }
   .tbtn { padding: 7px 12px; font-size: 14px; }
-  #openKnows { display: none; }                 /* on a phone it's in the menu, so the chat's name has room */
-  .menu .knows { display: block; }
+  .tbtn.icon { padding: 0; font-size: 19px; }
   #face { width: min(22vh, 50vw); }
   .msg { max-width: 90%; }
   .pill { border-radius: 18px; padding: 6px 8px 6px 14px; gap: 6px 10px; font-size: 13.5px; }
 }
+/* one rounded face for what you read at a glance: names, titles, buttons, numbers */
+.btn, .tbtn, .top .title button, .namebtn, .lvbadge, .pill b, .xcard h4, .gph1, .gpcard h3, .gpstep, .goalitem .gt, .ostat b, .cover h1,
+#paywall h3, .sheet header h2, .drawer header h2, .lvline b, .chatitem .ct, #xpToast, .day, .lookpart h3 { font-family: var(--round); }
 </style>
 </head>
 <body>
 <div class="top">
-  <button class="tbtn" id="openChats" aria-label="Your chats">☰ Chats<span class="dot" id="chatsDot"></span></button>
-  <button class="tbtn" id="openGoals" aria-label="Your goals">◎ Goals<span class="dot" id="goalsDot"></span></button>
+  <button class="tbtn icon" id="openChats" aria-label="Your chats" title="Your chats"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="dot" id="chatsDot"></span></button>
   <div class="title" id="chatTitle"></div>
-  <button class="tbtn" id="openKnows">What it knows</button>
-  <div class="menuwrap">
-    <button class="tbtn" id="menuBtn" aria-label="Menu">⋯</button>
-    <div class="menu" id="menu">
-      <div class="who" id="whoami"></div>
-      <button data-menu="knows" class="knows">What Ember knows about you</button>
-      <button data-menu="look">Customize Ember</button>
-      <button data-menu="install">Add Ember to your home screen</button>
-      <button data-menu="feedback">Send feedback</button>
-      <button data-menu="owner" id="ownerItem" style="display:none">Owner: who uses Ember</button>
-      <button data-menu="notify" id="notifyItem" style="display:none">Turn on notifications</button>
-      <div class="checkups" id="nameRow"><span>Its name</span>
-        <div class="row">
-          <input id="emberName" maxlength="24" placeholder="Ember" aria-label="Ember's name" autocomplete="off">
-          <button class="btn" id="nameSave">Save</button>
-        </div>
-        <small>What you call it, in chat and in notifications. Empty: Ember.</small>
-      </div>
-      <div class="checkups"><span>Check-ups</span>
-        <div class="row">
-          <select id="ckEvery" aria-label="How often Ember checks up on you">
-            <option value="off">Off</option><option value="when">When it matters</option><option value="daily">Regularly</option>
-          </select>
-          <input type="time" id="ckTime" aria-label="At what time" value="18:00">
-        </div>
-        <div class="days" id="ckDays" aria-label="On which days">
-          <button data-day="0" title="Monday">M</button><button data-day="1" title="Tuesday">T</button><button data-day="2" title="Wednesday">W</button><button data-day="3" title="Thursday">T</button><button data-day="4" title="Friday">F</button><button data-day="5" title="Saturday">S</button><button data-day="6" title="Sunday">S</button>
-        </div>
-        <small id="ckNote"></small>
-      </div>
-      <a href="/privacy">Privacy</a>
-      <a id="termsItem" target="_blank" rel="noopener" style="display:none">Terms (ÁSZF)</a>
-      <button data-menu="plus" id="plusItem" style="display:none"></button>
-      <button data-menu="export">Download my data</button>
-      <div class="colours" id="colours"><span>Colour</span>
-        <button data-theme-pick="" title="Ember" style="background:#2a231d"></button>
-        <button data-theme-pick="night" title="Night" style="background:#1d2539"></button>
-        <button data-theme-pick="plum" title="Plum" style="background:#2b1f35"></button>
-        <button data-theme-pick="forest" title="Forest" style="background:#1e2a23"></button>
-        <button data-theme-pick="day" title="Day" style="background:#f6eee5"></button>
-      </div>
-      <hr>
-      <button data-menu="logout" id="logoutBtn">Log out</button>
-      <button data-menu="delete" class="danger">Delete my Ember</button>
-    </div>
-  </div>
+  <button class="tbtn icon" id="topNew" aria-label="New chat" title="New chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
 </div>
 <main class="stage">
   <div class="facewrap">
     <canvas id="face" title="Poke Ember"></canvas>
-    <button class="lvbadge" id="lvBadge" title="Customize Ember" style="display:none"><span id="lvText"></span><i><b id="lvBar"></b></i></button>
+    <div class="facebar"><button class="namebtn" id="nameBtn" title="Rename Ember" style="display:none"></button><button class="lvbadge" id="lvBadge" title="Customize Ember" style="display:none"><span id="lvText"></span><i><b id="lvBar"></b></i></button></div>
     <button class="whybtn" id="whybtn" title="Why this face?">?</button>
     <div class="pop" id="why"></div>
   </div>
@@ -529,27 +528,106 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
     <div id="fbNote" role="status"></div>
   </div>
 </section>
-<aside class="drawer left" id="goalsDrawer">
-  <header><h2>Your goals</h2><button data-close>×</button></header>
-  <div class="body"><button class="btn newchat" id="newGoal">+ New goal</button><div id="goallist"></div></div>
-</aside>
+<section class="page tabpage" id="goalsPage" aria-label="Your goals">
+  <div class="body"><div class="phead"><h1>Goals</h1><button class="btn" id="newGoal">+ New goal</button></div><div id="goallist"></div></div>
+</section>
+<section class="page tabpage" id="emberPage" aria-label="Your Ember">
+  <div class="body">
+    <div class="ehero">
+      <canvas id="miniFace" aria-hidden="true"></canvas>
+      <div class="ehinfo">
+        <h1 id="ehName">Ember</h1>
+        <div class="ehlv"><span id="ehLevel"></span><i><b id="ehBar"></b></i></div>
+        <button class="btn" data-menu="look">Customize Ember</button>
+      </div>
+    </div>
+    <h2 class="ghead">Your Ember</h2>
+    <div class="group">
+      <button class="grow go" data-menu="knows">What it knows about you</button>
+      <div class="checkups gpad" id="nameRow"><label class="gl" for="emberName">Its name</label>
+        <div class="row">
+          <input id="emberName" maxlength="24" placeholder="Ember" autocomplete="off">
+          <button class="btn" id="nameSave">Save</button>
+        </div>
+        <small>What you call it, in chat and in notifications. Empty: Ember.</small>
+      </div>
+    </div>
+    <h2 class="ghead">Check-ups</h2>
+    <div class="group">
+      <div class="checkups gpad"><label class="gl" for="ckEvery">How often Ember checks up on you</label>
+        <div class="row">
+          <select id="ckEvery">
+            <option value="off">Off</option><option value="when">When it matters</option><option value="daily">Regularly</option>
+          </select>
+          <input type="time" id="ckTime" aria-label="At what time" value="18:00">
+        </div>
+        <div class="days" id="ckDays" aria-label="On which days">
+          <button data-day="0" title="Monday">M</button><button data-day="1" title="Tuesday">T</button><button data-day="2" title="Wednesday">W</button><button data-day="3" title="Thursday">T</button><button data-day="4" title="Friday">F</button><button data-day="5" title="Saturday">S</button><button data-day="6" title="Sunday">S</button>
+        </div>
+        <small id="ckNote"></small>
+      </div>
+      <button class="grow go" data-menu="notify" id="notifyItem" style="display:none">Turn on notifications</button>
+    </div>
+    <h2 class="ghead">Look</h2>
+    <div class="group">
+      <div class="grow colours" id="colours"><span class="gl">Colour</span>
+        <button data-theme-pick="" title="Ember" style="background:#2a231d"></button>
+        <button data-theme-pick="night" title="Night" style="background:#1d2539"></button>
+        <button data-theme-pick="plum" title="Plum" style="background:#2b1f35"></button>
+        <button data-theme-pick="forest" title="Forest" style="background:#1e2a23"></button>
+        <button data-theme-pick="day" title="Day" style="background:#f6eee5"></button>
+      </div>
+      <button class="grow go" data-menu="look">Customize Ember</button>
+    </div>
+    <h2 class="ghead">Your plan</h2>
+    <div class="group">
+      <div class="grow"><span class="gl">Plan</span><span class="gv" id="planVal"></span></div>
+      <button class="grow go plus" data-menu="plus" id="plusItem" style="display:none"></button>
+    </div>
+    <h2 class="ghead">Help</h2>
+    <div class="group">
+      <button class="grow go" data-menu="install">Add Ember to your home screen</button>
+      <button class="grow go" data-menu="feedback">Send feedback</button>
+      <a class="grow go" href="/privacy">Privacy</a>
+      <a class="grow go" id="termsItem" target="_blank" rel="noopener" style="display:none">Terms (ÁSZF)</a>
+    </div>
+    <div id="ownerGroup" style="display:none">
+      <h2 class="ghead">Owner</h2>
+      <div class="group"><button class="grow go" data-menu="owner" id="ownerItem">Who uses Ember</button></div>
+    </div>
+    <h2 class="ghead">Account</h2>
+    <div class="group">
+      <div class="grow"><span class="gl">Account</span><span class="gv" id="whoami"></span></div>
+      <button class="grow go" data-menu="export">Download my data</button>
+      <button class="grow" data-menu="logout" id="logoutBtn">Log out</button>
+      <button class="grow danger" data-menu="delete">Delete my Ember</button>
+    </div>
+  </div>
+</section>
+<section class="page" id="knowsPage" aria-label="What Ember knows about you">
+  <header><button id="knowsBack">‹ Back</button><h2>What it knows about you</h2></header>
+  <div class="body" id="memlist"></div>
+</section>
 <section class="page" id="goalPage" aria-label="Goal">
-  <header><button id="gpBack">← Goals</button><h2 id="gpTitle"></h2></header>
+  <header><button id="gpBack">‹ Goals</button><h2 id="gpTitle"></h2></header>
   <div class="body" id="gpBody"></div>
 </section>
 <div id="xpToast" role="status" aria-live="polite"></div>
 <section class="page" id="ownerPage" aria-label="Owner">
-  <header><button id="ownerBack">← Ember</button><h2>Who uses Ember</h2><button id="ownerReload">Refresh</button></header>
+  <header><button id="ownerBack">‹ Back</button><h2>Who uses Ember</h2><button id="ownerReload">Refresh</button></header>
   <div class="body" id="ownerBody"></div>
 </section>
 <aside class="drawer left" id="chatsDrawer">
   <header><h2>Your chats</h2><button data-close>×</button></header>
   <div class="body"><button class="btn newchat" id="newChat">+ New chat</button><div id="chatlist"></div></div>
 </aside>
-<aside class="drawer right wide" id="knowsDrawer">
-  <header><h2>What Ember knows about me</h2><button data-close>×</button></header>
-  <div class="body" id="memlist"></div>
-</aside>
+<nav class="tabs" id="tabs" aria-label="Ember">
+  <div class="in">
+    <button data-tab="talk" class="on" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H10.5L6 20.5V17h0a2.5 2.5 0 0 1-2-2.45z"/></svg><span>Talk</span></button>
+    <button data-tab="goals"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg><span>Goals</span><i class="dot" id="goalsDot"></i></button>
+    <button data-tab="ember"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c3.6 4.1 6.5 7.4 6.5 11a6.5 6.5 0 0 1-13 0C5.5 10.4 8.4 7.1 12 3z"/></svg><span id="tabName">Ember</span></button>
+  </div>
+</nav>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -644,15 +722,13 @@ async function poll() {
   }
 }
 
-// ------------------------------------------------------------------ the menu
-$("#menuBtn").onclick = e => { e.stopPropagation(); $("#menu").classList.toggle("on"); };
-document.addEventListener("click", e => { if (!e.target.closest(".menuwrap")) $("#menu").classList.remove("on"); });
+// ------------------------------------------------------------------ the Ember tab's rows (and any [data-menu] button elsewhere)
 document.addEventListener("click", async e => {
   const t = e.target.closest("[data-menu]");
   if (!t) return;
   const what = t.dataset.menu;
   if (what === "knows") {
-    $("#menu").classList.remove("on"); openDrawer("knows");
+    go("knows");
   } else if (what === "notify") {
     toggleNotify(t);
   } else if (what === "look") {
@@ -660,15 +736,14 @@ document.addEventListener("click", async e => {
   } else if (what === "feedback") {
     openFeedback();
   } else if (what === "owner") {
-    openOwner();
+    go("owner");
   } else if (what === "install") {
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
     $("#installSteps").innerHTML = ios
       ? "<li>Open Ember in <b>Safari</b>.</li><li>Tap the <b>Share</b> button (the square with an arrow).</li><li>Tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>"
       : "<li>Open the browser's menu (⋮).</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li>";
-    $("#menu").classList.remove("on"); showCover("install");
+    showCover("install");
   } else if (what === "plus") {
-    $("#menu").classList.remove("on");
     goPlus(!!t.dataset.manage, null);
   } else if (what === "export") {
     const r = await api("/me/export").catch(() => null);
@@ -704,9 +779,13 @@ function renderLevel() {
   const L = S && S.level;
   if (!L) return;
   $("#lvBadge").style.display = "";
+  renderName();
   const txt = `Lv ${L.level} · ${L.stage}`;
   if ($("#lvText").textContent !== txt) $("#lvText").textContent = txt;
   $("#lvBar").style.width = Math.round(L.progress * 100) + "%";
+  const lv = `Level ${L.level} · ${L.stage}`;
+  if ($("#ehLevel").textContent !== lv) $("#ehLevel").textContent = lv;
+  $("#ehBar").style.width = Math.round(L.progress * 100) + "%";
   if (xpWatch && L.xp > xpWatch.x0) { xpToast(L.xp - xpWatch.x0); xpWatch = null; }   // XP that came with Ember's answer
   else if (xpWatch && Date.now() > xpWatch.until) xpWatch = null;
   if ($("#lookSheet").classList.contains("on") && LOOKS_CAT && LOOKS_CAT.level.xp !== L.xp) loadLooks();
@@ -738,7 +817,6 @@ function renderLooks() {
   $("#lookBody").innerHTML = h + `</div>`;
 }
 function openLooks() {
-  $("#menu").classList.remove("on");
   closeDrawers();
   $("#lookSheet").classList.add("on");
   loadLooks();
@@ -764,10 +842,7 @@ function ago(t) {
 }
 const dateOf = t => t ? new Date(t * 1000).toLocaleDateString(undefined, {month: "short", day: "numeric"}) : "?";
 const pct = (n, of) => of ? ` (${Math.round(100 * n / of)}%)` : "";
-async function openOwner() {
-  $("#menu").classList.remove("on");
-  closeDrawers();
-  $("#ownerPage").classList.add("on");
+async function loadOwner() {
   $("#ownerBody").innerHTML = `<p class="oline">Counting…</p>`;
   const r = await api("/owner/data").catch(() => null);
   if (!r || !r.ok) { $("#ownerBody").innerHTML = `<p class="oline">Couldn't load it right now. Try Refresh.</p>`; return; }
@@ -786,7 +861,7 @@ async function openOwner() {
     <p class="oline">Today: <b>$${C.today.usd.toFixed(2)}</b> · ${C.today.calls} replies<br>Last 30 days: <b>$${C.month.usd.toFixed(2)}</b> · ${C.month.calls} replies</p></div>`;
   h += `<div class="gpcard"><h3>Feedback <small>${O.feedback.length ? "newest first" : ""}</small></h3>` + (O.feedback.length
     ? O.feedback.map(f => `<div class="ofb"><small>${kinds[f.kind] || esc(f.kind)} · ${esc(f.email || "someone")} · ${esc(ago(f.t))}</small><p>${esc(f.text)}</p></div>`).join("")
-    : `<p class="oline">None yet. People send it from ⋯ → Send feedback.</p>`) + `</div>`;
+    : `<p class="oline">None yet. People send it from the Ember tab → Send feedback.</p>`) + `</div>`;
   h += `<div class="gpcard"><h3>People <small>last active first</small></h3>` + O.list.map(p =>
     `<div class="operson"><b>${esc(p.email || "(no email)")}</b>${plusTag[p.plus] ? `<span class="otag">${plusTag[p.plus]}</span>` : ""}
       <div>Started ${esc(dateOf(p.joined))} · last ${esc(ago(p.last))} · ${p.days} day${p.days === 1 ? "" : "s"} · ${p.said} messages</div>
@@ -794,14 +869,13 @@ async function openOwner() {
   h += `<p class="oline" style="margin-top:12px">Numbers only: what people say to Ember stays private. Updated ${esc(ago(O.at))}.</p>`;
   $("#ownerBody").innerHTML = h;
 }
-$("#ownerBack").onclick = () => $("#ownerPage").classList.remove("on");
-$("#ownerReload").onclick = openOwner;
+$("#ownerBack").onclick = back;
+$("#ownerReload").onclick = loadOwner;
 
 // feedback: an idea, a problem or anything else, sent to the feedback table with their email
 const FB_HINT = {idea: "What would make Ember better for you?", problem: "What went wrong, and what were you doing when it happened?",
                  other: "Anything you'd like to tell us."};
 function openFeedback() {
-  $("#menu").classList.remove("on");
   closeDrawers();
   $("#lookSheet").classList.remove("on");
   $("#fbNote").textContent = "";
@@ -821,17 +895,17 @@ $("#fbSend").onclick = async () => {
   const kind = $("#fbKinds .on").dataset.fbkind;
   b.disabled = true; $("#fbNote").textContent = "Sending…";
   const r = await api("/feedback", {method: "POST", headers: {"Content-Type": "application/json", "X-Ember": "1"},
-    body: JSON.stringify({kind, text, screen: goalOpen ? "goal" : "chat"})}).catch(() => null);
+    body: JSON.stringify({kind, text, screen: goalOpen ? "goal" : view === "talk" ? "chat" : view})}).catch(() => null);
   b.disabled = false;
   if (r && r.ok) { $("#fbText").value = ""; $("#fbNote").textContent = "Thank you! We got it."; }
   else $("#fbNote").textContent = r && r.status === 429 ? "That's a lot for one hour. Try again a bit later." : "Couldn't send it right now. Try again.";
 };
 document.addEventListener("click", e => {
-  if ($("#fbSheet").classList.contains("on") && !e.target.closest("#fbSheet, [data-menu='feedback'], .menuwrap"))
+  if ($("#fbSheet").classList.contains("on") && !e.target.closest("#fbSheet, [data-menu='feedback']"))
     $("#fbSheet").classList.remove("on");
 });
 document.addEventListener("click", e => {
-  if ($("#lookSheet").classList.contains("on") && !e.target.closest("#lookSheet, #lvBadge, [data-menu='look'], #face, .menuwrap"))
+  if ($("#lookSheet").classList.contains("on") && !e.target.closest("#lookSheet, #lvBadge, [data-menu='look'], #face, #miniFace"))
     $("#lookSheet").classList.remove("on");
 });
 
@@ -842,7 +916,11 @@ const CK_NOTE = {
   daily: "On your days, at your time, if you haven't talked that day. Plus things you mentioned.",
 };
 // a name of your own for it (kept in Ember, so its mind and your notifications use it)
+let naming = false;
 function renderName() {
+  const b = $("#nameBtn");
+  if (S && S.name && !naming) { b.style.display = ""; if (b.textContent !== S.name) b.textContent = S.name; }
+  if (S && S.name) for (const id of ["#ehName", "#tabName"]) if ($(id).textContent !== S.name) $(id).textContent = S.name;
   if (!S || !S.name || document.activeElement === $("#emberName")) return;
   $("#emberName").value = S.name === "Ember" ? "" : S.name;
 }
@@ -852,6 +930,31 @@ async function saveName() {
   if (r && r.ok && S) { S.name = name || "Ember"; $("#emberName").blur(); renderName(); say(`Its name is ${esc(S.name)} now.`); }
 }
 $("#nameSave").onclick = e => { e.stopPropagation(); saveName(); };
+// tap the name under Ember to rename it in place
+$("#nameBtn").onclick = e => {
+  e.stopPropagation();
+  if (naming || !S) return;
+  naming = true;
+  const b = $("#nameBtn");
+  b.classList.add("editing");
+  b.innerHTML = `<input id="nameInput" maxlength="24" placeholder="Ember" aria-label="Ember's name" autocomplete="off" value="${esc(S.name === "Ember" ? "" : S.name)}">`;
+  const inp = $("#nameInput");
+  inp.focus(); inp.select();
+  let done = false;
+  const finish = async save => {
+    if (done) return;
+    done = true;
+    const name = inp.value.trim(), was = S.name;
+    naming = false; b.classList.remove("editing"); b.textContent = S.name;
+    if (save && (name || "Ember") !== was) {
+      const r = await post("/name", {name});
+      if (r && r.ok && S) { S.name = name || "Ember"; renderName(); say(`Its name is ${esc(S.name)} now.`); }
+    }
+  };
+  inp.addEventListener("click", e => e.stopPropagation());
+  inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); finish(true); } else if (e.key === "Escape") finish(false); });
+  inp.addEventListener("blur", () => finish(true));
+};
 $("#emberName").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); saveName(); } });
 function renderCheckups() {
   renderName();
@@ -907,7 +1010,7 @@ function fmtDay(t) { return new Date(t * 1000).toLocaleDateString([], {weekday: 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c])); }
 
 function render() {
-  $("#ownerItem").style.display = S.owner ? "" : "none";
+  $("#ownerGroup").style.display = S.owner ? "" : "none";
   renderCheckups();
   renderLevel();
   $("#note").innerHTML = S.problem
@@ -940,6 +1043,7 @@ function renderPlan() {
   }
   $("#freehint").textContent = !P.plus && P.free_left > 0 && P.free_left <= 2
     ? `${P.free_left} free message${P.free_left === 1 ? "" : "s"} left today` : "";
+  $("#planVal").textContent = P.plus ? "Ember Plus · no daily limit" : `Free · ${P.free_left ?? P.free_per_day} of ${P.free_per_day} messages left today`;
   const item = $("#plusItem");
   item.style.display = P.payments && (!P.plus || P.manage) ? "" : "none";
   item.textContent = P.plus ? "Manage Ember Plus" : `Get Ember Plus · ${P.price}`;
@@ -972,7 +1076,7 @@ function openChat(id) {
   chat = id; jumpDown = true; expOpen = false; lastTalkKey = ""; expKey = "";
   $("#sessionbar").dataset.html = "-";   // "-": redraw it even when it becomes empty
   try { localStorage.setItem("ember.chat", id); } catch (e) {}
-  closeDrawers(); poll();
+  closeDrawers(); home(); poll();
 }
 function fmtWhen(t) {
   const d = new Date(t * 1000);
@@ -1025,6 +1129,7 @@ function startRename() {
 $("#chatTitle").addEventListener("click", e => { if (e.target.closest("#titleBtn")) startRename(); });
 $("#newChat").onclick = async () => { const r = await post("/chat/new"); if (r && r.id) openChat(r.id); };
 $("#openChats").onclick = () => openDrawer("chats");
+$("#topNew").onclick = () => $("#newChat").click();
 
 // the one line above the input: what's going on with your goal or experiment
 let expOpen = false;
@@ -1100,14 +1205,12 @@ function renderGoalList() {
     + (past.length ? `<div class="golabel">Finished</div>` + past.map(item).join("") : "");
 }
 $("#goallist").addEventListener("click", e => { const b = e.target.closest("[data-goal]"); if (b) openGoal(b.dataset.goal); });
-$("#openGoals").onclick = () => openDrawer("goals");
 $("#newGoal").onclick = () => openGoal("new");
-$("#gpBack").onclick = () => { closeGoal(); openDrawer("goals"); };
+$("#gpBack").onclick = back;
 function openGoal(id) {
-  closeDrawers();
-  $("#lookSheet").classList.remove("on");
+  if (view === "goal") closeGoal();
   goalOpen = id;
-  $("#goalPage").classList.add("on");
+  go("goal");
   if (id === "new") renderNewGoal(); else { renderGoalPage(); loadGoals(); }
 }
 // a short "+N XP" at the bottom of the screen after a goal action that earned some
@@ -1196,7 +1299,6 @@ async function waitGoalReply(g, since) {           // Ember's answer to today's 
   }
 }
 function goToChat(g, prefill) {
-  closeGoal();
   openChat(g.chat);
   if (prefill) { ta.value = prefill; ta.dispatchEvent(new Event("input")); setTimeout(() => ta.focus(), 100); }
 }
@@ -1209,7 +1311,7 @@ $("#gpBody").addEventListener("click", async e => {
       t.disabled = true;
       if (t.id === "ngEmber") {
         const r = await post("/goal/new", {title, with_ember: true});
-        if (r && r.ok) { closeGoal(); openChat(r.chat); }
+        if (r && r.ok) openChat(r.chat);
         else t.disabled = false;
       } else {
         const steps = $("#ngSteps").value.split("\n").map(s => s.trim()).filter(Boolean);
@@ -1370,21 +1472,90 @@ function renderWhy() {
 $("#whybtn").onclick = e => { e.stopPropagation(); $("#why").classList.toggle("on"); if (S) renderWhy(); };
 document.addEventListener("click", e => { if (!e.target.closest("#why, #whybtn")) $("#why").classList.remove("on"); });
 
-// ------------------------------------------------------------------ drawers
-const DRAWERS = {knows: "#knowsDrawer", chats: "#chatsDrawer", goals: "#goalsDrawer"};
+// ------------------------------------------------------------------ drawers (your chats)
+const DRAWERS = {chats: "#chatsDrawer"};
 function openDrawer(name) {
   closeDrawers();
   $(DRAWERS[name]).classList.add("on");
   $("#scrim").classList.add("on");
-  if (name === "knows") loadMemory();
-  if (name === "goals") loadGoals();
 }
 function closeDrawers() {
   Object.values(DRAWERS).forEach(d => $(d).classList.remove("on"));
   $("#scrim").classList.remove("on");
 }
-$("#openKnows").onclick = () => openDrawer("knows");
 $("#scrim").onclick = closeDrawers;
+
+// ------------------------------------------------------------------ where you are: the Talk, Goals and Ember tabs, and the pages they open
+// every tab and page is a step in the browser's history, so the phone's back button and swipe-back work
+const VIEWS = {goals: "#goalsPage", ember: "#emberPage", goal: "#goalPage", owner: "#ownerPage", knows: "#knowsPage"};
+const TAB_OF = {talk: "talk", goals: "goals", goal: "goals", ember: "ember", owner: "ember", knows: "ember"};
+const TABS = ["talk", "goals", "ember"];
+let view = "talk", depth = 0;
+function show(v) {
+  if (v === "goal" && !goalOpen) v = "goals";
+  closeDrawers();
+  $("#why").classList.remove("on");
+  $("#lookSheet").classList.remove("on");
+  $("#fbSheet").classList.remove("on");
+  if (view === "goal" && v !== "goal") closeGoal();
+  view = v;
+  for (const [k, sel] of Object.entries(VIEWS)) $(sel).classList.toggle("on", k === v);
+  document.querySelectorAll("#tabs [data-tab]").forEach(b => {
+    const on = b.dataset.tab === TAB_OF[v];
+    b.classList.toggle("on", on);
+    if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
+  if (v === "goals") loadGoals();
+  if (v === "knows") loadMemory();
+  if (v === "owner") loadOwner();
+  if (v === "ember") miniFace();
+  if (v === "talk") requestAnimationFrame(chatEdges);
+}
+function go(v) {
+  if (v === view) return;
+  if (v === "talk") { home(); return; }
+  if (TABS.includes(v)) {
+    if (TAB_OF[view] === v && depth > 1) { history.go(-(depth - 1)); return; }   // from a page back to its tab
+    if (depth === 0) { depth = 1; history.pushState({v, d: 1}, ""); }
+    else history.replaceState({v, d: depth}, "");
+  } else { depth += 1; history.pushState({v, d: depth}, ""); }
+  show(v);
+}
+function home() {            // back to Talk, the start of it all
+  const d = depth;
+  depth = 0;
+  if (view !== "talk") show("talk");
+  if (d) history.go(-d);
+}
+function back() { if (depth) history.back(); else show(TAB_OF[view] === view ? "talk" : TAB_OF[view]); }
+window.addEventListener("popstate", e => {
+  const st = e.state || {};
+  depth = st.d || 0;
+  const v = st.v || "talk";
+  if (v !== view) show(v);
+});
+history.replaceState({v: "talk", d: 0}, "");
+$("#tabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) go(b.dataset.tab); });
+$("#knowsBack").onclick = back;
+// on a phone the tab bar steps aside while you type
+$("#text").addEventListener("focus", () => document.body.classList.add("typing"));
+$("#text").addEventListener("blur", () => document.body.classList.remove("typing"));
+// the Ember tab shows Ember itself, small: a live copy of the face above the conversation
+let miniOn = false;
+function miniFace() {
+  if (miniOn) return;
+  miniOn = true;
+  const c = $("#miniFace"), f = $("#face"), x = c.getContext("2d");
+  const tick = () => {
+    if (view !== "ember") { miniOn = false; return; }
+    const w = Math.round(c.clientWidth * (window.devicePixelRatio || 1));
+    if (w && c.width !== w) { c.width = w; c.height = w; }
+    x.clearRect(0, 0, c.width, c.height);
+    if (f.width && f.height) x.drawImage(f, 0, 0, c.width, c.height);
+    requestAnimationFrame(tick);
+  };
+  tick();
+}
 document.querySelectorAll("[data-close]").forEach(b => b.onclick = closeDrawers);
 document.addEventListener("keydown", e => { if (e.key === "Escape") { closeDrawers(); $("#why").classList.remove("on"); } });
 
@@ -1888,7 +2059,7 @@ async function toggleNotify(item) {
       if (sub) { await post("/push/unsubscribe", {endpoint: sub.endpoint}); await sub.unsubscribe(); }
       try { localStorage.setItem("ember.notifyOff", "1"); } catch (e) {}      // you turned them off: don't turn back on
     } else if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !onHomeScreen()) {
-      say("On iPhone, notifications work once Ember is on your home screen: add it (⋯ → Add Ember to your home screen), open it from there, then turn them on.");
+      say("On iPhone, notifications work once Ember is on your home screen: add it (the Ember tab → Add Ember to your home screen), open it from there, then turn them on.");
     } else if (!canPush()) {
       say("This browser can't show Ember's notifications.");
     } else if (await Notification.requestPermission() !== "granted") {

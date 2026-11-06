@@ -148,7 +148,7 @@ To go back: put your own Gmail back in `EMBER_PLUS_EMAILS` to end free Plus (eve
 - **If Ember is slow:** Render → Logs, search for `mind answered`: each answer's time is there (a warning when it took over 20 seconds).
 - **Free messages:** `EMBER_FREE_PER_DAY` (10) per day for people without Plus. Comped Plus: `EMBER_PLUS_EMAILS`, or `*` for everyone.
 - **New tester** (while it's invite-only): add their Gmail to `EMBER_ALLOWED_EMAILS` in Render (Environment). Render restarts by itself. Also add them as a test user in Google (step 2.2).
-- **How many people it can take:** one server answers one thought at a time, and it keeps everyone's Ember in memory. That's fine for a few hundred people. Well before a thousand, tell us, and we change that.
+- **How many people it can take:** one server thinks up 4 answers at once (Render setting `EMBER_MIND_THREADS`), and an Ember nobody has used for an hour leaves its memory until it's needed again. That's fine for several hundred people. Every 5 minutes it still reads everyone's Ember to see whose check-up is due: well before a few thousand people, tell us, and we change that.
 - **Changes:** every `git push` to `main` redeploys Ember automatically.
 - **Costs:** see Anthropic's console (Usage) and Render's billing. The `usage` table in Supabase shows calls and tokens per person per day.
 - **If something breaks:** Render → your service → **Logs**. Logs contain ids and errors only, never what anyone said.

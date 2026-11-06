@@ -35,7 +35,7 @@ services:
         sync: false
       - key: EMBER_UNLOCK_EMAILS       # testers: every look unlocked, XP unchanged
         sync: false
-      - key: EMBER_OWNER_EMAILS        # who can open the owner page (⋯ → Owner): your Gmail
+      - key: EMBER_OWNER_EMAILS        # who can open the owner page (Ember tab → Who uses Ember): your Gmail
         sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
