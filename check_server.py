@@ -102,7 +102,7 @@ class FakeCfg:
 
 class FakeMind:
     def __init__(self):
-        self.fail, self.retryable, self.calls = 0, True, 0
+        self.fail, self.retryable, self.calls, self.garble = 0, True, 0, 0
 
     def __call__(self, cfg, system, user, json_mode=False):
         self.calls += 1
@@ -110,6 +110,9 @@ class FakeMind:
         if self.fail > 0:
             self.fail -= 1
             raise llm.LLMError("fake trouble", retryable=self.retryable)
+        if self.garble > 0:                        # an answer that isn't readable JSON
+            self.garble -= 1
+            return '{"reply": "oops, "broken'
         cfg.last_usage = (3000, 200)
         if "Look back on it honestly" in user:
             return json.dumps({"reply": "Looking back: " + re.search(r"What actually happened: (.*)", user).group(1)[:80]})
@@ -179,6 +182,12 @@ check("...saying 'can't be reached' only once", ember_lines("tok-a").count(UNREA
 mind.fail, mind.retryable = 1, False
 call(base, "/talk", "tok-a", {"text": "something odd"})
 check("a mind error that won't go away: it says so, no fake answer", wait(lambda: ember_lines("tok-a")[-1] == FAILED))
+mind.garble = 1
+call(base, "/talk", "tok-a", {"text": "garbled once"})
+check("an answer it can't read: it asks its mind again", wait(lambda: ember_lines("tok-a")[-1] == "I heard: garbled once"))
+mind.garble = 2
+call(base, "/talk", "tok-a", {"text": "garbled twice"})
+check("...twice: it says so, no template answer", wait(lambda: ember_lines("tok-a")[-1] == FAILED))
 
 print("Experiments still work through the server")
 for s in ("I code for hours", "I want to make a game"):
@@ -199,10 +208,40 @@ check("the window gets its mood and energy, for its look", all(k in st for k in 
       and "energy" in st["face"])
 check("renaming a chat", call(base, "/chat/rename", "tok-a", {"id": "c2", "title": "What to work on"})[1]["ok"]
       and state("tok-a", 0)["chats"][0]["title"] == "What to work on")
-check("choosing how often it checks up, and when", call(base, "/checkups", "tok-a", {"every": "few", "hour": 9})[1]["ok"]
-      and state("tok-a", 0)["checkups"] == {"every": "few", "hour": 9}
+check("choosing how often it checks up, when and on which days",
+      call(base, "/checkups", "tok-a", {"every": "daily", "at": "07:15", "days": [0, 2, 4]})[1]["ok"]
+      and state("tok-a", 0)["checkups"] == {"every": "daily", "at": "07:15", "days": [0, 2, 4]}
       and not call(base, "/checkups", "tok-a", {"every": "hourly"})[1]["ok"])
-call(base, "/checkups", "tok-a", {"every": "daily", "hour": 18})
+check("...a window from before (a whole hour) still works", call(base, "/checkups", "tok-a", {"every": "daily", "hour": 9})[1][
+    "ok"] and state("tok-a", 0)["checkups"]["at"] == "09:00")
+call(base, "/checkups", "tok-a", {"every": "daily", "at": "18:00", "days": list(range(7))})
+st = state("tok-a", 0)
+check("the window gets its level and look", st["level"]["level"] >= 1 and st["look"]["color"] == "amber")
+lk = call(base, "/looks", "tok-a")[1]
+check("the catalog of looks, with what unlocks when", [p["id"] for p in lk["parts"]] ==
+      ["color", "wear", "eyes", "cheeks", "sparks", "glow"] and lk["level"]["level"] == st["level"]["level"])
+check("a locked look is refused", not call(base, "/look", "tok-a", {"part": "wear", "value": "crown"})[1]["ok"])
+check("an unlocked one is put on", call(base, "/look", "tok-a", {"part": "color", "value": "amber"})[1]["ok"])
+
+print("Goals of their own")
+ng = call(base, "/goal/new", "tok-a", {"title": "Run 5 km", "days": 60, "steps": ["Walk 20 min"]})[1]
+gl = call(base, "/goals", "tok-a")[1]["goals"]
+g = next((x for x in gl if x["id"] == ng.get("id")), None)
+check("make a goal yourself: it's on your goals list, in phases", ng["ok"] and g and g["status"] == "active"
+      and g["phase_info"]["count"] == 5 and g["today_step"]["text"] == "Walk 20 min" and g["chat"] == ng["chat"])
+n0 = len(call(base, f"/state?v=0&chat={ng['chat']}", "tok-a")[1]["talk"])
+check("today's check", call(base, "/goal/check", "tok-a", {"id": ng["id"], "how": "done", "words": "nice"})[1]["ok"])
+check("...and Ember answers in the goal's chat", wait(lambda: len(call(base, f"/state?v=0&chat={ng['chat']}", "tok-a")[1][
+    "talk"]) >= n0 + 2))
+check("a check that isn't one of the three is refused", not call(base, "/goal/check", "tok-a",
+                                                                 {"id": ng["id"], "how": "maybe"})[1]["ok"])
+check("add your own step", call(base, "/goal/step", "tok-a", {"id": ng["id"], "text": "Stretch"})[1]["ok"])
+check("on to the next phase, with Ember's look back", call(base, "/goal/phase", "tok-a", {"id": ng["id"]})[1]["ok"]
+      and wait(lambda: next(x for x in call(base, "/goals", "tok-a")[1]["goals"] if x["id"] == ng["id"])["phase"] == 1))
+pw = call(base, "/goal/new", "tok-a", {"title": "Get a girlfriend", "with_ember": True})[1]
+check("plan a goal with Ember: a new chat where it talks it through", pw["ok"] and wait(lambda: any(
+    "I heard: I'd like to plan a goal with you: Get a girlfriend" in l["text"]
+    for l in call(base, f"/state?v=0&chat={pw['chat']}", "tok-a")[1]["talk"])))
 call(base, "/experiment/suggest", "tok-a", {})
 check("asked for ideas, it suggests experiments", wait(lambda: state("tok-a", 0)["suggestions"]))
 xid = state("tok-a", 0)["suggestions"][0]["id"]
@@ -214,7 +253,7 @@ check("when its days are up, it asks: finish or keep going",
 check("3 more days", call(base, "/experiment/extend", "tok-a", {"id": xid})[1]["ok"] and state("tok-a", 0)["experiment"]["days"] == 11)
 check("finish it", call(base, "/experiment/end", "tok-a", {"id": xid, "how": "done"})[1]["ok"])
 check("...and it looks back on what actually happened, on its own line",
-      wait(lambda: any(l.get("review") == xid and l["text"].startswith("Looking back: 0 work sessions")
+      wait(lambda: any(l.get("review") == xid and l["text"].startswith("Looking back: 0 daily checks")
                        for l in state("tok-a", 0)["talk"])))
 check("...with the facts kept for the window", state("tok-a", 0)["exps"][xid]["facts"]["sessions"] == 0)
 
@@ -229,7 +268,8 @@ with u5.lock:
 check("a planned check-up arrives in its chat by itself", wait(lambda: any(
     l.get("checkup") and l["text"] == "Hello again." for l in call(base5, "/state?v=0", "tok-a")[1]["talk"])))
 check("...and it isn't one of your free messages", call(base5, "/state?v=0", "tok-a")[1]["plan"]["plus"]
-      or call(base5, "/state?v=0", "tok-a")[1]["plan"]["free_left"] == 5)
+      or call(base5, "/state?v=0", "tok-a")[1]["plan"]["free_left"] == 10)
+check("10 free messages a day by default", call(base5, "/state?v=0", "tok-a")[1]["plan"]["free_per_day"] == 10)
 srv5.should_exit = True
 
 print("Phone notifications (Web Push)")
@@ -307,7 +347,13 @@ T[0] = day + 9 * 3600                            # 10:00 their time
 with u6.lock:
     u6.ember.followups.append({"chat": "c1", "at": T[0] - 1, "about": "the gym", "set": T[0] - 3600})
 check("a check-up goes to the phone as a notification", wait(lambda: fp.sent and fp.sent[-1][1]["chat"] == "c1"
-      and fp.sent[-1][1]["body"] == "Hello again."))
+      and fp.sent[-1][1]["body"] == "Hello again." and fp.sent[-1][1]["title"] == "Ember sent you a message"))
+check("you can name it, and its notifications say so", call(base6, "/name", "tok-a", {"name": "Lumi"})[1]["ok"]
+      and call(base6, "/state?v=0", "tok-a")[1]["name"] == "Lumi")
+with u6.lock:
+    u6.ember.talk.append({"t": T[0], "who": "you", "text": "ok"})
+    u6.ember.followups.append({"chat": "c1", "at": T[0] - 1, "about": "the run", "set": T[0] - 3600})
+check("...\"Lumi sent you a message\"", wait(lambda: fp.sent[-1][1]["title"] == "Lumi sent you a message"))
 fp.gone.add(sub["endpoint"])
 with u6.lock:
     u6.ember.talk.append({"t": T[0], "who": "you", "text": "ok"})
@@ -483,6 +529,29 @@ check("Get Ember Plus opens a Stripe checkout page for this person",
       and sent[2]["line_items[0][price]"] == "price_plus" and sent[2]["mode"] == "subscription"
       and sent[2]["payment_method_types[0]"] == "card"
       and sent[3] == "Bearer sk_test_x")
+check("...with no terms set, Stripe isn't asked for consent", "consent_collection[terms_of_service]" not in sent[2])
+gq = call(base4, "/goal/new", "tok-b", {"title": "Run", "days": 14, "steps": ["Walk"]})[1]
+check("progress is free: out of free messages, you can still make a goal and check in on it", gq["ok"]
+      and call(base4, "/goal/check", "tok-b", {"id": gq["id"], "how": "done"})[1]["ok"] and plan4()["free_left"] == 0)
+
+print("Real money: only once the terms (ÁSZF) are online")
+live = Billing("sk_live_x", "price_live", "whsec_l", "€4.99 / month", api=f"http://127.0.0.1:{st.server_address[1]}")
+base7, srv7 = serve(create_app(FileStore(os.path.join(tmp, "users7")), FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock,
+                               billing=live, free_per_day=2))
+check("a live Stripe key without EMBER_TERMS_URL sells nothing yet", live.live and not live.selling
+      and call(base7, "/plus/checkout", "tok-b", {})[0] == 503 and not call(base7, "/state", "tok-b")[1]["plan"]["payments"])
+srv7.should_exit = True
+live_t = Billing("sk_live_x", "price_live", "whsec_l", "€4.99 / month", api=f"http://127.0.0.1:{st.server_address[1]}",
+                 terms_url="https://example.hu/aszf")
+base8, srv8 = serve(create_app(FileStore(os.path.join(tmp, "users8")), FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock,
+                               billing=live_t, free_per_day=2))
+status, out = call(base8, "/plus/checkout", "tok-b", {})
+check("with the terms online: checkout opens, and Stripe asks the buyer to accept them", status == 200
+      and FakeStripe.seen[-1][2].get("consent_collection[terms_of_service]") == "required"
+      and FakeStripe.seen[-1][3] == "Bearer sk_live_x")
+check("the window gets the terms' address (for the menu and the paywall)",
+      call(base8, "/config")[1]["terms_url"] == "https://example.hu/aszf")
+srv8.should_exit = True
 
 
 def hook(event, secret="whsec_x", t=None):

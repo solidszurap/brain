@@ -188,6 +188,10 @@ class MindWorker:
                 system, user = u.ember.prompt(event, self.clock())
             try:
                 raw = self._ask(system, user)
+                if not isinstance(llm.parse_json(raw), dict):       # an answer it can't read: once more, and if
+                    raw = self._ask(system, user)                   # that fails too, say so (no template answer)
+                    if not isinstance(llm.parse_json(raw), dict):
+                        raise llm.LLMError("the mind's answer couldn't be read", retryable=False)
             except llm.LLMError as e:
                 log.warning("mind failed for %s: %s", u.uid, e)
                 if event["type"] in OWN:
@@ -216,7 +220,7 @@ class MindWorker:
 
 def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=150,
                retry_delay=10.0, retry_every=60.0, public_config=None, web_dir=WEB,
-               billing=None, free_per_day=5, plus_emails=(), checkup_every=300.0, push=None):
+               billing=None, free_per_day=10, plus_emails=(), checkup_every=300.0, push=None):
     users = Users(store, clock)
     plus_emails = {e.strip().lower() for e in plus_emails if e.strip()}
 
@@ -259,7 +263,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         if not push or not u.ember.devices:
             return
         devices = [dict(d) for d in u.ember.devices]
-        message = {"title": "Ember", "body": text[:180], "chat": chat}
+        message = {"title": f"{u.ember.name} sent you a message", "body": text[:180], "chat": chat}
 
         def send():
             gone = []
@@ -373,7 +377,8 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
 
     @app.get("/config")
     def config():
-        return dict(public_config or {}, mode=auth.mode, vapid_public=push.public if push else None)
+        return dict(public_config or {}, mode=auth.mode, vapid_public=push.public if push else None,
+                    terms_url=billing.terms_url if billing else None)
 
     # ------------------------------------------------------------ Ember
     @app.get("/state")
@@ -398,7 +403,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         plan = users.plan(u) if auth.mode != "local" else None
         s["plan"] = {"plus": is_plus(u), "free_left": free_left(u, now), "free_per_day": free_per_day,
                      "price": billing.price_label if billing else None,
-                     "payments": bool(billing and billing.enabled),
+                     "payments": bool(billing and billing.selling),
                      "manage": bool(billing and billing.enabled and plan and plan.get("customer"))}
         return s
 
@@ -432,9 +437,26 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
     def chat_rename(request: Request, body: dict = Body(default={})):
         return act(request, lambda u, now: u.ember.rename_chat(body.get("id"), body.get("title", "")))
 
+    @app.get("/looks")
+    def looks(request: Request):
+        u = who(request)
+        with u.lock:
+            return u.ember.looks()
+
+    @app.post("/look")
+    def look_set(request: Request, body: dict = Body(default={})):
+        return act(request, lambda u, now: u.ember.set_look(body.get("part"), body.get("value")))
+
+    @app.post("/name")
+    def name_set(request: Request, body: dict = Body(default={})):
+        return act(request, lambda u, now: u.ember.set_name(body.get("name", "")))
+
     @app.post("/checkups")
     def checkups_set(request: Request, body: dict = Body(default={})):
-        return act(request, lambda u, now: u.ember.set_checkups(body.get("every"), body.get("hour")))
+        at = body.get("at")
+        if at is None and body.get("hour") is not None:               # a window from before minutes and days
+            at = f"{body.get('hour')}:00"
+        return act(request, lambda u, now: u.ember.set_checkups(body.get("every"), at, body.get("days")))
 
     @app.post("/push/subscribe")
     def push_subscribe(request: Request, body: dict = Body(default={})):
@@ -496,7 +518,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
 
     @app.post("/experiment/step")
     def step(request: Request, body: dict = Body(default={})):
-        return act(request, lambda u, now: u.ember.set_step(body.get("id"), body.get("index"), body.get("done")))
+        return act(request, lambda u, now: u.ember.set_step(body.get("id"), body.get("index"), body.get("done"), now))
 
     @app.post("/experiment/end")
     def end(request: Request, body: dict = Body(default={})):
@@ -510,6 +532,58 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
     @app.post("/experiment/extend")
     def extend(request: Request, body: dict = Body(default={})):
         return act(request, lambda u, now: u.ember.extend(body.get("id"), now))
+
+    # ------------------------------------------------------------ goals of their own
+    @app.get("/goals")
+    def goals(request: Request):
+        u = who(request)
+        with u.lock:
+            return {"goals": u.ember.goals(clock())}
+
+    @app.post("/goal/new")
+    def goal_new(request: Request, body: dict = Body(default={})):
+        u = who(request)
+        now = clock()
+        with u.lock:
+            if body.get("with_ember"):                       # talk it through with Ember: that's a message
+                spend_free(u, now)
+                event = u.ember.plan_with_ember(body.get("title"), now)
+                if event:
+                    worker.put(u.uid, event)
+                out = {"ok": bool(event), "chat": event and event["chat"]}
+            else:
+                steps = body.get("steps") if isinstance(body.get("steps"), list) else []
+                x = u.ember.new_goal(body.get("title"), body.get("done_when"), body.get("days", 30), steps, now)
+                out = {"ok": bool(x), "id": x and x["id"], "chat": x and x["chat"]}
+            users.save(u)
+        return out
+
+    @app.post("/goal/check")
+    def goal_check(request: Request, body: dict = Body(default={})):
+        def f(u, now):
+            event = u.ember.daily_check(body.get("id"), body.get("how"), str(body.get("words", ""))[:MAX_TEXT], now)
+            if event and event.pop("first"):                 # Ember answers the first check of the day
+                worker.put(u.uid, event)
+            return event is not None
+        return act(request, f)
+
+    @app.post("/goal/phase")
+    def goal_phase(request: Request, body: dict = Body(default={})):
+        def f(u, now):
+            x = u.ember.find_exp(body.get("id"))
+            if not x or x["status"] != "active" or not x.get("phases") or x["phase"] >= len(x["phases"]) - 1:
+                return False
+            p = x.get("phase_pending") or {}
+            if p.get("phase") == x["phase"] and now - p.get("t", 0) < 120:
+                return True                                  # already asked (a second tap); after 2 minutes, again
+            x["phase_pending"] = {"phase": x["phase"], "t": now}
+            worker.put(u.uid, {"type": "phase", "id": x["id"], "from": x["phase"]})   # it looks back and plans the
+            return True                                                              # next; not a free message
+        return act(request, f)
+
+    @app.post("/goal/step")
+    def goal_step(request: Request, body: dict = Body(default={})):
+        return act(request, lambda u, now: u.ember.add_step(body.get("id"), body.get("text")))
 
     @app.post("/session/start")
     def session_start(request: Request, body: dict = Body(default={})):
@@ -570,8 +644,8 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
     @app.post("/plus/checkout")
     def plus_checkout(request: Request):
         u = who(request)
-        if not (billing and billing.enabled):
-            raise HTTPException(503, "payments aren't set up yet")
+        if not (billing and billing.selling):          # a live key without the terms online sells nothing yet
+            raise HTTPException(503, "Ember Plus opens soon")
         plan = users.plan(u)
         try:
             return {"url": billing.checkout(u.uid, u.email, plan and plan.get("customer"), base_url(request))}

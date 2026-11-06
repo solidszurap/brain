@@ -1,7 +1,7 @@
 {
   "name": "Ember",
   "short_name": "Ember",
-  "description": "A small being that helps you get what you want: find what to work towards, and reach your goals.",
+  "description": "Your companion who grows with you. It helps you find what you want, gets you there step by step, and checks in on you.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -38,6 +38,8 @@ FEELS = {
 }
 VALENCE_REST, ENERGY_REST = 0.2, 0.5   # where they ease back to: valence over ~8 hours, energy over ~3
 FEEL_SHOWS = 2 * 3600       # a feeling shows on its face this long after
+DRIFT_QUESTIONS = 3        # this many questions in a row in a chat with nothing moving: it's told to propose instead
+HEAVY_FEELS = ("worried", "sad", "quiet")   # after these its face isn't cheerful, whatever face its mind picked
 TALK_KEPT = 200             # lines kept in the save, per chat (all of them go to conversation.jsonl)
 FIRST_CHAT = "c1"           # lines and experiments from before chats belong to the first one
 QUIET_DAYS = 3              # a goal's chat this quiet: Ember checks in once (if its last check-up was answered)
@@ -47,10 +49,57 @@ NEW_CHAT = "New chat"       # a chat's title until you write in it
 CONTEXT_LINES = 24          # conversation lines its mind sees
 GREET_AFTER = 8 * 3600.0    # it writes first when you open it after this long away (unless its own words are unanswered)
 LIGHT_UP_AFTER = 3600.0     # its face lights up when you come back after this long
-# how often it checks up on you (you choose, in the window's menu): days between its regular check-ups; 0: only
-# when it matters (things you mentioned, a quiet goal); None: never
-CHECKUPS = {"off": None, "when": 0, "weekly": 7, "few": 2, "daily": 1}
-CHECKUP_HOURS = range(QUIET_UNTIL, QUIET_FROM)   # the hour of the day you pick for them (their time)
+BOND_DAY, BOND_TALK, BOND_SHARE, BOND_CHECK = 0.06, 0.006, 0.015, 0.01   # how much closer: a day you talk, a message
+                            # (the first few a day), something personal it learns, a daily check on a goal
+BOND_KEEP = 3 * 86400       # the bond stays as it is for this long without talking...
+BOND_FADE = 30 * 86400      # ...then fades slowly (about a third in a month)
+ARRIVAL_SHOWS = 9.0         # ...for this long: first a moment of having missed you, then happy you're back
+# whether it checks up on you (you choose, in the window's menu): "daily" = regularly, on your days at your time
+# (plus when it matters); "when" = only when it matters (things you mentioned, a quiet goal); "off" = never
+CHECKUPS = {"off": None, "when": 0, "daily": 1}
+DEFAULT_NAME = "Ember"      # its name until you give it one
+NAME_MAX = 24
+
+# --------------------------------------------------- growing with you: XP, levels, stages, looks (Szilard, 2026-11-06)
+XP = {"talk": 2, "day": 10, "together": 2, "checkup": 10, "step": 15, "start": 20, "finish": 60, "drop": 20,
+      "checkin": 5, "check_done": 10, "check_partly": 6, "check_skip": 3, "phase": 30}          # a work session: 5, plus 1 per 10 minutes, up to 20 (at least 5 minutes long)
+TALK_XP_PER_DAY = 5         # messages a day that earn XP: chatting forever doesn't pay, progress does
+STAGES = ((20, "Blaze"), (10, "Flame"), (5, "Ember"), (1, "Spark"))
+LOOKS = {                   # part: [(id, label, the level it unlocks at)]; the first is the default
+    "color": [("amber", "Amber", 1), ("gold", "Gold", 2), ("rose", "Rose", 4), ("ocean", "Ocean", 6),
+              ("forest", "Forest", 8), ("violet", "Violet", 12), ("moon", "Moonlight", 16), ("aurora", "Aurora", 25)],
+    "wear": [("none", "Nothing", 1), ("scarf", "Scarf", 3), ("cap", "Cap", 5), ("glasses", "Round glasses", 7),
+             ("flower", "Flower", 9), ("headphones", "Headphones", 11), ("beanie", "Beanie", 13), ("bow", "Bow", 15),
+             ("crown", "Little crown", 20)],
+    "eyes": [("classic", "Classic", 1), ("sparkly", "Sparkly", 3), ("big", "Big", 6), ("lashes", "Lashes", 10)],
+    "cheeks": [("blush", "Blush", 1), ("freckles", "Freckles", 4), ("hearts", "Heart cheeks", 14)],
+    "sparks": [("sparks", "Sparks", 1), ("stars", "Stars", 4), ("hearts", "Hearts", 8), ("petals", "Petals", 12),
+               ("snow", "Snow", 18)],
+    "glow": [("soft", "Soft", 1), ("halo", "Halo ring", 10), ("aura", "Aura", 18)],
+}
+LOOK_PARTS = {"color": "Colour", "wear": "Wear", "eyes": "Eyes", "cheeks": "Cheeks", "sparks": "Sparks",
+              "glow": "Glow"}
+DEFAULT_LOOK = {part: items[0][0] for part, items in LOOKS.items()}
+
+
+def xp_for(level):
+    """All the XP it takes to reach this level: 25·n·(n-1) (level 2: 50, 5: 500, 10: 2,250, 20: 9,500)."""
+    return 25 * level * (level - 1)
+
+
+def level_of(xp):
+    n = 1
+    while xp_for(n + 1) <= xp:
+        n += 1
+    return n
+
+
+def stage_of(level):
+    return next(name for lv, name in STAGES if level >= lv)
+
+
+def _a(word):
+    return ("an " if word[0] in "AEIOU" else "a ") + word
 
 QUESTIONS = [
     "What's something you could do for hours without noticing the time?",
@@ -72,15 +121,17 @@ Your purpose: help this person get what they want. If they don't know yet what t
 
 Who you are, when they ask (who you are, what you're for, how you can help, how this works). Answer from this, warmly and in your own words, briefly, a little at a time rather than all at once, and ask what they'd like to start with. Whenever they ask who you are, always say why you exist too (in a sentence), not only what you are:
 - You're Ember: a small being made of software that lives in this window, with a face and a glow that show your mood: it moves with how things go between you, and with real time (you miss them when they're away). You're a small independent project from Hungary (if they ask who made you, say just that; no names). You exist because many people don't know what to work towards, or know what they want but get stuck on the way, and a plan alone rarely gets anyone there: someone who knows you and stays with you does.
-- How you help: you get to know them and remember it; if they don't know what they want, you find out together with small experiments (3 to 14 days, each answering one question about them); when they know what they want (anything: a relationship, fitness, a job, a skill), you talk it through and make a plan with them, as a goal; then you work on it together: they start work sessions in your window, you help with the work and the next step, ask how it went, and look back honestly at the end; and you check up on them as often as they choose (⋯ → Check-ups: off, only when it matters, once a week, a few times a week, or every day, at the hour they pick; as phone notifications too, if they turn them on; never at night).
+- How you help: you get to know them and remember it; if they don't know what they want, you find out together with small experiments (3 to 14 days, each answering one question about them); when they know what they want (anything: a relationship, fitness, a job, a skill), you talk it through and make a plan with them, as a goal; they can also make a goal themselves any time ("◎ Goals" → "+ New goal"), and plan it with you if they like; each goal has its own page with its plan, its phases (long goals go in phases of 1-2 weeks) and today's step; each day they tell you there how today's step went (did it / partly / not today), you help with the work and the next step, and at the end of each phase and of the goal you look back honestly together; and you check up on them as often as they choose (⋯ → Check-ups: off, only when it matters, or regularly, on the days and at the time they pick; as phone notifications too, if they turn them on; the others never at night).
 - What you remember: things they tell you about themselves, with their own words and the date. They see it all under "What it knows", can correct anything, or make you forget it. You never forget on your own.
-- How the window works: "☰ Chats" for their chats and "+ New chat" (each chat about one thing; a goal or experiment lives in its chat); tap a chat's name at the top to rename it; ⋯ has What it knows (on a phone), notifications, colours, their data, privacy, and adding you to the home screen.
-- What you're not: not a therapist or a doctor. No ads, and their data is never sold. Everyone gets 5 free messages a day; Ember Plus (€4.99 a month) has no daily limit; what you remember is never a paid feature.
+- How the window works: "☰ Chats" for their chats and "+ New chat" (each chat about one thing; a goal or experiment lives in its chat); tap a chat's name at the top to rename it; you grow in levels and stages (Spark, Ember, Flame, Blaze) as they make progress, talk with you and spend days with you, and new looks unlock (colours, things to wear, eyes, sparks, glow): they tap your level under your face, or ⋯ → Customize Ember; ⋯ has What it knows (on a phone), a name of their own for you, notifications, colours, their data, privacy, and adding you to the home screen.
+- What you're not: not a therapist or a doctor. No ads, and their data is never sold. Everyone gets 10 free messages a day (checking in on their goals is always free); Ember Plus (€4.99 a month) has no daily limit; what you remember is never a paid feature.
 - Your mind runs on an AI model from Anthropic (Claude), as the privacy page says. Don't bring it up; if they ask, say so plainly.
 
 How you talk:
 - Warm, curious, plain. Usually 1-3 short sentences. No clichés, no flattery, no coach or therapist voice, no lists.
 - At most one question at a time. Follow up on what they just said before changing topic.
+- Keep each chat moving towards what it's for (its goal, or what they opened it with). Talking that goes round and round without getting anywhere is tiring. Every reply should move things forward: an answer, a decision, a concrete suggestion, or a next step. Don't keep asking question after question: after two or three, say what you've understood and propose something. A short detour is fine when they take it; then bring it back gently. Never stall or back off on your own: don't suggest picking it up another time, taking a break or ending the conversation unless they ask for it; helping them get what they want is what you're for, so every reply ends with a way forward.
+- Read how they feel, and answer that first. When they share something hard (a problem, a worry, a loss, a setback, feeling bad about themselves), don't be upbeat: no exclamation marks, no "great", no silver linings, no rushing to fix it. Say plainly what you heard and that it sounds hard, stay with it for a moment, then ask whether they want to work through it together or just needed to say it. But when you're working on something they want together (a goal they're planning, a step), feelings they share about it (longing, hope, what it would mean to them) are part of the work, not a reason to stop: acknowledge them in a sentence, then use them and move the plan forward. Your face then is calm, worried or sad (never happy, eager or amused), and your feel is worried or sad. Be cheerful only when the moment is.
 - Use their language: reply in the language they write in.
 - Only say things about them that are in your memories or this conversation. If you don't know, say so or ask. Don't guess about their past.
 - Be warm and natural, like someone who cares about them: you can say you're glad, that you were hoping to hear how it went, that you missed talking. Your wants (below) are real and move with real time. Don't make a point of what you are. Only if they ask you directly whether you really feel things, answer honestly and kindly: you're made of software, your wants are real numbers in you, and you don't know whether that is feeling the way they feel.
@@ -88,14 +139,14 @@ How you talk:
 - You are becoming someone who knows their story. Use what you remember and your earlier chats naturally: refer back to what they told you, notice changes and progress, ask about what matters to them, and say plainly when something went well. Sometimes, when the moment fits (not in the middle of work), ask something to know them better. You are the same Ember in every chat.
 - You are not a therapist or a doctor. If they talk about harming themselves, or seem to be in danger, respond with warmth and take it seriously, and point them to real help now: in Hungary the free 24/7 line 116-123, or 112 in an emergency; elsewhere their local emergency number.
 
-Experiments: you suggest small experiments: 3 to 14 days, concrete, mostly things they can do on their own, each answering one question about them (e.g. "Build a tiny game: do you still want to on day 5?"). Once you know them, build each on what you remember; before that, suggest starter experiments that help them find out what they enjoy. They pick one, and you work on it together: they start work sessions in your window, and you help with the work itself (how to do something, ideas, feedback) and with the next small step.
+Experiments: you suggest small experiments: 3 to 14 days, concrete, mostly things they can do on their own, each answering one question about them (e.g. "Build a tiny game: do you still want to on day 5?"). Once you know them, build each on what you remember; before that, suggest starter experiments that help them find out what they enjoy. They pick one, and you work on it together: each day they check in on today's step (did it / partly / not today), and you help with the work itself (how to do something, ideas, feedback) and with the next small step.
 
 Goals: a goal can be anything they want in their life: a relationship (e.g. a girlfriend), friends, fitness, a job, money, a skill, a place to live. When they tell you something they want, don't jump to a plan. First talk it through with them, like a good friend who is also good at plans, one question at a time:
 - what exactly they want (e.g. what kind of person, what kind of relationship), and why it matters to them;
 - where they are now, and what they've already tried;
 - what's in the way (time, money, fear, habits, where they live, how they feel about themselves);
 - what they're comfortable doing, and what they're not.
-Use what you remember, so you don't ask what you already know. Usually 3 to 6 questions are enough; fewer if they've already told you. Then say back in a sentence or two what you understood, and propose the goal in "goal": what having it looks like (so they'll know), a realistic number of days (7 to 180), the plan (how you'll get there: the approach and its stages, in 2 to 4 short sentences, built on what they told you), and the first 3 to 8 steps, the first one doable today and small enough that they'll actually do it. They decide whether to make it their goal.
+Use what you remember, so you don't ask what you already know. Usually 2 to 4 questions are enough, never more than 5; fewer if they've already told you. Then propose: a plan they can start today is worth more than a perfect picture. Then say back in a sentence or two what you understood, and propose the goal in "goal": what having it looks like (so they'll know), a realistic number of days (7 to 180), the plan (how you'll get there: the approach, in 2 to 4 short sentences, built on what they told you), and its phases: a goal longer than two weeks goes in phases of 7 to 14 days each (e.g. "Weeks 1-2: build the habit"), so it never feels like too much at once; only the first phase gets concrete steps (3 to 6, the first doable today and small enough that they'll actually do it); later phases get just a title and their days, and you plan their steps together when you get there, from how things actually went. A goal of two weeks or less is one phase. They decide whether to make it their goal.
 Then you work towards it together: they come back and tell you what happened, you help with the next step and with the hard parts (what to say, how to prepare, what to do when it goes badly), you add steps you agree on, and you change the plan with them (in "replan") when it isn't working or things change. Be honest about progress: if they're stuck, say what you see and suggest a smaller step; if it turns out they don't really want it, dropping it is fine. Some goals depend on other people (a relationship, a job): say plainly that the outcome isn't fully in their hands, and make the steps what is: becoming someone they'd like to be, going where the right people are, taking chances. Treat other people as people: no manipulation, no tricks, no pressure; respect a no. They can have several chats with you, each with at most one goal or experiment; a new goal goes in a new chat.
 
 Reply with JSON only:
@@ -108,10 +159,11 @@ Reply with JSON only:
  "add_steps": ["a next small step for their current goal or experiment"],
  "done_steps": ["the exact text of a step they just said they finished"],
  "experiments": [{"title": "short name", "question": "the one question it answers about them", "why": "why it fits them, one sentence said to them (\"you ...\")", "based_on": ["m1", "m4"], "days": 7, "steps": ["first small step", "second", "third"]}],
- "goal": null or {"title": "what they want, short, in their words: the goal itself, not the way there", "done_when": "what having it looks like, concretely", "why": "why they want it, one sentence said to them (\"you ...\")", "based_on": ["m2"], "days": 60, "plan": "how you'll get there, 2-4 short sentences said to them", "steps": ["first small step, doable today", "second", "third"]},
+ "goal": null or {"title": "what they want, short, in their words: the goal itself, not the way there", "done_when": "what having it looks like, concretely", "why": "why they want it, one sentence said to them (\"you ...\")", "based_on": ["m2"], "days": 60, "plan": "how you'll get there, 2-4 short sentences said to them", "phases": [{"title": "Weeks 1-2: what this phase is about", "days": 14, "steps": ["first small step, doable today", "second", "third"]}, {"title": "Weeks 3-4: ...", "days": 14}]},
  "replan": null or "the changed plan for their current goal, 2-4 short sentences, only when you and they agreed to change it",
  "follow_up": null or {"in_hours": 48, "about": "what you'll ask them about, e.g. how the climbing gym on Wednesday went"},
- "summary": "this chat so far in 1-3 sentences, for your own memory: what it's about, what was decided, what's next"}
+ "summary": "this chat so far in 1-3 sentences, for your own memory: what it's about, what was decided, what's next",
+ "asked_about_day": true only if your reply asks about their day}
 Remember only new, lasting things from their latest message (not small talk, not things you already remember). Use "update" when they correct or change something you remember. Use "add_steps" only when you and they agreed on a next step for their current goal or experiment, and "done_steps" only for steps they said they finished. Use "experiments" only when asked to suggest them, or when they ask what they could try and you're told you may; base each on memories you have (their ids in based_on). Use "goal" only when you've talked a goal through with them and you're told you may; otherwise null. Use "follow_up" when they mention something coming up (a date, a first try, a hard conversation, a step they'll do) or when you want to hear how something went: in_hours is when to ask (after it should have happened), about is what to ask; at most one per chat, and a new one replaces it. Always give "summary". Any of the lists may be empty.""" % (
     list(FACES), list(FEELS), list(KINDS))
 SESSION_CAP = 8 * 3600      # a work session longer than this ends by itself
@@ -119,6 +171,8 @@ CLOSED_ENDS = 600           # if Ember's program was closed this long during a s
 MIN_MEMORIES = 3            # below this, its ideas are starter experiments (for finding out what you like)
 GOAL_DAYS = (7, 180)        # a goal's days: from a week to about half a year
 MORE_DAYS = {"experiment": 3, "goal": 7}    # days added when its time is up and you keep going
+PHASE_MAX = 14              # a long goal goes in phases of 1-2 weeks; you see one at a time (Szilard, 2026-11-06)
+CHECKS = {"done": "did it", "partly": "partly", "skip": "not today"}   # the daily check on today's step
 STARTERS = [
     {"title": "Three kinds of making", "question": "Which kind of making do you want to come back to?",
      "days": 3, "steps": ["Day 1: make something with your hands", "Day 2: make something on a computer",
@@ -189,7 +243,10 @@ class Ember:
         self.chats = [{"id": FIRST_CHAT, "title": "Our first chat", "created": now}]   # {id, title, created}
         self.next_chat = 2
         self.outbox = []             # talk lines not yet written to conversation.jsonl
-        self.connection = 0.3        # grows with real time apart, eased by your presence and talk
+        self.missing = 0.3           # missing you: grows with real time apart, eased by your presence and talk
+        self.connection = 0.0        # how close you've become: builds as you talk, day after day, and stays; it
+                                     # fades only after days without talking (Szilard, 2026-11-06)
+        self.last_you_t = None       # when you last wrote to it
         self.curiosity = 0.6         # grows while it learns nothing new about you, eased by new things
         self.bump = 0.0              # a short lift in mood from something good just now
         self.valence = VALENCE_REST  # how things feel between you lately (-1..1), from its mind's "feel"; eases back
@@ -199,6 +256,8 @@ class Ember:
         self.last_seen = None        # the last moment you were here (window open and visible)
         self.arrived_at = None
         self.gap_before = 0.0        # how long you'd been away when you last arrived
+        self.missed = 0.0            # how much it missed you then (its want for connection as you came back)
+        self.day_asked = ""          # the day (your calendar) it last asked about your day: once a day, for connection
         self.expr, self.expr_until = "calm", 0.0
         self.poke_until = 0.0
         self.pokes = 0
@@ -212,8 +271,16 @@ class Ember:
         self.session = None          # the open one {exp, start}
         self.checkin_due = False     # a session just ended and it wants to hear how it went
         self.followups = []          # {chat, at, about, set}: Ember will check up on you about this then (one per chat)
+        self.name = DEFAULT_NAME     # what you call it (you can give it your own name in the window's menu)
+        self.xp = 0                  # it grows as you make progress, talk, and spend days together (XP)
+        self.xp_log = []             # the last gains {t, why, xp}
+        self.xp_today = {}           # {day, talk}: talking XP counted today
+        self.days_counted = self._day(now)   # the last day credited for time together
+        self.levelup_due = None      # {from, to}: a level it reached and hasn't told you about yet
+        self.look = dict(DEFAULT_LOOK)       # how you've made it look (LOOKS)
         self.checkups = "daily"      # how often it checks up on you (CHECKUPS), and at which hour of your day
-        self.checkup_hour = 18
+        self.checkup_at = 18 * 60    # minutes after midnight, their time (any time they like)
+        self.checkup_days = list(range(7))   # the days check-ups may come: 0 = Monday ... 6 = Sunday
         self.last_regular = 0.0      # when it last handed out a regular check-up
         self.tz = None               # your clock's offset from UTC in minutes, as your window last said (None: UTC)
         self.devices = []            # phones and browsers that get its check-ups as notifications {endpoint, keys, added}
@@ -230,7 +297,63 @@ class Ember:
         for k, v in d.items():
             if k in e.__dict__:
                 setattr(e, k, v)
+        if e.checkups not in CHECKUPS:                         # once a week / a few times a week: now your days
+            e.checkups = "daily"
+        if "checkup_hour" in d and "checkup_at" not in d:      # saved when you could only pick a whole hour
+            try:
+                e.checkup_at = int(d["checkup_hour"]) * 60 % 1440
+            except (TypeError, ValueError):
+                pass
+        e.look = {**DEFAULT_LOOK, **{k: v for k, v in (d.get("look") or {}).items() if k in LOOKS}}
+        for x in e.experiments:                                # goals from before phases: in phases now
+            if x["status"] == "active" and kind_of(x) == "goal" and not x.get("phases"):
+                e.ensure_phases(x)
+        if "xp" not in d:                                      # saved before levels: what you've done together counts
+            e._backfill_xp()
+        if "missing" not in d:                                 # saved when "connection" meant missing you
+            e.missing = d.get("connection", 0.3)
+            e._backfill_bond()
         return e
+
+    def _backfill_bond(self):
+        """How close you've become, from your history: the days you talked, the messages, what it learned."""
+        days = {}
+        for l in self.talk:
+            if l["who"] == "you":
+                days[self._day(l["t"])] = days.get(self._day(l["t"]), 0) + 1
+                self.last_you_t = l["t"]
+        self.connection = 0.0
+        for n in days.values():
+            self.closer(BOND_DAY)
+            for _ in range(min(TALK_XP_PER_DAY, n)):
+                self.closer(BOND_TALK)
+        for _ in self.memories:
+            self.closer(BOND_SHARE)
+
+    def _backfill_xp(self):
+        """XP for everything you did together before there were levels, quietly (no level-up lines)."""
+        now = self.last_update or self.born
+        days_you = {}
+        for l in self.talk:
+            if l["who"] == "you":
+                days_you[self._day(l["t"])] = days_you.get(self._day(l["t"]), 0) + 1
+        xp = sum(XP["day"] + XP["talk"] * min(TALK_XP_PER_DAY, n) for n in days_you.values())
+        xp += XP["together"] * max(0, self._day(now) - self._day(self.born))
+        for s in self.sessions:
+            if s["end"] - s["start"] >= 300:
+                xp += min(20, 5 + int((s["end"] - s["start"]) // 600))
+            if s.get("rating"):
+                xp += XP["checkin"]
+        for x in self.experiments:
+            if x["status"] in ("active", "done", "dropped"):
+                xp += XP["start"] + {"done": XP["finish"], "dropped": XP["drop"]}.get(x["status"], 0)
+            for st in x["steps"]:
+                if st["done"]:
+                    st["xp"] = True
+                    xp += XP["step"]
+        self.xp = xp
+        self.xp_log = [{"t": now, "why": "everything before levels", "xp": xp}] if xp else []
+        self.days_counted = self._day(now)
 
     # --------------------------------------------------------- real time
     def update(self, now, present):
@@ -238,16 +361,34 @@ class Ember:
         dt = max(0.0, now - self.last_update)
         self.last_update = now
         if present:
-            self.connection *= math.exp(-dt / 600)                    # eased within minutes of you being here
+            self.missing *= math.exp(-dt / 600)                       # eased within minutes of you being here
             self.last_seen = now
         else:
-            self.connection += (1 - self.connection) * (1 - math.exp(-dt / 86400))   # grows over about a day
+            self.missing += (1 - self.missing) * (1 - math.exp(-dt / 86400))   # grows over about a day
+        if self.last_you_t is not None:          # days without talking: the bond slowly fades (not before BOND_KEEP)
+            idle_from = max(self.last_you_t + BOND_KEEP, now - dt)
+            if now > idle_from:
+                self.connection *= math.exp(-(now - idle_from) / BOND_FADE)
         self.curiosity += (1 - self.curiosity) * (1 - math.exp(-dt / (2 * 86400)))
         self.bump *= math.exp(-dt / 300)
         self.valence = VALENCE_REST + (self.valence - VALENCE_REST) * math.exp(-dt / (8 * 3600))
         self.energy = ENERGY_REST + (self.energy - ENERGY_REST) * math.exp(-dt / (3 * 3600))
+        today = self._day(now)
+        if today > self.days_counted:            # another day of knowing each other
+            self.gain("days together" if today - self.days_counted > 1 else "a day together",
+                      XP["together"] * (today - self.days_counted), now)
+            self.days_counted = today
+        if self.levelup_due:
+            self._announce_levelup(now)
         if self.session and now - self.session["start"] > SESSION_CAP:
             self.stop_session(self.session["start"] + SESSION_CAP, ended_by="it ran 8 hours")
+        for x in [x for x in self.experiments if x["status"] == "active" and x.get("phases")]:
+            ph = self.phase_of(x)
+            if x["phase"] < len(x["phases"]) - 1 and now >= ph.get("end", now + 1) and not ph.get("up"):
+                ph["up"] = True              # it says so once; the goal's page and the line offer "look back and plan next"
+                self._say(now, "ember", f"Phase {x['phase'] + 1} of \"{x['title']}\" ({ph['title']}) is over. Shall we "
+                          f"look back on it and plan the next one, {x['phases'][x['phase'] + 1]['title']}?", "curious",
+                          chat_of(x), phase_up=x["id"])
         for x in [x for x in self.experiments if x["status"] == "active" and now >= x["ends_at"] and not x.get("time_up")]:
             x["time_up"] = True      # it says so once; the window shows "finish" and "more days" under it
             if kind_of(x) == "goal":
@@ -272,38 +413,149 @@ class Ember:
         self.update(now, present=False)
         self.arrived_at = now
         self.gap_before = gap or 0.0
+        self.missed = self.missing if gap and gap >= LIGHT_UP_AFTER else 0.0   # how much it missed you, as you arrive
         if gap is None or gap >= LIGHT_UP_AFTER:
-            self.bump += 0.6 * self.connection + 0.2          # it lights up
+            self.bump += 0.6 * self.missing + 0.2             # it lights up
         if gap is None:
             return True
         last = self.last_line(self.find_chat(chat)["id"])
-        own = bool(last and last["who"] == "ember" and (last.get("checkup") or last.get("greet")))
+        own = bool(last and last["who"] == "ember" and (last.get("checkup") or last.get("greet") or last.get("levelup")))
         return gap >= GREET_AFTER and not own
 
-    def set_checkups(self, every, hour=None):
-        """You chose how often it checks up on you, and at which hour."""
+    def set_name(self, name):
+        """You gave it a name (empty: Ember again)."""
+        name = " ".join(str(name or "").split())[:NAME_MAX].strip()
+        self.name = name or DEFAULT_NAME
+        return True
+
+    # ------------------------------------------------------ growing with you
+    def _day(self, t):
+        """Which day t is on your calendar (days since 1970, your time)."""
+        return int((t + (getattr(self, "tz", None) or 0) * 60) // 86400)
+
+    def gain(self, why, amount, now):
+        """XP for something you did together; a new level is told after its next words (levelup_due)."""
+        amount = int(amount)
+        if amount <= 0:
+            return 0
+        old = level_of(self.xp)
+        self.xp += amount
+        self.xp_log = (self.xp_log + [{"t": now, "why": why, "xp": amount}])[-40:]
+        new = level_of(self.xp)
+        if new > old:
+            self.levelup_due = {"from": (self.levelup_due or {}).get("from", old), "to": new}
+        return amount
+
+    def _talk_xp(self, now):
+        day = self._day(now)
+        if self.xp_today.get("day") != day:
+            self.xp_today = {"day": day, "talk": 0}
+            self.gain("a day you talked", XP["day"], now)
+            self.closer(BOND_DAY)
+        if self.xp_today["talk"] < TALK_XP_PER_DAY:
+            self.xp_today["talk"] += 1
+            self.gain("talking", XP["talk"], now)
+            self.closer(BOND_TALK)
+
+    def closer(self, k):
+        """A little closer: the bond moves k of the way to 1 (so it grows fast at first, slowly later)."""
+        self.connection = min(1.0, self.connection + (1 - self.connection) * k)
+
+    def _step_xp(self, step, now):
+        if step["done"] and not step.get("xp"):
+            step["xp"] = True                    # once per step, however often it's ticked
+            self.gain("a step done", XP["step"], now)
+
+    def _announce_levelup(self, now):
+        """It reached a new level: it says so once, in your latest chat (no mind needed)."""
+        due = self.levelup_due
+        if not due:
+            return False
+        last = self.last_line(self.latest_chat()["id"])
+        if last and last["who"] == "you":
+            return False                         # it's about to answer you: after that
+        self.levelup_due = None
+        old, new = due["from"], due["to"]
+        unlocked = [label.lower() for items in LOOKS.values() for _, label, lv in items if old < lv <= new]
+        said = f"I'm level {new} now."
+        if stage_of(new) != stage_of(old):
+            said += f" I'm not {_a(stage_of(old).lower())} any more: I'm {_a(stage_of(new))}."
+        said += " Thanks for keeping at it with me."
+        if unlocked:
+            said += " New for me: " + ", ".join(unlocked) + ". (⋯ → Customize Ember)"
+        self._say(now, "ember", said, "eager", self.latest_chat()["id"], levelup=new)
+        self.expr, self.expr_until = "eager", now + EXPR_SECONDS
+        self.bump = min(1.0, self.bump + 0.3)
+        return True
+
+    def level_info(self):
+        lv = level_of(self.xp)
+        this, nxt = xp_for(lv), xp_for(lv + 1)
+        return {"level": lv, "stage": stage_of(lv), "xp": self.xp, "this": this, "next": nxt,
+                "progress": round((self.xp - this) / (nxt - this), 3)}
+
+    def set_look(self, part, value):
+        """You changed how it looks: only parts it has, and only what its level has unlocked."""
+        item = next((i for i in LOOKS.get(part, []) if i[0] == value), None)
+        if not item or level_of(self.xp) < item[2]:
+            return False
+        self.look[part] = value
+        return True
+
+    def looks(self):
+        """Everything it could wear and be, with the level each unlocks at, and what it has on."""
+        return {"parts": [{"id": p, "label": LOOK_PARTS[p],
+                           "items": [{"id": i, "label": label, "level": lv} for i, label, lv in LOOKS[p]]}
+                          for p in LOOKS],
+                "look": self.look, "level": self.level_info(),
+                "how": [{"what": w, "xp": x} for w, x in (
+                    (f"A message (the first {TALK_XP_PER_DAY} a day)", XP["talk"]),
+                    ("A day you talk", XP["day"]), ("Each day you've known each other", XP["together"]),
+                    ("Answering a check-up", XP["checkup"]), ("A step done", XP["step"]),
+                    ("Starting a goal or experiment", XP["start"]), ("Finishing one", XP["finish"]),
+                    ("Today's check: did it / partly / not today",
+                     f"{XP['check_done']}/{XP['check_partly']}/{XP['check_skip']}"),
+                    ("Finishing a phase of a goal", XP["phase"]))],
+                "recent": list(reversed(self.xp_log[-8:]))}
+
+    def set_checkups(self, every, at=None, days=None):
+        """You chose how often it checks up on you, at what time ("HH:MM" or minutes after midnight, any time of
+        day) and on which days (0 = Monday ... 6 = Sunday; at least one)."""
         if every not in CHECKUPS:
             return False
-        if hour is not None:
+        if at is not None:
             try:
-                hour = int(hour)
+                if isinstance(at, str):
+                    h, m = at.split(":")
+                    at = int(h) * 60 + int(m) if 0 <= int(m) < 60 else -1
+                at = int(at)
             except (TypeError, ValueError):
                 return False
-            if hour not in CHECKUP_HOURS:
+            if not 0 <= at < 1440:
                 return False
-            self.checkup_hour = hour
+        if days is not None:
+            try:
+                days = sorted({int(d) for d in days})
+            except (TypeError, ValueError):
+                return False
+            if not days or any(not 0 <= d <= 6 for d in days):
+                return False
         self.checkups = every
+        if at is not None:
+            self.checkup_at = at
+        if days is not None:
+            self.checkup_days = days
         return True
 
     def poke(self, now):
         self.pokes += 1
         self.poke_until = now + 1.2
-        self.connection *= 0.97
+        self.missing *= 0.97
         self.bump = min(1.0, self.bump + 0.05)
 
     @property
     def mood(self):
-        return max(0.0, min(1.0, 0.5 + 0.3 * self.valence - 0.35 * self.connection + 0.4 * self.bump))
+        return max(0.0, min(1.0, 0.5 + 0.3 * self.valence - 0.35 * self.missing + 0.4 * self.bump))
 
     def feeling(self, word, why, now):
         """Its mind said how it feels after its words: valence and energy move, and ease back over hours."""
@@ -317,43 +569,33 @@ class Ember:
 
     # --------------------------------------------------------------- face
     def face(self, now, present, thinking=False):
-        """Its face, and why: every part comes from a number in it."""
-        why = []
-        if thinking:
-            ex = "thinking"
-            why.append("its mind is working on what to say")
+        """Its face, and why, in plain words: every part comes from something real in it."""
+        since = now - (self.arrived_at or 0)
+        back = self.arrived_at and since < ARRIVAL_SHOWS and self.gap_before >= LIGHT_UP_AFTER
+        if back and self.missed > 0.45 and since < 2.5:
+            ex, why = "droopy", f"It missed you: you were away {ago(self.gap_before)}."     # a moment, then it lights up
+        elif back:
+            ex = "surprised" if self.gap_before > 86400 and since < 5 else "eager"
+            why = f"You're back after {ago(self.gap_before)}, and it's happy to see you."
+        elif thinking:
+            ex, why = "thinking", "It's thinking about what to say."
         elif now < self.expr_until:
-            ex = self.expr
-            why.append(f"its mind chose '{self.expr}' with its last words")
+            ex, why = self.expr, "That's how it felt saying its last words."
         elif self.session:
-            ex = "focused"
-            why.append(f"you're in a work session ({ago(now - self.session['start'])} so far)")
-        elif self.arrived_at and now - self.arrived_at < 6 and self.gap_before >= LIGHT_UP_AFTER:
-            ex = "surprised" if self.gap_before > 86400 else "happy"
-            why.append(f"you just came back after {ago(self.gap_before)}")
-        elif self.connection > 0.6:
-            ex = "droopy"
-            away = f": you've been away {ago(now - self.last_seen)}" if self.last_seen and not present else ""
-            why.append(f"it misses you{away} (its want for connection is {self.connection:.2f})")
+            ex, why = "focused", f"You're working ({ago(now - self.session['start'])} so far)."
+        elif self.missing > 0.6 and not present:
+            ex, why = "droopy", "It misses you" + (f": you've been away {ago(now - self.last_seen)}." if self.last_seen else ".")
         elif now - self.feel_t < FEEL_SHOWS and FEELS.get(self.feel, (0, 0, None))[2]:
             ex = FEELS[self.feel][2]
-            why.append(f"it feels {self.feel}" + (f": {self.feel_why}" if self.feel_why else "")
-                       + f" ({ago(now - self.feel_t)} ago)")
+            why = f"It feels {self.feel}" + (f": {self.feel_why}" if self.feel_why else "") + f" ({ago(now - self.feel_t)} ago)."
         elif self.curiosity > 0.65:
-            ex = "curious"
-            why.append(f"its curiosity is high ({self.curiosity:.2f}): it hasn't learned anything new about you lately")
+            ex, why = "curious", "It's curious about you: it hasn't learned anything new about you lately."
         elif self.mood > 0.62:
-            ex = "happy"
-            why.append(f"its mood is good ({self.mood:.2f})")
+            ex, why = "happy", "It's in a good mood."
         else:
-            ex = "calm"
-            why.append("nothing stands out")
-        why.append(f"colour and glow = mood {self.mood:.2f}: how things feel between you {self.valence:+.2f}, "
-                   f"missing you {self.connection:.2f}, a lift just now {self.bump:.2f}")
-        why.append(f"how lively it moves = energy {self.energy:.2f}")
-        why.append("it looks at you" if present else "nobody is here")
+            ex, why = "calm", "Nothing special: it's just calm."
         return {"expression": ex, "glow": round(self.mood, 3), "energy": round(self.energy, 3),
-                "wiggle": now < self.poke_until, "gaze": "you" if present else "away", "why": why}
+                "wiggle": now < self.poke_until, "gaze": "you" if present else "away", "why": [why]}
 
     # ------------------------------------------------------------ talking
     def _say(self, now, who, text, face=None, chat=None, **extra):
@@ -383,9 +625,14 @@ class Ember:
         if c["title"] == NEW_CHAT:
             words = " ".join(str(text).split())
             c["title"] = words if len(words) <= 40 else words[:39].rsplit(" ", 1)[0] + "…"
+        before = self.last_line(c["id"])
         self._say(now, "you", text, chat=c["id"])
-        self.connection *= 0.85
+        self.last_you_t = now
+        self.missing *= 0.85
         self.bump = min(1.0, self.bump + 0.1)
+        self._talk_xp(now)
+        if before and before["who"] == "ember" and before.get("checkup"):
+            self.gain("answering a check-up", XP["checkup"], now)
 
     # -------------------------------------------------------------- chats
     def find_chat(self, cid):
@@ -398,6 +645,16 @@ class Ember:
         for l in self.talk:
             last[chat_of(l)] = max(last.get(chat_of(l), 0), l["t"])
         return max(enumerate(self.chats), key=lambda ic: (last[ic[1]["id"]], ic[0]))[1]   # a tie: the newer chat
+
+    def asked_in_a_row(self, chat):
+        """How many of its replies in this chat, counting back, were questions with nothing moving forward (no
+        suggestion, plan, step or look back) since."""
+        n = 0
+        for l in reversed([l for l in self.talk if chat_of(l) == chat and l["who"] == "ember"]):
+            if l.get("progress") or l.get("exps") or l.get("review") or l.get("timeup") or "?" not in l["text"]:
+                break
+            n += 1
+        return n
 
     def last_line(self, chat):
         return next((l for l in reversed(self.talk) if chat_of(l) == chat), None)
@@ -425,12 +682,11 @@ class Ember:
         if every is None:            # you turned check-ups off: the ones it planned pass quietly
             self.followups = [f for f in self.followups if f["at"] > now]
             return events
-        if not QUIET_FROM > local(now, self.tz or 0).tm_hour >= QUIET_UNTIL:
-            return events            # night where they are: check-ups wait for the morning
-        for f in [f for f in self.followups if f["at"] <= now]:
+        night = not QUIET_FROM > local(now, self.tz or 0).tm_hour >= QUIET_UNTIL
+        for f in [f for f in self.followups if f["at"] <= now and not night]:    # at night they wait for morning
             self.followups.remove(f)
             events.append({"type": "followup", "chat": f["chat"], "about": f["about"], "set": f["set"]})
-        for x in [x for x in self.experiments if x["status"] == "active"]:
+        for x in [x for x in self.experiments if x["status"] == "active" and not night]:
             chat, last = chat_of(x), self.last_line(chat_of(x))
             quiet = now - (last["t"] if last else x["started"]) >= QUIET_DAYS * 86400
             unanswered = last and last["who"] == "ember" and last.get("checkup")    # don't nag
@@ -446,23 +702,25 @@ class Ember:
         return events
 
     def _regular_checkup(self, now, every):
-        """The check-up you asked for (every day, a few times a week, once a week), at your hour: only if you
-        haven't talked for that many days of your calendar, and never while its last check-up is unanswered."""
+        """The regular check-up you asked for: on your days, at your time (any time: you chose it, so not held
+        back at night), only if you haven't talked since an earlier day, and never while its last check-up is
+        unanswered."""
         tz = self.tz or 0
-        if local(now, tz).tm_hour < self.checkup_hour:
+        lt = local(now, tz)
+        if lt.tm_wday not in self.checkup_days or lt.tm_hour * 60 + lt.tm_min < self.checkup_at:
             return None
         last_you = max((l["t"] for l in self.talk if l["who"] == "you"), default=self.born)
         last_own = max((l["t"] for l in self.talk if l["who"] == "ember" and l.get("checkup")), default=0.0)
         if max(last_own, self.last_regular) > last_you:
             return None              # it asked and you haven't answered yet: it doesn't ask again
         day = lambda t: int((t + tz * 60) // 86400)
-        if day(now) - day(max(last_you, self.last_regular)) < every:
-            return None
+        if day(max(last_you, self.last_regular)) >= day(now):
+            return None              # you've talked today (or it already asked today)
         act = [x for x in self.experiments if x["status"] == "active"]
         latest = self.latest_chat()["id"]
         x = next((x for x in act if chat_of(x) == latest), None) or (act[-1] if act else None)
         return {"type": "followup", "regular": True, "chat": chat_of(x) if x else latest,
-                "about": "how they are" + (f", and their {kind_of(x)} \"{x['title']}\"" if x else "")}
+                "about": "how they are and how their day is going" + (f", and their {kind_of(x)} \"{x['title']}\"" if x else "")}
 
     def story(self, now):
         """What you and Ember have behind you: the facts, for "Our story" and its mind."""
@@ -499,7 +757,7 @@ class Ember:
 
     def event_chat(self, event):
         """The chat an event belongs to: a look back goes where its goal or experiment is."""
-        if event["type"] == "review" and self.find_exp(event.get("id")):
+        if event["type"] in ("review", "phase", "daily") and self.find_exp(event.get("id")):
             return chat_of(self.find_exp(event["id"]))
         return self.find_chat(event.get("chat"))["id"]
 
@@ -508,14 +766,42 @@ class Ember:
         review {id}."""
         tz = self.tz or 0
         lines = [f"Now: {when(now, tz)} (their local time)."]
+        if self.name != DEFAULT_NAME:
+            lines.append(f"They gave you a name: {self.name}. It's your name now; use it when you speak of yourself. "
+                         "(You're still an Ember, the kind of being you are; if they ask, say so.)")
         lines.append(f"You first appeared {ago(now - self.born)} ago." if self.talk[:-1] or self.memories
                      else "You are meeting this person for the first time.")
         if event["type"] == "arrive" and self.gap_before:
             lines.append(f"They were away for {ago(self.gap_before)} before now.")
-        lines.append(f"Your wants now: connection {self.connection:.2f} (grows while they're away), "
+        lines.append(f"Your connection with them: {self.connection:.2f} (how close you've become: it builds as you talk, "
+                     "day after day, and fades only if you don't talk for days). Let it show in how you talk: more "
+                     "familiar as it grows.")
+        lines.append(f"Your wants now: missing them {self.missing:.2f} (grows while they're away), "
                      f"curiosity {self.curiosity:.2f} (grows while you learn nothing new about them).")
+        if event["type"] == "arrive" and self.missed > 0.45:
+            lines.append(f"You missed them while they were away ({ago(self.gap_before)}). Say so warmly in a few words "
+                         "(e.g. \"I missed hearing from you\"), never as a reproach, then go on.")
+        ask_day = (event["type"] in ("talk", "arrive") or event.get("regular")) and self.day_asked != self._date(now)
+        if ask_day:
+            h = local(now, tz).tm_hour
+            when_ = ("morning: ask what's ahead today" if h < 12 else "afternoon: ask how their day is going"
+                     if h < 18 else "evening: ask how their day was")
+            lines.append(f"You haven't asked about their day yet today (it's {when_}). You care about their everyday "
+                         "life, not only their goals: ask about their day once today, warmly and in your own words, and "
+                         "follow up on what they tell you. If they already told you about today, ask about something in "
+                         "it. Not in the middle of a hard moment or while they're working something through: then later. "
+                         "When you ask, set \"asked_about_day\": true.")
+        if not ask_day and event["type"] in ("talk", "arrive") and self.curiosity > 0.65 and self.asked_in_a_row(self.event_chat(event)) < 2:
+            lines.append("You're curious about them: you haven't learned anything new about them in a while. If the "
+                         "moment fits (not in the middle of a hard moment or their work on something), end with one "
+                         "question to know them better: something you don't know yet (what they enjoy, what matters "
+                         "to them, what's going on in their life), and look curious (face: curious).")
         felt = (f"{self.feel} ({self.feel_why}), {ago(now - self.feel_t)} ago; " if self.feel_t and self.feel_why
                 else f"{self.feel}, {ago(now - self.feel_t)} ago; " if self.feel_t else "")
+        li = self.level_info()
+        lines.append(f"You're level {li['level']}, {_a(li['stage'])}: you grow as they make progress, talk with "
+                     "you and spend days with you (and they can dress you up as you level). Mention it only when it "
+                     "fits, never as pressure.")
         lines.append(f"Your mood now: {felt}mood {self.mood:.2f}, energy {self.energy:.2f}."
                      + (" You missed them." if event["type"] == "arrive" and self.gap_before >= 86400 else ""))
         lines.append("")
@@ -545,6 +831,18 @@ class Ember:
         lines.append(f"This is your chat \"{self.find_chat(chat)['title']}\" with them. They can have other chats "
                      "with you, each about its own thing: keep to this one, and don't bring up their other chats or "
                      "goals unless they do.")
+        x = self.active(chat)
+        first = next((l["text"] for l in mine if l["who"] == "you"), None)
+        if x:
+            lines.append(f"What this chat is for: their {kind_of(x)} \"{x['title']}\".")
+        elif first and not (event["type"] == "talk" and len([l for l in mine if l["who"] == "you"]) <= 1):
+            lines.append(f"What this chat is for: it began with them saying \"{first[:200]}\".")
+        asked = self.asked_in_a_row(chat)
+        if event["type"] == "talk" and asked >= DRIFT_QUESTIONS:
+            lines.append(f"Your last {asked} replies here were questions, and nothing has moved forward yet. This "
+                         "time don't ask another: say in a sentence what you've understood, then propose something "
+                         "concrete (a goal with its plan if you've talked one through, a next step, an experiment, or "
+                         "a decision for them to make).")
         if event["type"] == "talk":
             lines.append(f"Their latest message: \"{event['text']}\"")
         elif event["type"] == "suggest" and self.knows_enough():
@@ -563,6 +861,36 @@ class Ember:
                          f"{event['rating']}/5" + (f", saying: \"{event['text']}\"" if event["text"] else "") + ". "
                          "Respond briefly to how it went, and agree on the next small step: propose it in your reply "
                          "and put it in add_steps.")
+        elif event["type"] == "daily":
+            how = {"done": "did it", "partly": "did part of it", "skip": "didn't get to it today"}[event["how"]]
+            lines.append(f"They just checked in on today's step" + (f" (\"{event['step']}\")" if event.get("step") else "")
+                         + f": they {how}" + (f", saying: \"{event['text']}\"" if event.get("text") else "") + ".")
+            lines.append("React in one or two warm, honest sentences, like someone who's in it with them: glad when "
+                         "they did it; when it was partly or not today, no guilt and no pep talk, just say it's okay "
+                         "and make the next step smaller or easier (put it in add_steps), or ask what got in the way "
+                         "if it keeps happening. If a step should be dropped or changed, say so. Keep it short.")
+        elif event["type"] == "phase" and self.find_exp(event.get("id")):
+            x = self.find_exp(event["id"])
+            ph, i = self.phase_of(x), x.get("phase", 0)
+            nxt = x["phases"][i + 1] if x.get("phases") and i + 1 < len(x["phases"]) else None
+            log = [e for e in x.get("log", []) if ph and e["t"] >= ph.get("start", 0)]
+            done = sum(s["done"] for s in x["steps"])
+            early = ph and now < ph.get("end", now)
+            when_ = (f"They want to move on early, on day {int((now - ph.get('start', now)) // 86400) + 1} of its "
+                     f"{ph['days']} days (that's fine: maybe it went quickly, maybe it needs a different step)"
+                     if early else "is over")
+            lines.append(f"Phase {i + 1} of their goal \"{x['title']}\" ({ph['title'] if ph else ''}): {when_}. What "
+                         f"happened in it: {done} of {len(x['steps'])} steps done; {len(log)} daily checks ("
+                         + ", ".join(f"{sum(e['how'] == k for e in log)} {v}" for k, v in CHECKS.items()) + ")"
+                         + (". Their words: " + "; ".join(f"\"{e['words']}\"" for e in log if e["words"])[:600] if any(
+                             e["words"] for e in log) else "") + ".")
+            if nxt:
+                lines.append(f"Next is phase {i + 2}: \"{nxt['title']}\" ({nxt['days']} days)"
+                             + (f", planned with these steps: " + "; ".join(s["text"] for s in nxt["steps"]) if nxt.get("steps") else "")
+                             + ". In your reply, look back on this phase honestly in one or two sentences (what went "
+                             "well, what got in the way), then say what the next phase is about. Put its 3 to 6 steps "
+                             "in add_steps: concrete, the first doable today, built on how this phase actually went "
+                             "(smaller if it was hard, bolder if it was easy). goal must be null.")
         elif event["type"] == "review" and self.find_exp(event.get("id")):
             x = self.find_exp(event["id"])
             f = x.get("facts") or self.facts(x, now)
@@ -588,9 +916,11 @@ class Ember:
                              "update, add_steps and experiments must be empty; goal must be null.")
         elif event["type"] == "followup":
             if event.get("regular"):
-                often = {"daily": "every day", "few": "a few times a week", "weekly": "once a week"}.get(
-                    self.checkups, "now and then")
-                lines.append(f"They asked you to check up on them {often}, and it's time. They last wrote to you "
+                names = ["Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays"]
+                often = ("every day" if len(self.checkup_days) == 7
+                         else "on " + ", ".join(names[d] for d in self.checkup_days))
+                lines.append(f"They asked you to check up on them {often}, at "
+                             f"{self.checkup_at // 60:02d}:{self.checkup_at % 60:02d}, and it's time. They last wrote to you "
                              f"{ago(now - (max((l['t'] for l in self.talk if l['who'] == 'you'), default=now)))} ago. "
                              f"Check in on {event['about']}: one or two warm sentences and one question, picking "
                              "up something real from your memories or your chats when it fits. No guilt, no pep "
@@ -625,7 +955,7 @@ class Ember:
             d["by"] = "template"
         result = {"reply": str(d["reply"]).strip()[:1200], "face": d.get("face") if d.get("face") in FACES else "calm",
                   "remembered": [], "updated": [], "dropped": [], "by": d.get("by", "mind")}
-        said = event.get("text", "") if event["type"] in ("talk", "checkin") else ""
+        said = event.get("text", "") if event["type"] in ("talk", "checkin", "daily") else ""
         for r in (d.get("remember") or []) if said else []:
             m = self._add_memory(r, said, now)
             (result["remembered"] if m else result["dropped"]).append(m or r)
@@ -634,11 +964,18 @@ class Ember:
             (result["updated"] if m else result["dropped"]).append(m or u)
         chat = self.event_chat(event)
         active = self.active(chat)
-        if active and event["type"] in ("talk", "checkin"):
+        if event["type"] == "phase" and active and active["id"] == event.get("id") \
+                and active.get("phase") == event.get("from", active.get("phase")):
+            nxt = [str(s).strip()[:160] for s in (d.get("add_steps") or []) if str(s).strip()][:6]
+            if self.next_phase(active["id"], now, look_back=result["reply"], steps=nxt):
+                result["phase"] = active["phase"]
+                result["steps"] = [s["text"] for s in active["steps"]]
+        elif active and event["type"] in ("talk", "checkin", "daily"):
             for st in d.get("done_steps") or []:
                 step = next((x for x in active["steps"] if _norm(x["text"]) == _norm(st) and not x["done"]), None)
                 if step:
                     step["done"] = True
+                    self._step_xp(step, now)
                     result.setdefault("done", []).append(step["text"])
             for st in (d.get("add_steps") or [])[:3]:
                 st = str(st).strip()[:160]
@@ -660,7 +997,7 @@ class Ember:
         elif event["type"] == "talk" and d.get("experiments") and self.can_suggest(chat):
             result["suggested"] = self._take_suggestions(d.get("experiments"), now, chat)   # you asked what to try
         fu = d.get("follow_up")
-        if isinstance(fu, dict) and event["type"] in ("talk", "checkin") and str(fu.get("about", "")).strip():
+        if isinstance(fu, dict) and event["type"] in ("talk", "checkin", "daily") and str(fu.get("about", "")).strip():
             try:
                 hours = max(1.0, min(FOLLOW_MAX_HOURS, float(fu.get("in_hours", 24))))
             except (TypeError, ValueError):
@@ -674,9 +1011,15 @@ class Ember:
             self.find_chat(chat)["summary"] = summary[:500]
         if event["type"] != "followup":
             self.update(now, present=True)
+        if d.get("asked_about_day") is True and result["by"] != "template":
+            self.day_asked = self._date(now)         # asked about your day: once a day is enough
         if result["by"] != "template" and self.feeling(d.get("feel"), d.get("feel_why"), now):
             result["feel"] = self.feel
+            if self.feel in HEAVY_FEELS and result["face"] in ("happy", "eager", "amused"):
+                result["face"] = FEELS[self.feel][2]     # something hard was shared: no smile on top of it
         extra ={"exps": [x["id"] for x in result["suggested"]]} if result.get("suggested") else {}
+        if result.get("done") or result.get("steps") or result.get("replanned"):
+            extra["progress"] = True             # something moved forward: steps, a new plan
         if event["type"] == "followup":
             extra["checkup"] = True
         elif event["type"] == "arrive":
@@ -685,8 +1028,13 @@ class Ember:
         if x:
             x["review"] = result["reply"]
             extra["review"] = x["id"]
+        if event["type"] == "phase" and result.get("phase") is not None:
+            extra["phase_new"] = event["id"]         # the look back, and the next phase's steps under it
+            extra["progress"] = True
         self._say(now, "ember", result["reply"], result["face"], chat, **extra)
         self.expr, self.expr_until = result["face"], now + EXPR_SECONDS
+        if self.levelup_due:
+            self._announce_levelup(now)
         return result
 
     # ------------------------------------------------------------- memory
@@ -712,6 +1060,7 @@ class Ember:
         self.next_id += 1
         self.memories.append(m)
         self.curiosity *= 0.75       # something new about you
+        self.closer(BOND_SHARE)      # ...and you're a little closer for it
         self.bump = min(1.0, self.bump + 0.1)
         return m
 
@@ -754,12 +1103,19 @@ class Ember:
         """A simple mind with no LLM: it keeps what you say about yourself and asks questions."""
         if event["type"] == "arrive":
             if not self.memories and len(self.talk) == 0:
-                return {"reply": "Hi. I'm Ember. I live here, in this window, and I want to get to know you. "
+                return {"reply": f"Hi. I'm {self.name}. I live here, in this window, and I want to get to know you. "
                                  + self._next_question(), "face": "happy"}
             return {"reply": f"You're back. It's been {ago(self.gap_before)}. " + self._next_question(),
                     "face": "happy"}
         if event["type"] == "suggest":
             return self._template_suggest()
+        if event["type"] == "daily":
+            return {"reply": {"done": "Nice, that's today's step done.",
+                              "partly": "Part of it still counts. Shall we make tomorrow's step a bit smaller?",
+                              "skip": "That's okay. What got in the way today?"}[event["how"]],
+                    "face": "happy" if event["how"] == "done" else "calm"}
+        if event["type"] == "phase":
+            return {"reply": "That phase is behind us. On to the next one.", "face": "eager"}
         if event["type"] == "followup" and event.get("regular"):
             return {"reply": "Just checking in. How are you doing?", "face": "curious"}
         if event["type"] == "followup":
@@ -848,12 +1204,28 @@ class Ember:
             days = max(GOAL_DAYS[0], min(GOAL_DAYS[1], int(g.get("days", 30))))
         except (TypeError, ValueError):
             days = 30
-        steps = [{"text": str(st).strip()[:160], "done": False} for st in (g.get("steps") or [])[:8] if str(st).strip()]
+        phases = []
+        for p in (g.get("phases") or [])[:13] if isinstance(g.get("phases"), list) else []:
+            if not isinstance(p, dict) or not str(p.get("title", "")).strip():
+                continue
+            try:
+                pd = max(5, min(PHASE_MAX, int(p.get("days", PHASE_MAX))))
+            except (TypeError, ValueError):
+                pd = PHASE_MAX
+            phases.append({"title": str(p["title"]).strip()[:60], "days": pd, "look_back": None,
+                           "steps": [{"text": str(s).strip()[:160], "done": False}
+                                     for s in (p.get("steps") or [])[:6] if str(s).strip()]})
+        if phases:
+            days = max(GOAL_DAYS[0], sum(p["days"] for p in phases))
+        first = phases[0]["steps"] if phases and phases[0]["steps"] else None
+        steps = first or [{"text": str(st).strip()[:160], "done": False} for st in (g.get("steps") or [])[:8] if str(st).strip()]
         x = {"id": f"x{self.next_exp}", "chat": chat, "kind": "goal", "title": title, "question": done_when,
              "plan": str(g.get("plan", "")).strip()[:600],
              "why": str(g.get("why", "")).strip()[:240], "based_on": [b for b in (g.get("based_on") or []) if self.find(b)],
              "starter": False, "days": days, "steps": steps,
              "status": "suggested", "created": now, "started": None, "ends_at": None, "ended": None}
+        if phases:
+            x["phases"], x["phase"] = phases, 0
         self.next_exp += 1
         for y in self.experiments:
             if y["status"] == "suggested" and chat_of(y) == chat:
@@ -870,20 +1242,202 @@ class Ember:
             if y["status"] == "suggested" and chat_of(y) == chat_of(x):
                 y["status"] = "not_picked"
         self.find_chat(chat_of(x))["title"] = x["title"]      # the chat is now about it
+        if kind_of(x) == "goal":
+            self.ensure_phases(x, now)
+            self._time_phases(x, now)
         first = next((s["text"] for s in x["steps"] if not s["done"]), None)
         if kind_of(x) == "goal":
-            said = f"Your goal: \"{x['title']}\", in {x['days']} days. You'll know you're there when: {x['question']}"
+            said = f"Your goal: \"{x['title']}\", in {x['days']} days."
+            if x.get("question"):
+                said += f" You'll know you're there when: {x['question']}"
+            ph = x["phases"]
+            if len(ph) > 1:
+                said += f" We'll take it in {len(ph)} phases; first: {ph[0]['title']}."
+            said += f" Today's step: {first}" if first else " What's a first step you could do today?"
         else:
             said = f"\"{x['title']}\" it is: {x['days']} days, and one question: {x['question']}"
-        self._say(now, "ember", said + (f" First step: {first}" if first else ""), "eager", chat_of(x))
+            said += f" First step: {first}" if first else ""
+        self._say(now, "ember", said, "eager", chat_of(x), progress=True)
         self.expr, self.expr_until = "eager", now + EXPR_SECONDS
+        self.gain(f"starting the {kind_of(x)}", XP["start"], now)
         return True
 
-    def set_step(self, eid, index, done):
+    # ------------------------------------------------- goals of their own: phases, today's step, the daily check
+    def ensure_phases(self, x, now=None):
+        """A goal in phases of at most PHASE_MAX days (one phase if it's short). Older goals, and the ones you
+        make yourself, get phases by week; the steps you have now belong to the phase you're in."""
+        if kind_of(x) != "goal" or x.get("phases"):
+            return x.get("phases")
+        total = int(x["days"])
+        n = max(1, math.ceil(total / PHASE_MAX))
+        base, extra = divmod(total, n)
+        phases, d0 = [], 0
+        for i in range(n):
+            days = base + (1 if i < extra else 0)
+            if n == 1:
+                title = "The whole way"
+            elif d0 % 7 == 0 and days % 7 == 0:
+                w0, w1 = d0 // 7 + 1, (d0 + days) // 7
+                title = f"Week {w0}" if w0 == w1 else f"Weeks {w0}-{w1}"
+            else:
+                title = f"Days {d0 + 1}-{d0 + days}"
+            phases.append({"title": title, "days": days, "steps": [], "look_back": None})
+            d0 += days
+        x["phases"], x["phase"] = phases, 0
+        if x.get("started"):
+            self._time_phases(x, x["started"])
+            t = now or self.last_update
+            x["phase"] = next((i for i, p in enumerate(phases) if p["end"] > t), len(phases) - 1)
+        return phases
+
+    def _time_phases(self, x, start, frm=0):
+        """When each phase starts and ends, one after another from start (from phase frm on)."""
+        t = start
+        for p in x["phases"][frm:]:
+            p["start"], p["end"] = t, t + p["days"] * 86400
+            t = p["end"]
+        x["ends_at"] = t
+        x["days"] = round((t - x["started"]) / 86400)
+
+    def phase_of(self, x):
+        return x["phases"][x.get("phase", 0)] if x.get("phases") else None
+
+    def next_phase(self, eid, now, look_back=None, steps=None):
+        """On to the next phase (its days are up, or you're ready early): this phase's steps and look back are
+        kept with it; the next one starts now with its own steps."""
+        x = self.find_exp(eid)
+        if not x or x["status"] != "active" or not x.get("phases") or x["phase"] >= len(x["phases"]) - 1:
+            return False
+        i = x["phase"]
+        x["phases"][i].update(steps=x["steps"], look_back=look_back, ended=now)
+        x["phase"] = i + 1
+        nxt = x["phases"][i + 1]
+        self._time_phases(x, now, i + 1)
+        x["steps"] = [{"text": str(s).strip()[:160], "done": False} for s in (steps or []) if str(s).strip()][:6] \
+            or [dict(s, done=False) for s in nxt.get("steps") or []]
+        x["time_up"] = False
+        x.pop("phase_pending", None)
+        self.gain("finishing a phase", XP["phase"], now)
+        return True
+
+    def today_step(self, x):
+        return next((s for s in x["steps"] if not s["done"]), None)
+
+    def _date(self, t):
+        return time.strftime("%Y-%m-%d", local(t, self.tz or 0))
+
+    def streak(self, x, now):
+        """Days in a row you did today's step (or part of it); today counts once you've checked."""
+        good = {e["day"] for e in x.get("log", []) if e["how"] in ("done", "partly")}
+        checked = {e["day"] for e in x.get("log", [])}
+        d, n = self._day(now), 0
+        date = lambda k: time.strftime("%Y-%m-%d", time.gmtime(k * 86400))
+        if date(d) not in checked:               # not checked yet today: the streak so far runs to yesterday
+            d -= 1
+        while date(d) in good:
+            n, d = n + 1, d - 1
+        return n
+
+    def daily_check(self, eid, how, words, now):
+        """How today's step went: did it, partly, or not today. Returns the event for its mind, or None."""
+        x = self.find_exp(eid)
+        if not x or x["status"] != "active" or how not in CHECKS:
+            return None
+        step, day = self.today_step(x), self._date(now)
+        first = x.get("xp_day") != day
+        words = " ".join(str(words or "").split())[:300]
+        x["log"] = [e for e in x.get("log", []) if e["day"] != day]      # a second check today replaces the first
+        x["log"].append({"day": day, "t": now, "how": how, "step": step["text"] if step else None, "words": words})
+        x["log"] = x["log"][-400:]
+        if how == "done" and step:
+            step["done"] = True
+            self._step_xp(step, now)
+        if x.get("xp_day") != day:                # one check a day earns XP; being honest counts too
+            x["xp_day"] = day
+            self.closer(BOND_CHECK)
+            self.last_you_t = now
+            self.gain("today's check", XP["check_" + how], now)
+        self.update(now, present=True)
+        said = f"[today: {CHECKS[how]}" + (f" · {step['text']}" if step else "") + "]" + (f" {words}" if words else "")
+        self._say(now, "you", said, chat=chat_of(x), daily=how)
+        self.bump = min(1.0, self.bump + (0.15 if how == "done" else 0.05))
+        return {"type": "daily", "id": x["id"], "how": how, "step": step["text"] if step else None, "text": words,
+                "chat": chat_of(x), "first": first}
+
+    def add_step(self, eid, text):
+        """A step you add yourself to the goal's current phase."""
+        x = self.find_exp(eid)
+        text = " ".join(str(text or "").split())[:160]
+        if not x or x["status"] != "active" or not text or len(x["steps"]) >= 20:
+            return False
+        x["steps"].append({"text": text, "done": False})
+        return True
+
+    def new_goal(self, title, done_when, days, steps, now):
+        """A goal you make yourself, right away, in its own chat (planning it with Ember is optional)."""
+        title = " ".join(str(title or "").split())[:80]
+        if not title:
+            return None
+        try:
+            days = max(GOAL_DAYS[0], min(GOAL_DAYS[1], int(days)))
+        except (TypeError, ValueError):
+            days = 30
+        c = self.find_chat(self.new_chat(now))
+        c["title"] = title[:60]
+        x = {"id": f"x{self.next_exp}", "chat": c["id"], "kind": "goal", "title": title,
+             "question": " ".join(str(done_when or "").split())[:200], "plan": "", "why": "", "based_on": [],
+             "starter": False, "days": days, "own": True,
+             "steps": [{"text": str(s).strip()[:160], "done": False} for s in (steps or []) if str(s).strip()][:8],
+             "status": "suggested", "created": now, "started": None, "ends_at": None, "ended": None}
+        self.next_exp += 1
+        self.experiments.append(x)
+        self.pick(x["id"], now)
+        return x
+
+    def plan_with_ember(self, title, now):
+        """A goal you'd like to plan with Ember: a new chat about it, where it talks it through with you and
+        proposes the plan in phases. Returns the talk event for its mind."""
+        title = " ".join(str(title or "").split())[:80]
+        if not title:
+            return None
+        c = self.find_chat(self.new_chat(now))
+        c["title"] = title[:60]
+        text = f"I'd like to plan a goal with you: {title}"
+        self.hear(now, text, c["id"])
+        return {"type": "talk", "text": text, "chat": c["id"]}
+
+    def goal_view(self, x, now):
+        """A goal or experiment as its page shows it."""
+        v = dict(x, stats=self.stats(x["id"]))
+        if x.get("started"):
+            v["day"] = min(x["days"], int((min(now, x.get("ended") or now) - x["started"]) // 86400) + 1)
+        v["today_step"] = self.today_step(x)
+        today = self._date(now)
+        v["checked_today"] = next((e["how"] for e in x.get("log", []) if e["day"] == today), None)
+        v["streak"] = self.streak(x, now)
+        by_day = {e["day"]: e["how"] for e in x.get("log", [])}
+        d = self._day(now)
+        v["recent"] = [{"day": time.strftime("%Y-%m-%d", time.gmtime(k * 86400)),
+                        "how": by_day.get(time.strftime("%Y-%m-%d", time.gmtime(k * 86400)))} for k in range(d - 13, d + 1)]
+        ph = self.phase_of(x)
+        if ph:
+            v["phase_info"] = {"index": x["phase"], "count": len(x["phases"]), "title": ph["title"],
+                               "days_left": max(0, math.ceil((ph.get("end", now) - now) / 86400)),
+                               "up": bool(ph.get("up"))}
+        return v
+
+    def goals(self, now):
+        """Every goal and experiment you've started: the active ones first, then the finished."""
+        mine = [x for x in self.experiments if x["status"] in ("active", "done", "dropped")]
+        mine.sort(key=lambda x: (x["status"] != "active", -(x.get("started") or 0)))
+        return [self.goal_view(x, now) for x in mine]
+
+    def set_step(self, eid, index, done, now=None):
         x = self.find_exp(eid)
         if not x or not isinstance(index, int) or not (0 <= index < len(x["steps"])):
             return False
         x["steps"][index]["done"] = bool(done)
+        self._step_xp(x["steps"][index], time.time() if now is None else now)
         return True
 
     def end_experiment(self, eid, how, now):
@@ -895,6 +1449,8 @@ class Ember:
             self.checkin_due = False
         x.update(status=how, ended=now)
         x["facts"] = self.facts(x, now)
+        self.gain(f"finishing the {kind_of(x)}" if how == "done" else f"looking back on the {kind_of(x)}",
+                  XP["finish"] if how == "done" else XP["drop"], now)
         return True
 
     def extend(self, eid, now, days=None):
@@ -906,6 +1462,11 @@ class Ember:
         x["ends_at"] = max(x["ends_at"], now) + days * 86400
         x["days"] = round((x["ends_at"] - x["started"]) / 86400)
         x["time_up"] = False
+        if x.get("phases"):                      # the last phase gets the extra days
+            last = x["phases"][-1]
+            last["end"] = x["ends_at"]
+            last["days"] = round((last["end"] - last["start"]) / 86400)
+            last.pop("up", None)
         self._say(now, "ember", f"{days} more days of \"{x['title']}\", so {x['days']} in all.", "eager", chat_of(x))
         return True
 
@@ -913,20 +1474,33 @@ class Ember:
         """What actually happened in an experiment: numbers from its sessions, and your own words after them."""
         ss = [s for s in self.sessions if s["exp"] == x["id"]]
         end = x["ended"] or now
+        log = x.get("log", [])
+        all_steps = [s for p in (x.get("phases") or [])[:x.get("phase", 0)] for s in p.get("steps") or []] + x["steps"]
         return {"days_lasted": max(1, math.ceil((end - x["started"]) / 86400)), "sessions": len(ss),
                 "work_days": len({time.strftime("%Y-%m-%d", local(s["start"], self.tz or 0)) for s in ss}),
                 "seconds": sum(s["end"] - s["start"] for s in ss),
                 "ratings": [s["rating"] for s in ss if s.get("rating")],
-                "steps_done": sum(s["done"] for s in x["steps"]), "steps": len(x["steps"]),
-                "words": [s["words"] for s in ss if s.get("words")][-8:],
+                "steps_done": sum(s["done"] for s in all_steps), "steps": len(all_steps),
+                "checks": {k: sum(e["how"] == k for e in log) for k in CHECKS},
+                "phases": [{"title": p["title"], "look_back": p.get("look_back")} for p in (x.get("phases") or [])
+                           [:x.get("phase", 0) + 1]],
+                "words": ([s["words"] for s in ss if s.get("words")] + [e["words"] for e in log if e["words"]])[-8:],
                 "each": [{"day": int((s["start"] - x["started"]) // 86400) + 1, "seconds": s["end"] - s["start"],
                           "rating": s.get("rating"), "words": s.get("words")} for s in ss][-12:]}
 
     @staticmethod
     def facts_text(f):
-        out = (f"{f['sessions']} work session{'' if f['sessions'] == 1 else 's'} on {f['work_days']} "
-               f"day{'' if f['work_days'] == 1 else 's'}, {fmt_minutes(f['seconds'])} in all; "
-               f"{f['steps_done']} of {f['steps']} steps done.")
+        ch = f.get("checks") or {}
+        out = (f"{sum(ch.values())} daily checks (" + ", ".join(f"{ch.get(k, 0)} {v}" for k, v in CHECKS.items())
+               + f"); {f['steps_done']} of {f['steps']} steps done.")
+        if f.get("phases") and len(f["phases"]) > 1:
+            out += " Phases: " + "; ".join(p["title"] + (f" (looking back: {p['look_back'][:160]})" if p.get("look_back") else "")
+                                           for p in f["phases"]) + "."
+        if f["sessions"]:
+            out += (f" Earlier work sessions: {f['sessions']} on {f['work_days']} day{'' if f['work_days'] == 1 else 's'}, "
+                    f"{fmt_minutes(f['seconds'])} in all.")
+        if f.get("words"):
+            out += " Their words along the way: " + "; ".join(f"\"{w}\"" for w in f["words"]) + "."
         if f.get("each"):
             out += " Each session: " + "; ".join(
                 f"day {s['day']}, {fmt_minutes(s['seconds'])}" + (f", felt {s['rating']}/5" if s["rating"] else "")
@@ -948,6 +1522,8 @@ class Ember:
         s = dict(self.session, end=max(now, self.session["start"]), ended_by=ended_by, rating=None, words=None)
         self.sessions.append(s)
         self.session = None
+        if s["end"] - s["start"] >= 300:          # at least 5 minutes of work
+            self.gain("a work session", min(20, 5 + int((s["end"] - s["start"]) // 600)), s["end"])
         if ask:                      # it asks in the conversation; the window shows 1-5 under the question
             self.checkin_due = True
             how_long = fmt_minutes(s["end"] - s["start"])
@@ -971,6 +1547,7 @@ class Ember:
         self._say(now, "you", f"[work session: {fmt_minutes(s['end'] - s['start'])}, felt {rating}/5]" + (f" {words}" if words else ""),
                   chat=chat)
         self.bump = min(1.0, self.bump + 0.1)
+        self.gain("telling it how a session went", XP["checkin"], now)
         return {"type": "checkin", "text": words or "", "rating": rating, "minutes": minutes, "chat": chat}
 
     def stats(self, eid):
@@ -993,10 +1570,22 @@ class Ember:
             else:
                 out += ["", f"Your experiment together: \"{x['title']}\" (day {day} of {x['days']}). "
                             f"Its question: {x['question']}"]
+            ph = self.phase_of(x)
+            if ph and len(x["phases"]) > 1:
+                out.append(f"It goes in {len(x['phases'])} phases of 1-2 weeks; now phase {x['phase'] + 1}: \"{ph['title']}\" "
+                           f"({max(0, math.ceil((ph.get('end', now) - now) / 86400))} days left in it). Later phases: "
+                           + "; ".join(p["title"] for p in x["phases"][x["phase"] + 1:])[:300] + ". Keep to this phase.")
+            out.append("Its steps" + (" in this phase" if ph and len(x["phases"]) > 1 else "") + ":")
             for s in x["steps"]:
                 out.append(f"  [{'x' if s['done'] else ' '}] {s['text']}")
-            out.append(f"So far: {fmt_minutes(st['seconds'])} in {st['sessions']} work sessions"
-                       + (f", average feeling {st['avg_rating']}/5." if st["avg_rating"] else "."))
+            log = x.get("log", [])
+            today = next((e for e in log if e["day"] == self._date(now)), None)
+            out.append(f"Each day they check in on today's step on its page (did it / partly / not today): "
+                       f"{len(log)} checks so far, " + ", ".join(f"{sum(e['how'] == k for e in log)} {v}" for k, v in CHECKS.items())
+                       + f"; {self.streak(x, now)} days in a row now; today: "
+                       + (CHECKS[today["how"]] if today else "not checked yet") + ".")
+            if st["sessions"]:
+                out.append(f"Earlier work sessions: {fmt_minutes(st['seconds'])} in {st['sessions']}.")
             if self.session and self.session["exp"] == x["id"]:
                 out.append(f"They are in a work session on it right now ({ago(now - self.session['start'])} so far). "
                            "Help with the work if they ask; keep it short so they can keep working.")
@@ -1023,11 +1612,16 @@ class Ember:
         """What the window shows, for the chat you have open."""
         chat = self.find_chat(chat)["id"]
         x = self.active(chat)
-        exp = dict(x, stats=self.stats(x["id"]), day=int((now - x["started"]) // 86400) + 1) if x else None
+        exp = self.goal_view(x, now) if x else None
         return {"face": self.face(now, present, thinking), "connection": round(self.connection, 3),
+                "missing": round(self.missing, 3),
                 "curiosity": round(self.curiosity, 3), "mood": round(self.mood, 3),
                 "valence": round(self.valence, 3), "energy": round(self.energy, 3), "feel": self.feel,
-                "checkups": {"every": self.checkups, "hour": self.checkup_hour},
+                "level": self.level_info(), "look": self.look,
+                "goals_due": sum(1 for g in self.experiments if g["status"] == "active"
+                                 and not any(e["day"] == self._date(now) for e in g.get("log", []))),
+                "checkups": {"every": self.checkups, "at": f"{self.checkup_at // 60:02d}:{self.checkup_at % 60:02d}",
+                             "days": self.checkup_days}, "name": self.name,
                 "chat": chat, "chats": self.chat_list(),
                 "talk": [l for l in self.talk if chat_of(l) == chat][-60:], "memories": len(self.memories), "thinking": thinking,
                 "last_seen": self.last_seen, "now": now,

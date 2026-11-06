@@ -81,7 +81,32 @@ Taking real money needs a registered business (for example egyéni vállalkozó)
 7. Test it with a free account that isn't in `EMBER_PLUS_EMAILS`:
    - Use up today's free messages, press **Get Ember Plus**, and pay with Stripe's test card (Stripe shows it on its test checkout page). Ember Plus should switch on within seconds.
    - Then cancel via the menu → **Manage Ember Plus**.
-8. **Going live:** switch Stripe to live mode, then redo steps 2–4 there (live mode has its own product, price, keys and webhook secret), and put the live values in Render.
+8. **Going live (real money).** Do these in order. Ember has a safety catch: with a live key (`sk_live_…`) it sells nothing until `EMBER_TERMS_URL` is set (the paywall says Plus is coming soon, and Render's log says "payments: closed").
+   1. **Business:**
+      - Register as an egyéni vállalkozó (or a company), with a tax number and a business bank account.
+      - With an accountant, settle your VAT (e.g. alanyi adómentesség) and how each payment gets an invoice reported to NAV (e.g. Billingo or Számlázz.hu). Stripe's receipts are not Hungarian invoices. Later we can connect the invoicing service to Ember's Stripe webhook so invoices go out by themselves.
+   2. **ÁSZF and an updated privacy notice,** from a lawyer or a trusted template service. They cover:
+      - who sells (your name, address, tax number, email);
+      - the price (€4.99 a month) and that it renews monthly;
+      - how to cancel (any time, via Manage Ember Plus);
+      - the 14-day withdrawal right for digital services;
+      - that Stripe processes the payments.
+
+      Put it online. Or send us the text, and we put it at `/terms` exactly as it is.
+   3. **Stripe → activate your account:** business details, bank account and identity check.
+   4. **Switch to live mode** and redo steps 2–5 there: the product Ember Plus at €4.99 monthly; the secret key; the webhook to `/stripe/webhook` with the same 4 events; the customer portal. Live mode has its own product, price, keys and webhook secret.
+   5. **Stripe → Settings → Public details:** your terms URL and a support email. **Settings → Emails:** turn on receipts for successful payments.
+   6. **Render → Environment:**
+      - paste the live `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID` and `STRIPE_WEBHOOK_SECRET` (never into a chat);
+      - set `EMBER_TERMS_URL` to your ÁSZF page;
+      - set `EMBER_FREE_PER_DAY` to `10`, or delete it (10 is the default).
+
+      Save, and Render restarts. Its log should say "payments: on (live)".
+   7. **A real test:**
+      - with an account that isn't in `EMBER_PLUS_EMAILS`, use up the 10 free messages and buy Plus with your own card;
+      - check that Plus switches on, that Stripe asks you to accept the ÁSZF, and that the invoice is made;
+      - then refund the payment in Stripe and cancel via Manage Ember Plus.
+   8. **Open sign-up is a separate step:** until you change `EMBER_ALLOWED_EMAILS` to `*`, only invited people can use Ember at all.
 
 ## 6b. Phone notifications (Ember's check-ups)
 
@@ -99,7 +124,7 @@ Taking real money needs a registered business (for example egyéni vállalkozó)
 
 ## Afterwards
 
-- **Free messages:** `EMBER_FREE_PER_DAY` (5) per day for people without Plus. Comped Plus: `EMBER_PLUS_EMAILS`.
+- **Free messages:** `EMBER_FREE_PER_DAY` (10) per day for people without Plus. Comped Plus: `EMBER_PLUS_EMAILS`.
 - **New tester:** add their Gmail to `EMBER_ALLOWED_EMAILS` in Render (Environment). Render restarts by itself. Also add them as a test user in Google (step 2.2).
 - **Changes:** every `git push` to `main` redeploys Ember automatically.
 - **Costs:** see Anthropic's console (Usage) and Render's billing. The `usage` table in Supabase shows calls and tokens per person per day.

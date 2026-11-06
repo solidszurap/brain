@@ -1,5 +1,7 @@
 # Ember
 
+**Your companion who grows with you.**
+
 A small being with a face that helps you get what you want. If you don't know yet what to work towards, it helps you find out (experiments); when you know what you want, it helps you get there (goals). It works alongside you, and over time becomes someone who knows your story. It is a web app: you open it on your phone, log in with Google, and add it to your home screen, where it opens like an app.
 
 ## Ember online
@@ -10,13 +12,35 @@ A small being with a face that helps you get what you want. If you don't know ye
 - **Setting it up:** **[DEPLOY.md](DEPLOY.md)**, step by step.
 - **What it costs:** Render Starter about $7 a month; Claude Haiku about $0.0003 per reply, measured ($0.10/$0.50 per million tokens in/out), so $5 of credit is roughly 15,000 replies; Supabase free to start (a free project pauses after a week unused, so the server reads it once a day).
 - **When the mind is busy or down:** Ember says so honestly and answers once it's back. It never fakes an answer.
-- **Free and Plus.** Everyone gets **5 free messages a day** (`EMBER_FREE_PER_DAY`). A message is anything you send that makes Ember think; its greetings are free.
+- **Connection** (2026-11-06) is how close you've become, and it lasts.
+  - **It builds:** a little on each day you talk, with your first few messages, when you share something personal, and with each daily check on a goal. Fast at first, slower later: about 0.5 after 10 days of talking.
+  - **It stays:** it holds steady, and only fades slowly after 3 days without talking (about a third in a month).
+  - **It shapes how Ember talks:** more familiar as it grows.
+  - **Missing you is separate:** it grows while you're away and eases when you're back, which is what moves its face.
+  - **Older Embers:** the bond was worked out from your history.
+- **Free and Plus.** Everyone gets **10 free messages a day** (`EMBER_FREE_PER_DAY`). A message is anything you send that makes Ember think; its greetings are free.
   - After its answer to your last free one, Ember says so, and the input becomes an **Ember Plus** card: **€4.99 / month**, no daily limit, cancel anytime.
   - Payment goes through **Stripe**: its checkout page to subscribe, its portal ("Manage Ember Plus") to cancel. A signed webhook tells the server, and Ember never sees card details.
   - Deleting your Ember also cancels the subscription.
   - Comped Plus by email: `EMBER_PLUS_EMAILS`.
 - **A safety cap per person** (`EMBER_DAILY_CAP`, 150 replies a day, Plus included) keeps costs in check.
-- **Colours:** the menu (⋯) has five colour versions (Ember, Night, Plum, Forest, Day), kept on each device. Ember itself stays orange in all of them.
+- **Colours:** the menu (⋯) has five colour versions of the window (Ember, Night, Plum, Forest, Day), kept on each device. Ember's own colour is yours to choose (see Levels and looks); it's amber until you change it.
+- **Levels and looks** (2026-11-06): Ember grows with you.
+  - **XP** comes from progress, talking and time together:
+    - a message: 2 (only the first 5 a day count, so chatting forever doesn't pay);
+    - a day you talk: 10;
+    - each day you've known each other: 2;
+    - answering a check-up: 10;
+    - a step done: 15;
+    - starting a goal or experiment: 20;
+    - finishing one: 60 (dropping it after looking back: 20);
+    - a work session: 5–20;
+    - telling it how a session went: 5.
+  - **Levels:** level n takes 25·n·(n−1) XP in all (level 5: 500, level 10: 2,250, level 20: 9,500).
+  - **Stages:** Spark (1), Ember (5), Flame (10, a flame on its head), Blaze (20, a crown of three flames and a halo). Each stage is a little bigger and glows wider.
+  - **At a new level** it says so once, after its own words, with a burst of sparks and a "Level N!" ribbon, and names what it unlocked.
+  - **Customizing:** tap "Lv N · Stage" under its face, or ⋯ → Customize Ember. A sheet opens from the bottom, so you see Ember change above it. There you pick its colour (Amber, Gold, Rose, Ocean, Forest, Violet, Moonlight, Aurora), something to wear (scarf, cap, glasses, flower, headphones, beanie, bow, crown), eyes, cheeks, sparks (stars, hearts, petals, snow) and glow (halo, aura). Each unlocks at a level, and everything is earned by levelling, for everyone. The sheet also lists how it grows and what it earned lately.
+  - **Older Embers** got XP for everything done before levels existed, quietly (no level-up lines).
 - **Your data:** the menu (⋯) has Privacy ([web/privacy.html](web/privacy.html)), "Download my data" (everything, as JSON), and "Delete my Ember", which deletes everything and the account, for good. Logs hold ids and errors only, never what anyone said.
 
 ## Run it on your own computer
@@ -45,9 +69,11 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
   - a small smile or frown;
   - little rising sparks when it's glad;
   - the window's warm glow.
-  When you come back it lights up. Its mood colours its words lightly, but it never makes you responsible for how it feels: no guilt for being away, and it never asks you to stay for its sake.
+  When you come back after half a day or more, for a moment it shows it missed you, then lights up and bounces. Its greeting says it warmly, never as a reproach. When it hasn't learned anything new about you for a while, it gets curious: it looks curious and, when the moment fits, asks one question to know you better. The "?" next to its face says why it looks the way it does, with its four meters (mood, energy, connection, curiosity). Once a day it asks about your day, for connection: in the morning what's ahead, in the evening how it was. It follows up on what you tell it, and it doesn't ask in the middle of a hard moment. Its mood colours its words lightly, but it never makes you responsible for how it feels: no guilt for being away, and it never asks you to stay for its sake.
 - **Honest, lightly.** Every memory keeps your exact words and the date. A memory whose quote isn't in what you wrote is not kept. "Why this face?" shows the mood and wants behind its face, and what made it feel that way. Ember is warm and talks naturally; only if you ask it directly whether it really feels things does it tell you honestly what it is.
 - **Memory is the core promise, for everyone.** Ember remembers everything, forever. The "What it knows" page lists everything it remembers, with its source. You can correct anything or make it forget.
+- **It keeps things moving.** Each chat is about something, and Ember keeps it heading there. After two or three questions it says what it understood and proposes something: a plan, a next step, an experiment. If it has asked three questions in a row with nothing moving, it's told to propose instead of asking again.
+- **It reads the room.** When you share something hard, it doesn't smile at you. It says what it heard, stays with it, and asks whether you want to work through it or just needed to say it. Its face shows worry or sadness, never a grin on top of bad news.
 - **It knows who it is.** Asked who it is, what it's for or how it works, Ember explains in its own words: what it is, why it exists, how it helps, what it remembers, how the app works, what it isn't, and (only if asked) which AI its mind runs on.
 - **Not a therapist.** If someone talks about harming themselves, Ember points to real help (in Hungary 116-123, or 112).
 
@@ -64,8 +90,13 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
    - **Chats.** One place to talk, like a messaging app: "☰ Chats" at the top opens the list of your chats, latest first, with "+ New chat". A new chat is named after your first words in it; the open chat's name is in the middle of the top bar, and tapping it (or ✎ in the list) renames it. Each chat can be about anything: finding out what you want to work on, talking a goal through to a plan, or working on it. Ember remembers you in all of them, but its mind sees only the open chat's conversation. A dot on "Chats" means Ember said something new in another chat (like asking how a work session went).
    - **Suggestions, in the conversation.** Ask it what you could try. Its ideas appear as cards under its message: small experiments, 3 to 14 days each, each with one question. Before it knows 3 things about you, they're starter experiments for finding out what you enjoy, things you can do on your own, and the card says so. After that, every suggestion names the memories it rests on; one that rests on none isn't shown.
    - **Picking one.** "Pick this" on a card makes it that chat's experiment, and the chat takes its name. It shows as one line above the input (title, day, steps done, Start/Stop); click the title for the steps, Finish and Drop. Each chat can have one goal or experiment, so several can run side by side, each in its own chat. One work session runs at a time; it shows in every chat, and its title opens its chat.
-   - **Work sessions.** "Start working on it" shows a timer, and its face goes focused while real time is counted. A session ends by itself after 8 hours.
-   - **Check-in, in the conversation.** When you stop a session, Ember asks how it went; you answer under its question with 1–5 and a few words. Its mind answers, agrees the next step (added to the checklist), and ticks off steps you say you finished.
+   - **Goals of their own** (2026-11-06). "◎ Goals" at the top lists your goals and experiments, with "+ New goal".
+     - **A new goal:** make it yourself (what you want, how you'll know, how long from 1 week to 6 months, your first steps) and it starts right away. Or "Plan it with Ember": a new chat where Ember asks the few things it needs and proposes the plan.
+     - **Each goal has its own page:** what you want and how you'll know; today's step with **Did it / Partly / Not today** (plus a few words); your streak and the last two weeks as dots; this phase's steps, which you can tick or add to; all the phases with their look backs; the plan; and the buttons Plan details with Ember, Talk about it, More days, Finish and look back, and Drop it.
+     - **The daily check replaces the old stopwatch.** Ember answers the first check of the day in the goal's chat, shown on the page too: glad when you did it, and a smaller next step when it was partly or not today, without guilt. Being honest earns XP too.
+     - **Phases:** a goal longer than two weeks goes in phases of 1–2 weeks, and you only see the current one. When a phase is over, Ember says so. With "Look back and plan the next phase" (or early, "On to the next phase") it looks back on how it went and plans the next phase's steps from that. Goals Ember proposes come with phases. Older goals were split into phases by week.
+     - In a chat, the line above the input shows the goal's name, its phase and today's step, with "Check today". Tapping it opens the goal's page.
+     - Old work sessions still count in the look backs, but nothing starts new ones.
    - **Help with the work.** During a session, its mind knows the experiment, the steps and the time so far.
    - **The end, honestly.** When its days are up, Ember asks once: finish and look back, or 3 more days. When an experiment ends (finished or dropped), Ember looks back on what actually happened: each session's day, length and feeling, and your own words after it. It says what that suggests about the experiment's question, or that there's too little to tell, then asks your own answer. A card under its words shows the numbers. Its mind remembers this look back later.
    - **Goals.** Anything you want in your life: a girlfriend, friends, fitness, a job, a skill. When you tell Ember what you want, it doesn't jump to a plan. It talks it through with you first, one question at a time: what exactly you want and why, where you are now, what you've tried, what's in the way, what you're comfortable doing. Then it says back what it understood and proposes the goal as a card: what having it looks like (so you'll know), how many days (7 to 180), the plan (the way there, built on what you told it), and the first steps, the first one doable today. "Make this my goal" makes it yours. Then you come back and tell it what happened; it helps with the next step and the hard parts, ticks off what you did, adds steps you agree on, and changes the plan with you when it isn't working. When a goal depends on other people, it says plainly that the outcome isn't fully in your hands and makes the steps what is. No manipulation or tricks towards others. Work sessions and check-ins work for goals too. When its days are up it asks whether you got there (finish and look back, or a week more), and its look back asks whether you got what you wanted. A new goal goes in a new chat.
@@ -78,16 +109,18 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
    - The safety rule.
 4. **Checking up on you, and a connection (done).**
    - **Check-ups.** When you mention something coming up ("I'm going climbing on Wednesday"), Ember plans when to ask how it went, and then writes to you in that chat by itself, even while you're away (the server looks every few minutes). If it turns out you'd already told it, it says nothing. When a goal's chat has been quiet for 3 days, it checks in once; it never sends another while its last check-up is unanswered.
-     - **You choose how often** (⋯ → Check-ups): Off, When it matters (just the above), Once a week, A few times a week (every 2 days), or Every day (the default), at the hour you pick (8:00–21:00, your time; 18:00 by default).
-     - A regular check-up comes at that hour once that many calendar days have passed since you last talked. It goes to your latest chat with a goal or experiment.
+     - **You choose** (⋯ → Check-ups): Off, When it matters (just the above), or Regularly (the default).
+     - **When:** at the exact time you pick, any time of day (your time; 18:00 by default), on the days you pick (M T W T F S S; all by default). Because you chose that time, it comes even late at night; the other check-ups never come at night.
+     - **How often** is set by the days you pick: a regular check-up comes on each of your days, at your time, if you haven't talked that day. It goes to your latest chat with a goal or experiment.
      - Off also drops the ones it planned.
-     - Check-ups aren't free messages. A dot on "Chats" shows them.
+     - Check-ups aren't free messages.
+     - **Its name.** It's Ember until you give it a name of your own (⋯ → Its name, up to 24 letters; empty means Ember again). Its mind uses the name, and notifications read "<name> sent you a message" with its words underneath. The home-screen icon stays "Ember". A dot on "Chats" shows them.
    - **Each chat remembered.** Ember keeps a short summary of each chat, so in a long chat it still knows how it started. It keeps each chat to its own topic: it doesn't bring up your other chats unless you do (Szilard's choice).
    - **Your story together.** Its mind knows how long you've known each other and what you've done together, refers back to what you told it, notices progress, and sometimes asks about you. "What it knows" starts with "Our story": together since, chats, what it remembers, goals and experiments, hours of work.
 5. **Phone notifications (done).** Ember's check-ups also arrive as phone notifications (Web Push): ⋯ → Turn on notifications (on iPhone, from the home-screen app). Never at night: nothing between 22:00 and 8:00 on your clock (the window tells Ember your time zone); those wait for the morning. Tapping one opens its chat. Turn them off in the same place. When you open Ember and they're not on yet, a small card asks once ("Turn on" / "Not now"; Not now asks again after a week): iPhone only allows the question after a tap.
 6. **Becoming someone.** Its character and its story of the two of you grow from your shared history.
 
-**Making money:** 5 free messages a day, then Ember Plus at €4.99 a month through Stripe (built; needs a Stripe account and a registered business to take real money). No ads, no selling data.
+**Making money:** 10 free messages a day, then Ember Plus at €4.99 a month through Stripe (built; needs a Stripe account and a registered business to take real money). No ads, no selling data.
 
 ## Files
 

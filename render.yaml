@@ -28,7 +28,7 @@ services:
       - key: EMBER_ALLOWED_EMAILS
         sync: false
       - key: EMBER_FREE_PER_DAY
-        value: "5"
+        value: "10"
       - key: EMBER_PRICE_LABEL
         value: "€4.99 / month"
       - key: EMBER_PLUS_EMAILS
@@ -38,6 +38,8 @@ services:
       - key: STRIPE_PRICE_ID
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: EMBER_TERMS_URL           # your ÁSZF page; with a live Stripe key, Plus is only sold once it's set
         sync: false
       - key: VAPID_PRIVATE_KEY
         sync: false

@@ -69,14 +69,17 @@ check("a correction updates the memory", e.find(mid)["note"] == "draws only abou
 
 print("Real time, while you're here and while you're away")
 e.update(t + 30 * 60, present=True)
-check("your presence eases its want for connection", e.connection < 0.1, f"{e.connection:.2f}")
+check("your presence eases its missing you", e.missing < 0.1, f"{e.missing:.2f}")
 e.update(t + 30 * 60 + 3 * D, present=False)
-check("three days away: connection want is high", e.connection > 0.9, f"{e.connection:.2f}")
+check("three days away: it misses you a lot", e.missing > 0.9, f"{e.missing:.2f}")
 check("...and the face shows it", e.face(t + 30 * 60 + 3 * D, False)["expression"] == "droopy")
 back = t + 30 * 60 + 3 * D + 5
 check("it greets you when you come back", e.arrive(back))
 check("it knows how long you were away", abs(e.gap_before - 3 * D) < 60, f"{e.gap_before / D:.2f} days")
-check("its face reacts to you coming back", e.face(back + 1, True)["expression"] == "surprised")
+check("coming back after days: a moment of having missed you, then happy you're back", e.face(back + 1, True)["expression"] == "droopy"
+      and e.face(back + 3, True)["expression"] == "surprised" and e.face(back + 6, True)["expression"] == "eager"
+      and "It missed you" in e.face(back + 1, True)["why"][0])
+check("...and after that it doesn't look droopy while you're here", e.face(back + 30, True)["expression"] != "droopy")
 _, user = e.prompt({"type": "arrive"}, back)
 check("its mind is told how long it's been", "3 days" in user)
 check("its mind sees its memories", "draws only about 20 minutes lately" in user)
@@ -152,10 +155,10 @@ fx = f.find_exp(eid)["facts"]
 check("when it ends, what actually happened is kept", fx["sessions"] == 3 and fx["ratings"] == [4]
       and (fx["steps_done"], fx["steps"]) == (1, 3) and fx["words"] == ["fun, made the player move"], str(fx))
 _, user = f.prompt({"type": "review", "id": eid}, x0 + 24 * H)
-check("its mind looks back on the real numbers and your words", "3 work sessions" in user
+check("its mind looks back on the real numbers and your words", "Earlier work sessions: 3" in user
       and "fun, made the player move" in user and "Do you still want to on day 5?" in user and "finished" in user)
 check("the template mind's look back is only the facts and the question",
-      "3 work sessions" in (tr := f._template({"type": "review", "id": eid}, x0 + 24 * H)["reply"]) and tr.endswith("day 5?"))
+      "Earlier work sessions: 3" in (tr := f._template({"type": "review", "id": eid}, x0 + 24 * H)["reply"]) and tr.endswith("day 5?"))
 r = f.respond({"type": "review", "id": eid}, mind_says(reply="Three sessions; one was left open for 8 hours. Your answer?",
               remember=[{"kind": "about", "note": "x", "quote": "x"}]), x0 + 24 * H + 5)
 check("its look back sits on its line, is kept, and remembers nothing",
@@ -240,7 +243,7 @@ check("a goal gets a week more, not 3 days", f.extend(gid, G + 180 * D + 120) an
 f.end_experiment(gid, "done", G + 181 * D)
 _, user = f.prompt({"type": "review", "id": gid}, G + 181 * D)
 check("the look back at a goal asks whether you got what you wanted",
-      "Their goal" in user and "got what they wanted" in user and "1 work session" in user)
+      "Their goal" in user and "got what they wanted" in user and "Earlier work sessions: 1" in user)
 h = Ember.from_dict(json.loads(json.dumps(f.to_dict())))
 check("goals survive a save", h.find_exp(gid)["kind"] == "goal" and h.experiments == f.experiments)
 
@@ -367,7 +370,8 @@ ck.tz = 60                                        # Budapest in winter
 d0 = t - (t % 86400) + 86400                      # a midnight UTC
 ck.hear(d0 + 9 * H, "hi")                         # you talked at 10:00 your time
 ck.respond({"type": "talk", "text": "hi"}, mind_says(reply="Hi!"), d0 + 9 * H + 1)
-check("every day is the default, at 18:00", ck.checkups == "daily" and ck.checkup_hour == 18)
+check("every day is the default, at 18:00, all week", ck.checkups == "daily" and ck.checkup_at == 18 * 60
+      and ck.checkup_days == list(range(7)) and ck.snapshot(t, True)["checkups"]["at"] == "18:00")
 check("not the same day you talked", ck.due_checkups(d0 + 18 * H) == [])
 check("not before your hour the next day", ck.due_checkups(d0 + D + 15 * H) == [])
 ev = ck.due_checkups(d0 + D + 17 * H)             # 18:00 your time, the next day
@@ -379,20 +383,292 @@ ck.respond(ev[0], mind_says(reply="How was your day?"), d0 + D + 17 * H + 5)
 check("unanswered: it doesn't ask again the day after", ck.due_checkups(d0 + 2 * D + 17 * H) == [])
 ck.hear(d0 + 2 * D + 19 * H, "good, thanks")
 check("answered: it checks up again the next day", len(ck.due_checkups(d0 + 3 * D + 17 * H)) == 1)
-check("you can choose how often and when", ck.set_checkups("weekly", 9) and ck.checkups == "weekly"
-      and ck.checkup_hour == 9)
-check("...not a time at night, or a made-up choice", not ck.set_checkups("daily", 23) and not ck.set_checkups("hourly")
-      and ck.checkups == "weekly")
-ck.hear(d0 + 4 * D + 12 * H, "hey")
-check("once a week: not after 3 days", ck.due_checkups(d0 + 7 * D + 9 * H) == [])
-check("...but after a week", len(ck.due_checkups(d0 + 11 * D + 9 * H)) == 1)
+check("you can choose when", ck.set_checkups("daily", "09:00") and ck.checkup_at == 9 * 60)
+check("...not a time that doesn't exist, no days at all, or a made-up choice", not ck.set_checkups("daily", "25:00")
+      and not ck.set_checkups("daily", "18:75") and not ck.set_checkups("daily", None, [])
+      and not ck.set_checkups("daily", None, [7]) and not ck.set_checkups("weekly") and ck.checkups == "daily")
 ck.set_checkups("off")
 ck.followups.append({"chat": "c1", "at": d0 + 12 * D, "about": "x", "set": d0})
 check("off: nothing, not even what it planned", ck.due_checkups(d0 + 30 * D + 9 * H) == [] and not ck.followups)
 ck.set_checkups("when")
 ck.hear(d0 + 31 * D + 9 * H, "back")
 check("when it matters: no regular ones", ck.due_checkups(d0 + 40 * D + 9 * H) == [])
-check("every choice means something", set(CHECKUPS) == {"off", "when", "weekly", "few", "daily"})
+check("three choices: off, when it matters, regularly", set(CHECKUPS) == {"off", "when", "daily"})
+ow = Ember.from_dict(dict(Ember(now=t).to_dict(), checkups="weekly"))
+check("a save with 'once a week' becomes regularly, on your days", ow.checkups == "daily")
+
+print("Your exact time, any hour, on your days")
+import time as _time
+ex = Ember(now=t)
+ex.tz = 60
+m0 = d0 + 23 * H                                  # a midnight, your time
+while _time.gmtime(m0 + 3600).tm_wday != 0:       # ...on a Monday
+    m0 += D
+ex.hear(m0 - 2 * D + 12 * H, "hi")                # you talked on Saturday
+check("any minute, even late at night", ex.set_checkups("daily", "23:40", [0, 2, 4]) and ex.checkup_at == 23 * 60 + 40)
+check("Monday 23:39: not yet", ex.due_checkups(m0 + 23 * H + 39 * 60) == [])
+check("Monday 23:40: there it is, though it's night", len(ex.due_checkups(m0 + 23 * H + 40 * 60)) == 1)
+ex.hear(m0 + 23 * H + 50 * 60, "thanks")
+check("Tuesday isn't one of your days", ex.due_checkups(m0 + D + 23 * H + 45 * 60) == [])
+check("Wednesday is", len(ex.due_checkups(m0 + 2 * D + 23 * H + 45 * 60)) == 1)
+wk = Ember(now=t)
+wk.tz = 60
+wk.hear(m0 - 6 * D + 12 * H, "hi")                # you talked on Tuesday
+wk.set_checkups("daily", "10:00", [0])
+check("Mondays only: the next Monday comes", len(wk.due_checkups(m0 + 10 * H)) == 1)
+_, user = wk.prompt({"type": "followup", "regular": True, "chat": "c1", "about": "how they are"}, m0 + 10 * H)
+check("its mind knows your days and time", "check up on them on Mondays, at 10:00" in user)
+check("planned check-ups still wait for the morning", (ex.followups.append(
+    {"chat": "c1", "at": m0 + 3 * D, "about": "x", "set": m0}) or True) and ex.due_checkups(m0 + 3 * D + 22 * H) == []
+      and len(ex.due_checkups(m0 + 4 * D + 8 * H)) == 1)
+old2 = {k: v for k, v in Ember(now=t).to_dict().items() if k not in ("checkup_at", "checkup_days")}
+old2["checkup_hour"] = 9
+o2 = Ember.from_dict(old2)
+check("a save with a whole hour keeps it", o2.checkup_at == 9 * 60 and o2.checkup_days == list(range(7)))
+
+print("Staying on what the chat is for, and moving forward")
+from mind.core import DRIFT_QUESTIONS
+fo = Ember(now=t)
+fo.hear(t + 1, "I want to get fit")
+fo.respond({"type": "talk", "text": "I want to get fit"}, mind_says(reply="What does fit mean to you?"), t + 2)
+for i in range(DRIFT_QUESTIONS - 1):
+    fo.hear(t + 10 + i * 10, f"answer {i}")
+    fo.respond({"type": "talk", "text": f"answer {i}"}, mind_says(reply=f"And question {i}?"), t + 11 + i * 10)
+check("it counts its questions in a row", fo.asked_in_a_row("c1") == DRIFT_QUESTIONS)
+_, user = fo.prompt({"type": "talk", "text": "hmm", "chat": "c1"}, t + 100)
+check("...and is told to stop asking and propose something", "This time don't ask another" in user)
+check("its mind knows what the chat is for", "it began with them saying \"I want to get fit\"" in user)
+fo.respond({"type": "talk", "text": "ok"}, mind_says(reply="Here's a plan. Shall we start with a walk today?"), t + 110)
+check("...a reply that's another question still counts", fo.asked_in_a_row("c1") == DRIFT_QUESTIONS + 1)
+fo.respond({"type": "talk", "text": "ok"}, mind_says(reply="Let's do a 20-minute walk today, then 3 runs next week."),
+           t + 120)
+check("a reply that proposes something resets it", fo.asked_in_a_row("c1") == 0)
+_, user = fo.prompt({"type": "talk", "text": "ok", "chat": "c1"}, t + 130)
+check("...and the nudge is gone", "This time don't ask another" not in user)
+from mind.core import SYSTEM as _S
+check("its instructions: keep moving, few questions, then propose", "Keep each chat moving" in _S
+      and "never more than 5" in _S)
+check("...never stall or back off on its own; feelings about a goal are part of the work", "Never stall or back off"
+      in _S and "are part of the work, not a reason to stop" in _S)
+
+print("Hard things get care, not a smile")
+hd = Ember(now=t)
+hd.hear(t + 1, "My dad is in hospital and I can't focus on anything")
+r = hd.respond({"type": "talk", "text": "My dad is in hospital and I can't focus on anything"}, mind_says(
+    reply="That sounds really hard. Do you want to talk about it, or just needed to say it?", face="happy",
+    feel="worried", feel_why="their dad is in hospital"), t + 2)
+check("when it's worried, its face isn't happy even if its mind picked it", r["face"] == "worried"
+      and hd.face(t + 3, True)["expression"] == "worried")
+check("...and it stays that way after the moment", hd.face(t + 60, True)["expression"] == "worried")
+r = hd.respond({"type": "talk", "text": "x"}, mind_says(reply="I'm so sorry.", face="eager", feel="sad"), t + 70)
+check("sad: a sad face", r["face"] == "sad")
+check("its instructions: read how they feel, no upbeat on hard things", "Read how they feel" in _S
+      and "no silver linings" in _S)
+
+print("Growing with you: XP, levels, stages")
+from mind.core import XP, level_of, stage_of, xp_for, LOOKS
+check("levels: 2 at 50 XP, 5 at 500, 10 at 2,250, 20 at 9,500", [xp_for(n) for n in (2, 5, 10, 20)] == [50, 500, 2250, 9500]
+      and level_of(49) == 1 and level_of(50) == 2 and level_of(9500) == 20)
+check("stages: Spark, Ember, Flame, Blaze", [stage_of(n) for n in (1, 4, 5, 9, 10, 19, 20)] ==
+      ["Spark", "Spark", "Ember", "Ember", "Flame", "Flame", "Blaze"])
+gx = Ember(now=t)
+for i in range(8):
+    gx.hear(t + i, f"msg {i}")
+check("talking: a day's 10, then 2 a message, only the first 5 a day", gx.xp == XP["day"] + 5 * XP["talk"], str(gx.xp))
+gx.hear(t + D + 5, "next day")
+check("...and again the next day, plus a day together", gx.xp == 2 * XP["day"] + 6 * XP["talk"] + XP["together"],
+      str(gx.xp))
+x0 = gx.xp
+gx.update(t + D + 10, True)
+check("a day together counts once", gx.xp == x0)
+gx.update(t + 4 * D + 10, False)
+check("three more days together, counted when it next looks", gx.xp == x0 + 3 * XP["together"])
+gx.respond({"type": "suggest"}, None, t + 4 * D + 20)
+eid = next(x["id"] for x in gx.experiments if x["status"] == "suggested")
+x0 = gx.xp
+gx.pick(eid, t + 4 * D + 30)
+check("starting a goal or experiment", gx.xp == x0 + XP["start"])
+x0 = gx.xp
+gx.set_step(eid, 0, True, t + 4 * D + 40)
+gx.set_step(eid, 0, False, t + 4 * D + 41)
+gx.set_step(eid, 0, True, t + 4 * D + 42)
+check("a step done counts once, however often it's ticked", gx.xp == x0 + XP["step"])
+gx.start_session(t + 4 * D + 50, gx.find_exp(eid).get("chat"))
+x0 = gx.xp
+gx.stop_session(t + 4 * D + 50 + 45 * 60)
+check("a 45-minute work session: 5 + 4", gx.xp == x0 + 9)
+x0 = gx.xp
+gx.checkin(t + 4 * D + 50 + 46 * 60, 4, "good")
+check("telling it how the session went", gx.xp == x0 + XP["checkin"])
+x0 = gx.xp
+gx.end_experiment(eid, "done", t + 5 * D)
+check("finishing it", gx.xp == x0 + XP["finish"])
+ck2 = Ember(now=t)
+ck2.say(t + 1, "How did it go?", "curious", "c1", checkup=True)
+x0 = ck2.xp
+ck2.hear(t + 2, "it went well")
+check("answering a check-up", ck2.xp == x0 + XP["checkup"] + XP["day"] + XP["talk"])
+
+print("A new level: it says so once, after its own words")
+lu = Ember(now=t)
+lu.hear(t + 1, "hi")
+lu.xp = 45
+lu.hear(t + 2, "again")                           # 47
+lu.hear(t + 3, "and again")                       # 49
+lu.hear(t + 4, "once more")                       # 51: level 2
+check("not on top of your message: it answers you first", lu.levelup_due == {"from": 1, "to": 2}
+      and lu.talk[-1]["who"] == "you")
+lu.respond({"type": "talk", "text": "once more"}, mind_says(reply="Hey!"), t + 5)
+check("...then it says it reached level 2", lu.talk[-1].get("levelup") == 2 and "level 2" in lu.talk[-1]["text"]
+      and lu.talk[-2]["text"] == "Hey!" and lu.levelup_due is None)
+check("...and what it unlocked", "gold" in lu.talk[-1]["text"] and "Customize Ember" in lu.talk[-1]["text"])
+lu.xp = 499
+lu.gain("x", 1, t + 10)
+lu.update(t + 11, True)
+check("a new stage: 'I'm an Ember'", "I'm not a spark any more: I'm an Ember." in lu.talk[-1]["text"]
+      and lu.level_info()["stage"] == "Ember")
+check("its mind knows its level", "You're level 5, an Ember" in lu.prompt({"type": "talk", "text": "hi"}, t + 12)[1])
+
+print("Looks: what its level has unlocked")
+lk = Ember(now=t)
+check("it starts amber, wearing nothing", lk.look["color"] == "amber" and lk.look["wear"] == "none")
+check("a locked look is refused", not lk.set_look("wear", "crown") and lk.look["wear"] == "none")
+check("an unknown part or item is refused", not lk.set_look("hat", "cap") and not lk.set_look("wear", "spacesuit"))
+lk.xp = xp_for(20)
+check("unlocked: yes", lk.set_look("wear", "crown") and lk.set_look("color", "violet") and lk.set_look("sparks", "hearts"))
+check("the catalog says what unlocks when", any(i["id"] == "crown" and i["level"] == 20
+                                                for p in lk.looks()["parts"] if p["id"] == "wear" for i in p["items"]))
+lk2 = Ember.from_dict(json.loads(json.dumps(lk.to_dict())))
+check("look, XP and level survive a save", lk2.look == lk.look and lk2.xp == lk.xp and lk2.level_info()["level"] == 20)
+check("every part has a free default at level 1", all(items[0][2] == 1 for items in LOOKS.values()))
+
+print("An Ember from before levels gets its XP from your history, quietly")
+ol = Ember(now=t)
+for i in range(3):
+    ol.hear(t + i * D, f"day {i}")
+ol.respond({"type": "suggest"}, None, t + 3 * D)
+oid = next(x["id"] for x in ol.experiments if x["status"] == "suggested")
+ol.pick(oid, t + 3 * D + 1)
+ol.set_step(oid, 0, True, t + 3 * D + 2)
+ol.update(t + 10 * D, True)
+d_old = {k: v for k, v in ol.to_dict().items() if k not in ("xp", "xp_log", "xp_today", "days_counted",
+                                                             "levelup_due", "look")}
+for x in d_old["experiments"]:
+    for s in x["steps"]:
+        s.pop("xp", None)
+lines = len(d_old["talk"])
+ob = Ember.from_dict(json.loads(json.dumps(d_old)))
+check("its level comes from what you did together", ob.xp == 3 * (XP["day"] + XP["talk"]) + 10 * XP["together"]
+      + XP["start"] + XP["step"], str(ob.xp))
+check("...with no level-up lines", len(ob.talk) == lines and ob.levelup_due is None)
+ob.set_step(oid, 0, True, t + 10 * D + 5)
+check("...and a step already counted isn't counted again", ob.xp == 3 * (XP["day"] + XP["talk"]) + 10 * XP["together"]
+      + XP["start"] + XP["step"])
+
+print("Goals of their own: make one yourself, in phases")
+from mind.core import PHASE_MAX
+gq = Ember(now=t)
+g90 = gq.new_goal("Run a half marathon", "I finish 21 km", 90, ["Buy shoes", "Run 2 km"], t + 10)
+check("you can make a goal yourself: active, in its own chat", g90 and g90["status"] == "active"
+      and gq.find_chat(g90["chat"])["title"] == "Run a half marathon" and gq.active(g90["chat"]) is g90)
+check("a 90-day goal goes in 7 phases of at most 2 weeks", len(g90["phases"]) == 7
+      and all(p["days"] <= PHASE_MAX for p in g90["phases"]) and sum(p["days"] for p in g90["phases"]) == 90
+      and g90["phases"][0]["title"].startswith("Days 1-"), str([p["title"] for p in g90["phases"]]))
+check("...your steps are phase 1's, and today's step is the first", gq.today_step(g90)["text"] == "Buy shoes")
+check("...and it says so in that chat", "Today's step: Buy shoes" in gq.last_line(g90["chat"])["text"])
+g14 = gq.new_goal("Read a book", "", 14, [], t + 20)
+check("a 2-week goal is one phase", len(g14["phases"]) == 1 and g14["phases"][0]["title"] == "The whole way"
+      and "What's a first step" in gq.last_line(g14["chat"])["text"])
+g28 = gq.new_goal("Learn to juggle", "", 28, [], t + 30)
+check("phases by week when the days fit", [p["title"] for p in g28["phases"]] == ["Weeks 1-2", "Weeks 3-4"])
+check("no goal without a title", gq.new_goal("  ", "", 30, [], t + 40) is None)
+
+print("The daily check instead of the stopwatch")
+x0 = gq.xp
+ev = gq.daily_check(g90["id"], "done", "felt good", t + 3600)
+check("did it: today's step is done, the next becomes today's", g90["steps"][0]["done"]
+      and gq.today_step(g90)["text"] == "Run 2 km")
+check("...it's logged, with your words", g90["log"][-1]["how"] == "done" and g90["log"][-1]["words"] == "felt good")
+check("...XP for the check and the step", gq.xp - x0 == XP["check_done"] + XP["step"], str(gq.xp - x0))
+check("...your line in the goal's chat, and an event for its mind", gq.last_line(g90["chat"]).get("daily") == "done"
+      and ev["type"] == "daily" and ev["first"] and gq.event_chat(ev) == g90["chat"])
+x0 = gq.xp
+ev2 = gq.daily_check(g90["id"], "partly", "", t + 7200)
+check("a second check the same day replaces the first, without more XP or another answer",
+      len(g90["log"]) == 1 and g90["log"][0]["how"] == "partly" and gq.xp == x0 and not ev2["first"])
+_, user = gq.prompt(ev, t + 3601)
+check("its mind is told how today went, and to make it smaller if it was hard",
+      "checked in on today's step" in user and "no guilt" in user and "Earlier work sessions" not in user)
+check("the goal's page view: today's step, checked today, streak, 14 days", (lambda v: v["today_step"]["text"] == "Run 2 km"
+      and v["checked_today"] == "partly" and v["streak"] == 1 and len(v["recent"]) == 14
+      and v["phase_info"]["count"] == 7)(gq.goal_view(g90, t + 7300)))
+gq.daily_check(g90["id"], "done", "", t + D + 10)
+gq.daily_check(g90["id"], "skip", "tired", t + 2 * D + 10)
+check("a day you didn't get to it ends the streak (it still counts as honest)", gq.streak(g90, t + 2 * D + 20) == 0)
+gq.daily_check(g90["id"], "done", "", t + 3 * D + 10)
+check("...and a new one starts", gq.streak(g90, t + 3 * D + 20) == 1)
+check("its mind's reply to a check can add a smaller step", gq.respond(
+    {"type": "daily", "id": g90["id"], "how": "skip", "step": "x", "text": "", "chat": g90["chat"]},
+    mind_says(reply="That's okay.", add_steps=["Run 1 km"]), t + 3 * D + 20).get("steps") == ["Run 1 km"])
+check("adding your own step", gq.add_step(g90["id"], "Stretch after") and g90["steps"][-1]["text"] == "Stretch after")
+
+print("Phases: one at a time, a look back at each end")
+ph_end = g90["phases"][0]["end"]
+gq.update(ph_end + 60, False)
+check("when a phase is over, it says so once", sum(1 for l in gq.talk if l.get("phase_up") == g90["id"]) == 1)
+gq.update(ph_end + 120, False)
+check("...only once", sum(1 for l in gq.talk if l.get("phase_up") == g90["id"]) == 1)
+_, user = gq.prompt({"type": "phase", "id": g90["id"], "from": 0}, ph_end + 200)
+check("its mind gets the phase's facts and plans the next", "Phase 1 of their goal" in user and "daily checks" in user
+      and "Next is phase 2" in user and "add_steps" in user)
+x0 = gq.xp
+r = gq.respond({"type": "phase", "id": g90["id"], "from": 0}, mind_says(
+    reply="Week one went well. Next: longer runs.", add_steps=["Run 3 km twice", "Rest a day between"]), ph_end + 210)
+check("its answer moves on: the look back is kept, the new steps are today's", g90["phase"] == 1
+      and g90["phases"][0]["look_back"].startswith("Week one") and gq.today_step(g90)["text"] == "Run 3 km twice"
+      and gq.xp - x0 == XP["phase"])
+check("...and the old phase keeps its steps", any(s["text"] == "Buy shoes" for s in g90["phases"][0]["steps"]))
+r = gq.respond({"type": "phase", "id": g90["id"], "from": 0}, mind_says(reply="again", add_steps=["x"]), ph_end + 220)
+check("a phase answer that comes twice doesn't skip a phase", g90["phase"] == 1)
+check("you can go to the next phase early", gq.next_phase(g90["id"], ph_end + D, "done early", ["A"]) and g90["phase"] == 2
+      and g90["phases"][2]["start"] == ph_end + D)
+fx = gq.facts(g90, ph_end + D + 10)
+check("what happened counts the checks and the phases", fx["checks"]["done"] >= 2 and len(fx["phases"]) == 3)
+
+print("Goals Ember proposes come in phases too")
+gp = Ember(now=t)
+gp.hear(t + 1, "I want a girlfriend")
+r = gp.respond({"type": "talk", "text": "I want a girlfriend"}, mind_says(reply="Here's a plan.", goal={
+    "title": "A girlfriend", "done_when": "I'm in a relationship", "days": 90, "plan": "Meet people.",
+    "phases": [{"title": "Weeks 1-2: get out more", "days": 14, "steps": ["Join a club", "Say hi to 3 people"]},
+               {"title": "Weeks 3-4: talk more", "days": 14}, {"title": "Weeks 5-8: dates", "days": 30}]}), t + 2)
+gpx = r["suggested"][0]
+check("its proposal keeps its phases (at most 2 weeks each)", [p["days"] for p in gpx["phases"]] == [14, 14, 14]
+      and gpx["days"] == 42 and gpx["steps"][0]["text"] == "Join a club")
+gp.pick(gpx["id"], t + 3)
+check("picked: timed from today", gpx["phases"][0]["start"] == t + 3 and gpx["ends_at"] == t + 3 + 42 * D)
+old = {k: v for k, v in Ember(now=t).to_dict().items()}
+old["experiments"] = [{"id": "x1", "kind": "goal", "title": "Old", "question": "q", "days": 60, "status": "active",
+                       "steps": [{"text": "s", "done": False}], "created": t, "started": t, "ends_at": t + 60 * D,
+                       "ended": None, "based_on": [], "why": ""}]
+old["last_update"] = t + 20 * D
+og = Ember.from_dict(json.loads(json.dumps(old)))
+check("an old goal without phases loads in phases, in the right one", len(og.experiments[0]["phases"]) == 5
+      and og.experiments[0]["phase"] == 1, str([og.experiments[0].get("phase")]))
+
+print("A name of your own for it")
+nm = Ember(now=t)
+check("it's Ember until you name it", nm.name == "Ember" and "They gave you a name" not in nm.prompt(
+    {"type": "talk", "text": "hi"}, t)[1])
+check("you can name it", nm.set_name("  Lumi  ") and nm.name == "Lumi" and nm.snapshot(t, True)["name"] == "Lumi")
+check("its mind knows its new name", "They gave you a name: Lumi" in nm.prompt({"type": "talk", "text": "hi"}, t)[1])
+check("the template mind introduces itself by it", nm.respond({"type": "arrive"}, None, t + 1)["reply"].startswith(
+    "Hi. I'm Lumi."))
+nm.set_name("x" * 60)
+check("a name stays short", len(nm.name) == 24)
+check("an empty name is Ember again", nm.set_name("   ") and nm.name == "Ember")
+nm.set_name("Lumi")
+check("its name survives a save", Ember.from_dict(json.loads(json.dumps(nm.to_dict()))).name == "Lumi")
 
 print("Writing first when you open it: only after a while")
 gr = Ember(now=t)
@@ -400,7 +676,7 @@ check("the very first time, it introduces itself", gr.arrive(t))
 gr.respond({"type": "arrive"}, mind_says(reply="Hi, I'm Ember."), t + 1)
 gr.update(t + 2, present=True)
 check("back after 2 hours: it lights up but doesn't write", not gr.arrive(t + 2 * H) and gr.face(t + 2 * H + 1, True)[
-    "expression"] in ("happy", "surprised"))
+    "expression"] in ("eager", "surprised"))
 gr.update(t + 2 * H, present=True)
 check("back after 10 hours, its greeting still unanswered: it doesn't write again", not gr.arrive(t + 12 * H))
 gr.hear(t + 12 * H + 10, "hello")
@@ -423,7 +699,7 @@ check("good news makes it feel proud: valence and energy rise", md.valence > v0 
 check("...and its mood is better", md.mood > mood0)
 f1 = md.face(t + 60, True)
 check("the feeling shows on its face after the mind's own face fades",
-      f1["expression"] == "happy" and any("it feels proud: they went to the gym" in w for w in f1["why"]))
+      f1["expression"] == "happy" and any("It feels proud: they went to the gym" in w for w in f1["why"]))
 check("the face carries its energy for the window", f1["energy"] == round(md.energy, 3))
 _, user = md.prompt({"type": "talk", "text": "hi", "chat": "c1"}, t + 120)
 check("its mind knows how it feels", "Your mood now: proud (they went to the gym after all)" in user)
@@ -441,7 +717,7 @@ check("sad shows as sad", md.face(t + 10 * H + 120, True)["expression"] == "sad"
 md.update(t + 3 * D, present=False)
 fa = md.face(t + 3 * D, False)
 check("days apart: it misses you, and says why", fa["expression"] == "droopy"
-      and any("it misses you: you've been away" in w for w in fa["why"]))
+      and any("It misses you: you've been away" in w for w in fa["why"]))
 low = md.mood
 md.arrive(t + 3 * D + 5)
 check("you come back: it lights up", md.mood > low + .3)
@@ -456,11 +732,78 @@ mm = Ember.from_dict(json.loads(json.dumps(md.to_dict())))
 check("its mood survives a save", mm.valence == md.valence and mm.feel == md.feel and mm.feel_t == md.feel_t)
 check("every feeling has a nudge and a face (or none)", all(len(v) == 3 for v in FEELS.values()))
 
+print("Missing you and curiosity, made visible")
+cu = Ember(now=t)
+cu.curiosity = 0.8
+_, user = cu.prompt({"type": "talk", "text": "hey"}, t + 1)
+check("one question at a time: asking about their day comes first", "ask about their day once today" in user
+      and "one question to know them better" not in user)
+cu.day_asked = cu._date(t + 1)
+_, user = cu.prompt({"type": "talk", "text": "hey"}, t + 1)
+check("curious: its mind is told to ask one question to know them better", "one question to know them better" in user)
+cu.curiosity = 0.3
+_, user = cu.prompt({"type": "talk", "text": "hey"}, t + 1)
+check("...not when it's just learned something", "one question to know them better" not in user)
+mi = Ember(now=t)
+mi.arrive(t)
+mi.update(t + 60, True)
+mi.arrive(t + 2 * D)
+_, user = mi.prompt({"type": "arrive"}, t + 2 * D)
+check("back after 2 days: its mind says it missed them, warmly, never as a reproach", "You missed them while they were away"
+      in user and "never as a reproach" in user)
+
+print("Connection: a bond that builds as you talk, and stays")
+from mind.core import BOND_KEEP
+bd = Ember(now=t)
+check("it starts at nothing", bd.connection == 0.0)
+for day in range(10):
+    for m in range(3):
+        bd.hear(t + day * D + m * 60, f"day {day} msg {m}")
+c10 = bd.connection
+check("ten days of talking: it has grown", 0.5 < c10 < 0.7, f"{c10:.2f}")
+bd.update(t + 9 * D + 3600, True)
+bd.update(t + 9 * D + 2 * D, False)
+check("two days apart: it stays (no fading yet)", abs(bd.connection - c10) < 1e-9)
+bd.update(t + 9 * D + 10 * D, False)
+c_after = bd.connection
+check("ten days without talking: it fades a little, slowly", 0.75 * c10 < c_after < c10, f"{c10:.2f} -> {c_after:.2f}")
+bd.hear(t + 9 * D + 10 * D + 60, "I'm back")
+check("talking again: it grows again", bd.connection > c_after)
+check("being here without talking doesn't make it drop", (lambda c: (bd.update(t + 20 * D, True) or True)
+                                                          and abs(bd.connection - c) < 1e-9)(bd.connection))
+old = Ember(now=t)
+for day in range(5):
+    old.hear(t + day * D, "hi")
+d_old = old.to_dict()
+d_old.pop("missing")
+d_old["connection"] = 0.8                         # what "connection" meant before: missing you
+ob = Ember.from_dict(json.loads(json.dumps(d_old)))
+check("an older Ember: its old 'connection' is now 'missing you', and its bond comes from your history",
+      ob.missing == 0.8 and abs(ob.connection - old.connection) < 0.02, f"{ob.connection:.2f} vs {old.connection:.2f}")
+_, user = bd.prompt({"type": "talk", "text": "hi"}, t + 20 * D)
+check("its mind knows how close you've become", "Your connection with them:" in user and "missing them" in user)
+
+print("Asking about your day, once a day, for connection")
+dy = Ember(now=t)
+dy.tz = 60
+d18 = t - (t % 86400) + 17 * H                    # 18:00 their time
+_, user = dy.prompt({"type": "talk", "text": "hi"}, d18)
+check("its mind is told to ask about their day (in the evening: how it was)", "You haven't asked about their day yet today"
+      in user and "evening: ask how their day was" in user)
+dy.hear(d18, "hi")
+dy.respond({"type": "talk", "text": "hi"}, mind_says(reply="Hi! How was your day?", asked_about_day=True), d18 + 1)
+_, user = dy.prompt({"type": "talk", "text": "good"}, d18 + 60)
+check("...once it has asked, not again today", "You haven't asked about their day" not in user)
+_, user = dy.prompt({"type": "talk", "text": "morning"}, d18 + 16 * H)
+check("...and the next morning: what's ahead today", "morning: ask what's ahead today" in user)
+check("the template mind doesn't count as asking", (lambda e: (e.respond({"type": "talk", "text": "x"}, None, d18) or True)
+                                                    and e.day_asked == "")(Ember(now=t)))
+
 print("Who it is")
 from mind.core import SYSTEM
 check("Ember knows who it is, why it exists and how it helps", "Szurap" not in SYSTEM and all(w in SYSTEM for w in (
     "Who you are, when they ask", "always say why you exist too", "no names", "small experiments", "make a plan with them",
-    "check up on them", "What it knows", "+ New chat", "not a therapist", "5 free messages")))
+    "check up on them", "What it knows", "+ New chat", "not a therapist", "10 free messages")))
 
 print("Saving")
 e.poke(back + 200)

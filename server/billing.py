@@ -23,10 +23,14 @@ class BillingError(Exception):
 
 class Billing:
     def __init__(self, secret_key=None, price_id=None, webhook_secret=None, price_label="€4.99 / month",
-                 api="https://api.stripe.com"):
+                 api="https://api.stripe.com", terms_url=None):
         self.key, self.price, self.whsec = secret_key, price_id, webhook_secret
         self.price_label, self.api = price_label, api.rstrip("/")
+        self.terms_url = (terms_url or "").strip() or None      # the ÁSZF; buyers accept it at checkout
         self.enabled = bool(secret_key and price_id and webhook_secret)
+        self.live = bool(secret_key and secret_key.startswith(("sk_live_", "rk_live_")))
+        # real money only once the terms are online (a live key without EMBER_TERMS_URL: "Ember Plus opens soon")
+        self.selling = self.enabled and (not self.live or bool(self.terms_url))
 
     def _post(self, path, fields):
         data = urllib.parse.urlencode(fields).encode()
@@ -48,6 +52,8 @@ class Billing:
                   "client_reference_id": uid, "subscription_data[metadata][user_id]": uid,
                   "allow_promotion_codes": "true",
                   "payment_method_types[0]": "card"}           # cards (Apple Pay and Google Pay included), nothing else
+        if self.terms_url:                                  # Stripe asks them to accept the terms (its Public details
+            fields["consent_collection[terms_of_service]"] = "required"     # must have the same terms URL)
         if customer:
             fields["customer"] = customer
         elif email:
