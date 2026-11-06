@@ -141,6 +141,7 @@ To go back: put your own Gmail back in `EMBER_PLUS_EMAILS` to end free Plus (eve
 ## Afterwards
 
 - **Who has logged in:** Supabase → your project → **Authentication → Users**. It lists everyone who has ever signed in: their email, when they first signed in, and when they last signed in. Their **UID** there is the `user_id` in the database tables.
+- **Feedback:** people send it from ⋯ → Send feedback (an idea, something's wrong, or something else). Read it in Supabase → **Table Editor → `feedback`**: the text, their email (to answer them), the kind, and `extra` (level, Plus, where they were, browser). The table comes from `server/schema.sql`: if it isn't there yet, run the whole file once more in the SQL Editor (it only adds what's missing). Until then, sending feedback says "Couldn't send it right now".
 - **How much each person uses it:** Supabase → **Table Editor → `usage`**: replies (`calls`), counted messages and tokens per person per day.
 - **Try every look:** add your Gmail to `EMBER_UNLOCK_EMAILS` in Render. Every look is unlocked for you; your level and XP don't change.
 - **If Ember is slow:** Render → Logs, search for `mind answered`: each answer's time is there (a warning when it took over 20 seconds).

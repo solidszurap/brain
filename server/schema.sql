@@ -38,7 +38,19 @@ create table if not exists public.plans (
   updated_at   timestamptz not null default now()
 );
 
+-- what people send from the ⋯ menu's "Send feedback" (Supabase -> Table Editor -> feedback to read it)
+create table if not exists public.feedback (
+  id         bigserial primary key,
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  email      text,
+  kind       text not null,                     -- idea, problem or other
+  text       text not null,
+  extra      jsonb,                             -- level, plan, screen, browser: to understand a problem
+  created_at timestamptz not null default now()
+);
+
 alter table public.embers enable row level security;
 alter table public.lines  enable row level security;
 alter table public.usage  enable row level security;
 alter table public.plans  enable row level security;
+alter table public.feedback enable row level security;

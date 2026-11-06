@@ -33,6 +33,9 @@ PRESENT_FOR = 3.0            # you're here if your visible window asked within t
 SAVE_EVERY = 60.0
 MAX_TEXT = 2000
 MAX_BODY = 16384
+FEEDBACK_KINDS = ("idea", "problem", "other")
+FEEDBACK_MAX = 2000
+FEEDBACK_PER_HOUR = 10
 UNREACHABLE = "My mind can't be reached right now. I'll answer as soon as it's back."
 FAILED = "Something went wrong when I tried to think about that, so I couldn't answer it. Could you say it another way?"
 CAPPED = ("I've reached today's limit for thinking (it keeps Ember affordable). "
@@ -60,6 +63,7 @@ class User:
         self.saved_at = 0.0
         self.jobs = 0                # thoughts queued or in progress for this person
         self.thinking_in = None      # the chat its latest thought will answer in
+        self.feedback_sent = []      # when they sent feedback (at most FEEDBACK_PER_HOUR an hour)
 
 
 class Users:
@@ -617,6 +621,32 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
                 worker.put(u.uid, event)
             return event is not None
         return act(request, f)
+
+    # ------------------------------------------------------------ feedback
+    @app.post("/feedback")
+    def feedback(request: Request, body: dict = Body(default={})):
+        u = who(request)
+        text = str(body.get("text") or "").strip()[:FEEDBACK_MAX]
+        kind = body.get("kind") if body.get("kind") in FEEDBACK_KINDS else "other"
+        if not text:
+            raise HTTPException(400, "write something first")
+        now = clock()
+        with u.lock:
+            sent = [t for t in u.feedback_sent if now - t < 3600]
+            if len(sent) >= FEEDBACK_PER_HOUR:
+                raise HTTPException(429, "that's a lot of feedback for one hour; try again later")
+            e = u.ember
+            extra = {"level": e.level_info()["level"],
+                     "plus": is_plus(u), "screen": str(body.get("screen") or "")[:40],
+                     "agent": request.headers.get("user-agent", "")[:200]}
+            try:
+                users.store.add_feedback(u.uid, {"t": now, "email": u.email, "kind": kind, "text": text, "extra": extra})
+            except StoreError as err:
+                log.error("feedback failed for %s: %s", u.uid, err)
+                raise HTTPException(503, "couldn't send it right now; try again") from None
+            u.feedback_sent = sent + [now]
+        log.info("feedback from %s (%s)", u.uid, kind)       # never what they wrote
+        return {"ok": True}
 
     # ------------------------------------------------------------ your data
     @app.get("/me/export")

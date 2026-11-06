@@ -255,6 +255,14 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .lvline span { color: var(--dim); font-size: 13px; }
 .lvline i { grid-column: 1 / -1; display: block; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
 .lvline i b { display: block; height: 100%; background: var(--accent); }
+.fbkinds { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 10px; }
+#fbText { width: 100%; box-sizing: border-box; min-height: 130px; resize: vertical; background: var(--surface); color: var(--text);
+  border: 1px solid var(--edge2); border-radius: 14px; padding: 10px 12px; font: inherit; font-size: 16px; }
+#fbText:focus { outline: none; border-color: var(--accent); }
+.fbfoot { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.fbfoot small { flex: 1; color: var(--faint); font-size: 12px; }
+#fbNote { margin-top: 10px; font-size: 14px; color: var(--dim); }
+#fbNote:empty { display: none; }
 .lookpart h3 { font-size: 13px; color: var(--dim); margin: 16px 0 8px; font-weight: 600; }
 .lookrow { display: flex; flex-wrap: wrap; gap: 8px; }
 .lookitem { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--edge2);
@@ -300,6 +308,10 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
 .gpcard input[type=text], .gpform input, .gpform select, .gpform textarea { width: 100%; box-sizing: border-box; background: var(--surface); color: var(--text);
   border: 1px solid var(--edge2); border-radius: 12px; padding: 9px 12px; font: inherit; font-size: 16px; }
 .gpwords { margin-top: 10px; }
+#xpToast { position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); z-index: 25; transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
+  background: var(--btn); color: #2a1a0c; font-weight: 700; font-size: 15px; padding: 9px 18px; border-radius: 999px; box-shadow: var(--lift); white-space: nowrap;
+  transition: opacity .25s, transform .25s; }
+#xpToast.on { opacity: 1; transform: translate(-50%, 0); }
 .gpxp { margin-top: 8px; font-size: 14px; font-weight: 600; color: var(--accent); }
 .gpdots { display: flex; gap: 4px; margin-top: 12px; align-items: center; }
 .gpdots i { width: 14px; height: 14px; border-radius: 4px; background: var(--line); }
@@ -391,6 +403,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
       <button data-menu="knows" class="knows">What Ember knows about you</button>
       <button data-menu="look">Customize Ember</button>
       <button data-menu="install">Add Ember to your home screen</button>
+      <button data-menu="feedback">Send feedback</button>
       <button data-menu="notify" id="notifyItem" style="display:none">Turn on notifications</button>
       <div class="checkups" id="nameRow"><span>Its name</span>
         <div class="row">
@@ -482,6 +495,20 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
   <header><h2>Customize Ember</h2><button id="lookClose" aria-label="Close">×</button></header>
   <div class="body" id="lookBody"></div>
 </section>
+<section class="sheet" id="fbSheet" aria-label="Send feedback">
+  <header><h2>Send feedback</h2><button id="fbClose" aria-label="Close">×</button></header>
+  <div class="body">
+    <div class="fbkinds" id="fbKinds">
+      <button class="lookitem on" data-fbkind="idea">💡 An idea</button>
+      <button class="lookitem" data-fbkind="problem">🐞 Something's wrong</button>
+      <button class="lookitem" data-fbkind="other">💬 Something else</button>
+    </div>
+    <textarea id="fbText" maxlength="2000" placeholder="What would make Ember better for you?"></textarea>
+    <div class="fbfoot"><small>The people who make Ember read every one. It goes with your email, so we can answer.</small>
+      <button class="btn" id="fbSend">Send</button></div>
+    <div id="fbNote" role="status"></div>
+  </div>
+</section>
 <aside class="drawer left" id="goalsDrawer">
   <header><h2>Your goals</h2><button data-close>×</button></header>
   <div class="body"><button class="btn newchat" id="newGoal">+ New goal</button><div id="goallist"></div></div>
@@ -490,6 +517,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
   <header><button id="gpBack">← Goals</button><h2 id="gpTitle"></h2></header>
   <div class="body" id="gpBody"></div>
 </section>
+<div id="xpToast" role="status" aria-live="polite"></div>
 <aside class="drawer left" id="chatsDrawer">
   <header><h2>Your chats</h2><button data-close>×</button></header>
   <div class="body"><button class="btn newchat" id="newChat">+ New chat</button><div id="chatlist"></div></div>
@@ -598,6 +626,8 @@ document.addEventListener("click", async e => {
     toggleNotify(t);
   } else if (what === "look") {
     openLooks();
+  } else if (what === "feedback") {
+    openFeedback();
   } else if (what === "install") {
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
     $("#installSteps").innerHTML = ios
@@ -644,6 +674,8 @@ function renderLevel() {
   const txt = `Lv ${L.level} · ${L.stage}`;
   if ($("#lvText").textContent !== txt) $("#lvText").textContent = txt;
   $("#lvBar").style.width = Math.round(L.progress * 100) + "%";
+  if (xpWatch && L.xp > xpWatch.x0) { xpToast(L.xp - xpWatch.x0); xpWatch = null; }   // XP that came with Ember's answer
+  else if (xpWatch && Date.now() > xpWatch.until) xpWatch = null;
   if ($("#lookSheet").classList.contains("on") && LOOKS_CAT && LOOKS_CAT.level.xp !== L.xp) loadLooks();
 }
 async function loadLooks() {
@@ -690,6 +722,39 @@ $("#lookBody").addEventListener("click", async e => {
     renderLooks();
     if (part === "sparks") burst(14);                  // show off the new sparks
   }
+});
+// feedback: an idea, a problem or anything else, sent to the feedback table with their email
+const FB_HINT = {idea: "What would make Ember better for you?", problem: "What went wrong, and what were you doing when it happened?",
+                 other: "Anything you'd like to tell us."};
+function openFeedback() {
+  $("#menu").classList.remove("on");
+  closeDrawers();
+  $("#lookSheet").classList.remove("on");
+  $("#fbNote").textContent = "";
+  $("#fbSheet").classList.add("on");
+  setTimeout(() => $("#fbText").focus(), 300);
+}
+$("#fbClose").onclick = () => $("#fbSheet").classList.remove("on");
+$("#fbKinds").onclick = e => {
+  const b = e.target.closest("[data-fbkind]");
+  if (!b) return;
+  document.querySelectorAll("#fbKinds [data-fbkind]").forEach(x => x.classList.toggle("on", x === b));
+  $("#fbText").placeholder = FB_HINT[b.dataset.fbkind];
+};
+$("#fbSend").onclick = async () => {
+  const text = $("#fbText").value.trim(), b = $("#fbSend");
+  if (!text) { $("#fbText").focus(); return; }
+  const kind = $("#fbKinds .on").dataset.fbkind;
+  b.disabled = true; $("#fbNote").textContent = "Sending…";
+  const r = await api("/feedback", {method: "POST", headers: {"Content-Type": "application/json", "X-Ember": "1"},
+    body: JSON.stringify({kind, text, screen: goalOpen ? "goal" : "chat"})}).catch(() => null);
+  b.disabled = false;
+  if (r && r.ok) { $("#fbText").value = ""; $("#fbNote").textContent = "Thank you! We got it."; }
+  else $("#fbNote").textContent = r && r.status === 429 ? "That's a lot for one hour. Try again a bit later." : "Couldn't send it right now. Try again.";
+};
+document.addEventListener("click", e => {
+  if ($("#fbSheet").classList.contains("on") && !e.target.closest("#fbSheet, [data-menu='feedback'], .menuwrap"))
+    $("#fbSheet").classList.remove("on");
 });
 document.addEventListener("click", e => {
   if ($("#lookSheet").classList.contains("on") && !e.target.closest("#lookSheet, #lvBadge, [data-menu='look'], #face, .menuwrap"))
@@ -970,6 +1035,20 @@ function openGoal(id) {
   $("#goalPage").classList.add("on");
   if (id === "new") renderNewGoal(); else { renderGoalPage(); loadGoals(); }
 }
+// a short "+N XP" at the bottom of the screen after a goal action that earned some
+let xpToastTimer = null, xpWatch = null;   // xpWatch {x0, until}: XP still to come, e.g. a phase's, given once Ember has looked back
+function xpToast(n) {
+  const el = $("#xpToast");
+  el.textContent = `+${n} XP`; el.classList.add("on");
+  clearTimeout(xpToastTimer); xpToastTimer = setTimeout(() => el.classList.remove("on"), 2200);
+}
+const xpNow = () => S && S.level ? S.level.xp : null;
+async function xpAfter(x0) {   // call after the action: refreshes, then shows what it earned; returns it
+  await poll();
+  const got = x0 != null && xpNow() != null ? xpNow() - x0 : 0;
+  if (got > 0) xpToast(got);
+  return got;
+}
 function closeGoal() { goalOpen = null; goalReplyWait = null; checkNote = null; $("#goalPage").classList.remove("on"); }
 
 function renderGoalPage() {
@@ -1075,25 +1154,25 @@ $("#gpBody").addEventListener("click", async e => {
   if (!b) return;
   if (b.dataset.check) {
     b.disabled = true;
-    const since = Date.now() / 1000 - 1, xp0 = S && S.level ? S.level.xp : null, again = !!g.checked_today;
+    const since = Date.now() / 1000 - 1, xp0 = xpNow(), again = !!g.checked_today;
     const r = await post("/goal/check", {id: g.id, how: b.dataset.check, words: $("#gpWords").value.trim()});
     if (r && r.ok) { $("#gpWords").value = ""; if (!again) waitGoalReply(g, since); }
-    await poll();
-    const got = xp0 != null && S && S.level ? S.level.xp - xp0 : 0;
+    const got = await xpAfter(xp0);
     checkNote = {id: g.id, text: r && r.ok ? (got > 0 ? `+${got} XP` : "Changed. Only the first check of the day earns XP.") : "Couldn't save that. Try again."};
     await loadGoals();
   } else if (b.hasAttribute("data-gtalk")) goToChat(g);
   else if (b.hasAttribute("data-gplan")) goToChat(g, "Let's plan the details of this goal together.");
   else if (b.dataset.gstep !== undefined) {
-    const i = +b.dataset.gstep;
-    await post("/experiment/step", {id: g.id, index: i, done: !g.steps[i].done}); loadGoals(); poll();
+    const i = +b.dataset.gstep, xp0 = xpNow();
+    await post("/experiment/step", {id: g.id, index: i, done: !g.steps[i].done}); loadGoals(); xpAfter(xp0);
   } else if (b.id === "gpNext") {
     b.disabled = true;
-    const r = await post("/goal/phase", {id: g.id});
-    if (r && r.ok) { say("Ember is looking back on this phase and planning the next. It'll answer in the goal's chat."); goToChat(g); }
+    const xp0 = xpNow(), r = await post("/goal/phase", {id: g.id});
+    if (r && r.ok) { say("Ember is looking back on this phase and planning the next. It'll answer in the goal's chat."); goToChat(g); xpWatch = xp0 == null ? null : {x0: xp0, until: Date.now() + 240000}; }
   } else if (b.id === "gpMore") { b.disabled = true; await post("/experiment/extend", {id: g.id}); loadGoals(); poll(); }
   else if (b.id === "gpFinish" && sure(b, "Click again to finish")) {
-    await post("/experiment/end", {id: g.id, how: "done"}); goToChat(g);
+    const xp0 = xpNow();
+    await post("/experiment/end", {id: g.id, how: "done"}); goToChat(g); xpAfter(xp0);
   } else if (b.id === "gpDrop" && sure(b, "Click again to drop it")) {
     await post("/experiment/end", {id: g.id, how: "dropped"}); goToChat(g);
   }

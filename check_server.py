@@ -25,7 +25,7 @@ import uvicorn
 from mind import llm
 from server.app import CAPPED, FAILED, PLUS_ENDED, PLUS_ON, UNREACHABLE, create_app
 from server.auth import NotInvited, NotLoggedIn, SupabaseAuth
-from server.store import FileStore, SupabaseStore
+from server.store import FileStore, StoreError, SupabaseStore
 
 logging.getLogger("ember").setLevel(logging.CRITICAL)
 failed = []
@@ -380,10 +380,26 @@ lines2 = lambda: [l["text"] for l in call(base2, "/state", "tok-b")[1]["talk"] i
 check("past the limit it says so instead of thinking", wait(lambda: lines2()[-1:] == [CAPPED]), str(lines2()))
 srv2.should_exit = True
 
+print("Feedback")
+check("it needs Ember's header", call(base, "/feedback", "tok-a", {"text": "hi"}, header=False)[0] == 403)
+check("an empty one is refused", call(base, "/feedback", "tok-a", {"kind": "idea", "text": "  "})[0] == 400)
+check("an idea is sent", call(base, "/feedback", "tok-a", {"kind": "idea", "text": "a dark mode for goals", "screen": "goal"})[1] == {"ok": True})
+fb = store.feedback("user-a")
+check("...saved with the email, the kind, the level and where they were", len(fb) == 1 and fb[0]["email"] == "a@x.hu"
+      and fb[0]["kind"] == "idea" and fb[0]["text"] == "a dark mode for goals" and fb[0]["extra"]["screen"] == "goal"
+      and isinstance(fb[0]["extra"]["level"], int), str(fb))
+call(base, "/feedback", "tok-a", {"kind": "nonsense", "text": "b"})
+check("an unknown kind becomes other", store.feedback("user-a")[-1]["kind"] == "other")
+check("a very long one is cut at 2000 characters",
+      call(base, "/feedback", "tok-a", {"text": "x" * 5000})[0] == 200 and len(store.feedback("user-a")[-1]["text"]) == 2000)
+codes = [call(base, "/feedback", "tok-a", {"text": f"n{i}"})[0] for i in range(8)]
+check("at most 10 an hour", codes[:7] == [200] * 7 and codes[7] == 429, str(codes))
+
 print("Your data")
 status, data = call(base, "/me/export", "tok-a")
 check("download everything: self and the whole conversation",
       status == 200 and data["ember"]["memories"] and len(data["conversation"]) >= 6)
+check("...and the feedback they sent", len(data["feedback"]) == 10)
 check("deleting needs Ember's header", call(base, "/me/delete", "tok-a", {}, header=False)[0] == 403)
 check("delete my Ember", call(base, "/me/delete", "tok-a", {})[0] == 200)
 check("...afterwards a fresh Ember, remembering nothing", call(base, "/memory", "tok-a")[1]["count"] == 0)
@@ -437,9 +453,11 @@ class Fake(BaseHTTPRequestHandler):
             return self._send(200, {"id": "sb-1", "email": "Me@X.hu"}) if tok == "good" else self._send(401, {})
         if self.headers.get("apikey") != "service":
             return self._send(401, {})
+        if path.split("/")[-1] not in self.tables:
+            return self._send(404, {})             # like Supabase, for a table that wasn't made yet
         rows = self._match(self.tables[path.split("/")[-1]], q)
         if "order" in q:
-            rows = sorted(rows, key=lambda r: r[q["order"].split(".")[0]])
+            rows = sorted(rows, key=lambda r: r.get(q["order"].split(".")[0]) or 0)
         rows = rows[int(q.get("offset", 0)):][:int(q.get("limit", 10 ** 9))]
         if "select" in q and q["select"] != "*":
             rows = [{k: r.get(k) for k in q["select"].split(",")} for r in rows]
@@ -448,6 +466,8 @@ class Fake(BaseHTTPRequestHandler):
     def do_POST(self):
         path, q = self._parse()
         table = path.split("/")[-1]
+        if table not in self.tables:
+            return self._send(404, {})
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         for row in body if isinstance(body, list) else [body]:
             rows = self.tables[table]
@@ -465,6 +485,8 @@ class Fake(BaseHTTPRequestHandler):
             self.deleted_users.append(path.rsplit("/", 1)[1])
             return self._send(200, {})
         table = path.split("/")[-1]
+        if table not in self.tables:
+            return self._send(404, {})
         keep = [r for r in self.tables[table] if r not in self._match(self.tables[table], q)]
         self.tables[table][:] = keep
         self._send(204)
@@ -635,8 +657,23 @@ sb.set_plan("u1", {"status": "active", "customer": "cus_1", "subscription": "sub
 sb.set_plan("u1", {"status": "canceled", "customer": "cus_1", "subscription": "sub_1"})
 check("the plan is one row, updated", sb.get_plan("u1")["status"] == "canceled" and len(Fake.tables["plans"]) == 1)
 check("export has everything", sb.export("u1")["ember"] == {"memories": [1, 2]} and len(sb.export("u1")["conversation"]) == 2)
+check("without a feedback table yet, the export still works", sb.export("u1")["feedback"] == [])
+try:
+    sb.add_feedback("u1", {"kind": "idea", "text": "x"})
+    check("...and sending feedback says it failed (so the window can say so)", False)
+except StoreError:
+    check("...and sending feedback says it failed (so the window can say so)", True)
+Fake.tables["feedback"] = []
+sb.add_feedback("u1", {"t": 1.0, "email": "a@x.hu", "kind": "problem", "text": "the menu is stuck", "extra": {"level": 3}})
+check("feedback is saved with the email and kind", Fake.tables["feedback"][0]["kind"] == "problem"
+      and Fake.tables["feedback"][0]["email"] == "a@x.hu" and Fake.tables["feedback"][0]["user_id"] == "u1")
+check("...and is in their export", sb.export("u1")["feedback"][0]["text"] == "the menu is stuck")
 sb.delete_user("u1")
 check("delete removes every row and the login", not any(Fake.tables.values()) and Fake.deleted_users == ["u1"])
+del Fake.tables["feedback"]
+sb.save_self("u9", {"memories": []})
+sb.delete_user("u9")
+check("...also when the feedback table wasn't made yet", not Fake.tables["embers"] and Fake.deleted_users[-1] == "u9")
 auth = SupabaseAuth(url, "anon", allowed="me@x.hu, friend@x.hu")
 check("a valid login on the invite list is let in (email case ignored)", auth.user("good")["id"] == "sb-1")
 try:

@@ -131,9 +131,20 @@ class FileStore:
         return [d for d in os.listdir(self.root)
                 if d != "archive" and os.path.exists(os.path.join(self.root, d, "ember.json"))]
 
+    def add_feedback(self, uid, item):
+        with open(os.path.join(self._dir(uid), "feedback.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(item, ensure_ascii=False) + "\n")
+
+    def feedback(self, uid):
+        try:
+            with open(os.path.join(self._dir(uid), "feedback.jsonl"), encoding="utf-8") as f:
+                return [json.loads(x) for x in f if x.strip()]
+        except OSError:
+            return []
+
     def export(self, uid):
         return {"ember": self.load_self(uid), "conversation": self.lines(uid), "usage": self._usage(uid),
-                "plan": self.get_plan(uid)}
+                "plan": self.get_plan(uid), "feedback": self.feedback(uid)}
 
     def delete_user(self, uid):
         """On this computer nothing is destroyed: the folder moves to archive/ (local rule: never destroy a life)."""
@@ -248,14 +259,30 @@ class SupabaseStore:
             if len(rows) < page:
                 return out
 
+    def add_feedback(self, uid, item):
+        self._req("POST", "/rest/v1/feedback", {"user_id": uid, "email": item.get("email"), "kind": item["kind"],
+                                                  "text": item["text"], "extra": item.get("extra")},
+                  prefer="return=minimal")
+
+    def feedback(self, uid):
+        try:     # the feedback table came later (2026-11-06); an export still works without it
+            return self._req("GET", "/rest/v1/feedback" + self._q(user_id=f"eq.{uid}", select="created_at,kind,text,extra",
+                                                                   order="id")) or []
+        except StoreError:
+            return []
+
     def export(self, uid):
         usage = self._req("GET", "/rest/v1/usage" + self._q(user_id=f"eq.{uid}",
                                                              select="day,calls,messages,tokens_in,tokens_out"))
         return {"ember": self.load_self(uid), "conversation": self.lines(uid), "usage": usage or [],
-                "plan": self.get_plan(uid)}
+                "plan": self.get_plan(uid), "feedback": self.feedback(uid)}
 
     def delete_user(self, uid):
         """Everything about this person, then their login itself. Online, deleting means deleting (GDPR)."""
+        try:     # the feedback table may not exist yet; that must not block deleting the rest
+            self._req("DELETE", "/rest/v1/feedback" + self._q(user_id=f"eq.{uid}"), prefer="return=minimal")
+        except StoreError:
+            pass
         for table in ("lines", "usage", "plans", "embers"):
             self._req("DELETE", f"/rest/v1/{table}" + self._q(user_id=f"eq.{uid}"), prefer="return=minimal")
         self._req("DELETE", f"/auth/v1/admin/users/{urllib.parse.quote(uid)}")
