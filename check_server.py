@@ -149,6 +149,29 @@ check("the window, manifest and service worker are served",
       all(urllib.request.urlopen(base + p).status == 200 for p in ("/", "/home", "/manifest.webmanifest", "/sw.js", "/privacy", "/terms")))
 check("config says online", call(base, "/config")[1]["mode"] == "online")
 
+print("The website")
+def get_page(path, accept="text/html"):
+    try:
+        with urllib.request.urlopen(urllib.request.Request(base + path, headers={"Accept": accept})) as r:
+            return r.status, r.read().decode()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode()
+site = {p: get_page(p) for p in ("/home", "/features", "/pricing", "/faq", "/about", "/privacy", "/terms")}
+check("every page of the website is served, with the header and footer put in",
+      all(st == 200 and 'class="nav"' in html and 'class="foot"' in html and "<!--#" not in html for st, html in site.values()))
+check("...and the header marks the page you're on", 'href="/pricing" aria-current="page"' in site["/pricing"][1]
+      and 'aria-current' not in site["/faq"][1].split('href="/pricing"')[1][:20])
+check("the styles, the script and the screenshots are served",
+      all(urllib.request.urlopen(base + p).status == 200 for p in ("/site.css", "/site.js", "/img/shot-talk.webp", "/img/og.png")))
+check("a picture that isn't there, or a path outside the folder: not found",
+      get_page("/img/nope.webp", "*/*")[0] == 404 and get_page("/img/..%5Cserver%5Capp.py", "*/*")[0] == 404)
+check("a page that isn't there: the website's own page, for a browser", get_page("/nowhere")[0] == 404
+      and "This page isn't here" in get_page("/nowhere")[1])
+check("...and the usual short answer for anything else", get_page("/nowhere", "application/json") == (404, '{"detail":"Not Found"}'))
+check("a sitemap with every page, and robots.txt pointing to it",
+      all(f"https://yourember.app{p}<" in get_page("/sitemap.xml", "*/*")[1] for p in site)
+      and "Sitemap: https://yourember.app/sitemap.xml" in get_page("/robots.txt", "*/*")[1])
+
 print("Each person has their own Ember")
 state("tok-a")
 check("a first visit gets a greeting", wait(lambda: ember_lines("tok-a") == ["Hello again."]))

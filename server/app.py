@@ -19,7 +19,9 @@ from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 
 from fastapi import Body, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from mind import llm
 from mind.core import Ember
@@ -32,7 +34,11 @@ log = logging.getLogger("ember")
 WEB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web")
 PRESENT_FOR = 3.0            # you're here if your visible window asked within this many seconds
 SAVE_EVERY = 60.0
-PAGES = ("/", "/home", "/privacy", "/terms", "/manifest.webmanifest")   # what moves to Ember's own address
+# the website: each page gets web/_header.html and web/_footer.html put in at <!--#header--> and <!--#footer-->
+SITE = {"/home": "home.html", "/features": "features.html", "/pricing": "pricing.html", "/faq": "faq.html",
+        "/about": "about.html", "/privacy": "privacy.html", "/terms": "terms.html"}
+PAGES = ("/", *SITE, "/manifest.webmanifest", "/sitemap.xml", "/robots.txt")   # what moves to Ember's own address
+IMAGES = {".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg", ".svg": "image/svg+xml"}
 IDLE_FOR = 3600.0            # an Ember nobody has used for an hour leaves memory (saved; it loads again when needed)
 MAX_TEXT = 2000
 MAX_BODY = 16384
@@ -395,7 +401,9 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         r.headers["X-Content-Type-Options"] = "nosniff"
         r.headers["Referrer-Policy"] = "no-referrer"
         r.headers["X-Frame-Options"] = "DENY"
-        if request.url.path not in ("/sw.js",) and not request.url.path.startswith("/icons/"):
+        if request.url.path.startswith("/img/"):
+            r.headers["Cache-Control"] = "public, max-age=86400"
+        elif request.url.path not in ("/sw.js",) and not request.url.path.startswith("/icons/"):
             r.headers["Cache-Control"] = "no-store"
         return r
 
@@ -421,17 +429,61 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
     def index():
         return page("index.html", "text/html; charset=utf-8")
 
-    @app.get("/home")
-    def home():                                     # the public front page (also Google Branding's home page)
-        return page("home.html", "text/html; charset=utf-8")
+    def read(name):
+        with open(os.path.join(web_dir, name), encoding="utf-8") as f:
+            return f.read()
 
-    @app.get("/terms")
-    def terms():                                    # terms and conditions (TermsFeed's text plus Plus, cancelling, withdrawal)
-        return page("terms.html", "text/html; charset=utf-8")
+    def site_page(name, path=None, status=200):
+        """A page of the website with its header (this page's link marked) and footer put in."""
+        header = read("_header.html")
+        if path:
+            header = header.replace(f'<a href="{path}">', f'<a href="{path}" aria-current="page">')
+        html = read(name).replace("<!--#header-->", header).replace("<!--#footer-->", read("_footer.html"))
+        return HTMLResponse(html, status_code=status)
 
-    @app.get("/privacy")
-    def privacy():
-        return page("privacy.html", "text/html; charset=utf-8")
+    def site_route(path, name):
+        app.add_api_route(path, lambda: site_page(name, path), methods=["GET"], include_in_schema=False)
+
+    for path, name in SITE.items():       # /home is the public front page (also Google Branding's home page);
+        site_route(path, name)            # /terms is TermsFeed's text plus Plus, cancelling and withdrawal
+
+    @app.get("/site.css")
+    def site_css():
+        return page("site.css", "text/css; charset=utf-8")
+
+    @app.get("/site.js")
+    def site_js():
+        return page("site.js", "application/javascript")
+
+    @app.get("/img/{name}")
+    def site_image(name: str):
+        kind = IMAGES.get(os.path.splitext(name)[1].lower())
+        path = os.path.join(web_dir, "img", name)
+        if "/" in name or "\\" in name or not kind or not os.path.exists(path):
+            raise HTTPException(404)
+        return FileResponse(path, media_type=kind)
+
+    @app.get("/sitemap.xml")
+    def sitemap():
+        home = (public_url or "https://yourember.app").rstrip("/")
+        urls = "".join(f"<url><loc>{home}{p}</loc></url>" for p in SITE)
+        return Response('<?xml version="1.0" encoding="UTF-8"?>'
+                        f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>',
+                        media_type="application/xml")
+
+    @app.get("/robots.txt")
+    def robots():
+        home = (public_url or "https://yourember.app").rstrip("/")
+        return PlainTextResponse(f"User-agent: *\nAllow: /\nSitemap: {home}/sitemap.xml\n")
+
+    @app.exception_handler(StarletteHTTPException)
+    async def not_found(request: Request, exc):
+        # a person's browser asking for a page that isn't there gets the website's own page; everything else
+        # (the window's own calls) keeps the usual answer
+        if (exc.status_code == 404 and request.method == "GET"
+                and "text/html" in request.headers.get("accept", "")):
+            return site_page("404.html", status=404)
+        return await http_exception_handler(request, exc)
 
     @app.get("/manifest.webmanifest")
     def manifest():

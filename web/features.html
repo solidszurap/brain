@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Features: what Ember does for you</title>
+<meta name="description" content="Talk with a companion who remembers your words, find what you want with small experiments, reach goals one step a day, get check-ups at your time, and watch Ember grow with you.">
+<link rel="canonical" href="https://yourember.app/features">
+<meta name="theme-color" content="#1b120c">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ember">
+<meta property="og:url" content="https://yourember.app/features">
+<meta property="og:title" content="What Ember does for you">
+<meta property="og:description" content="A companion that remembers your words, helps you find what you want, and checks up on you, one step a day.">
+<meta property="og:image" content="https://yourember.app/img/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="stylesheet" href="/site.css">
+<style>
+.feature { padding-top: 64px; padding-bottom: 64px; border-top: 1px solid var(--edge); }
+.feature:first-of-type { border-top: 0; }
+.feature h2 { max-width: 20ch; }
+.feature ul { padding: 0; margin: 18px 0 0; list-style: none; color: var(--ash); }
+.feature li { padding: 6px 0 6px 26px; position: relative; }
+.feature li::before { content: ""; position: absolute; left: 2px; top: 15px; width: 8px; height: 8px; border-radius: 50%; background: var(--flame); }
+.toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 0; padding: 0; list-style: none; }
+.toc a { display: inline-block; text-decoration: none; color: var(--cream); background: var(--char); border: 1px solid var(--edge2); padding: 8px 14px; border-radius: 999px; font: 600 14.5px/1 var(--round); }
+.toc a:hover { border-color: var(--ash); }
+/* a notification on a lock screen, drawn (not a screenshot: those differ on every phone) */
+.lock { width: min(340px, 86vw); margin: 0 auto; padding: 40px 18px 34px; border-radius: 36px; text-align: center;
+  background: radial-gradient(120% 80% at 50% 0%, #4a2a16, #1e140e 70%); border: 1px solid var(--edge2); box-shadow: 0 30px 60px #00000080; }
+.lock .time { font: 300 64px/1 var(--round); letter-spacing: -.02em; }
+.lock .date { color: var(--ash); font-size: 15px; margin: 6px 0 28px; }
+.note { text-align: left; background: #ffffff14; border: 1px solid #ffffff12; border-radius: 22px; padding: 12px 14px; display: grid; grid-template-columns: 38px 1fr; gap: 2px 10px; margin-bottom: 10px; }
+.note img { width: 38px; height: 38px; border-radius: 9px; grid-row: span 2; }
+.note b { font-size: 14.5px; display: flex; justify-content: space-between; }
+.note b span { color: var(--ash); font-weight: 400; font-size: 13px; }
+.note p { margin: 0; font-size: 14.5px; line-height: 1.4; color: var(--cream); }
+.control { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px 40px; margin-top: 8px; }
+.control p { margin: 0; color: var(--ash); }
+.control b { display: block; color: var(--cream); font: 750 18px/1.3 var(--round); margin-bottom: 4px; }
+@media (max-width: 760px) { .control { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<!--#header-->
+<main id="main">
+  <div class="wrap pagehead">
+    <h1>Everything Ember does, to help you get where you want</h1>
+    <p class="lede">One companion for the whole way: finding what you want, getting there step by step, and someone who remembers the story. Every picture on this page is the real app.</p>
+    <ul class="toc">
+      <li><a href="#talk">Talk</a></li><li><a href="#find">Find what you want</a></li><li><a href="#goals">Goals</a></li><li><a href="#checkups">Check-ups</a></li>
+      <li><a href="#memory">Memory</a></li><li><a href="#grow">Levels and badges</a></li><li><a href="#looks">Your Ember</a></li><li><a href="#control">Your data</a></li>
+    </ul>
+  </div>
+
+  <section class="wrap feature" id="talk">
+    <div class="split">
+      <div>
+        <h2>Talk it through, like with a friend who remembers</h2>
+        <p class="intro">Write to Ember about what you want, what's in the way, or how today went. It answers like someone who knows you, because it does.</p>
+        <ul>
+          <li>Separate chats for separate things, each with its own goal.</li>
+          <li>Its face shows how it feels: glad when you show up, quiet when you share something hard.</li>
+          <li>It keeps every chat moving: after a few questions, it suggests a next step.</li>
+        </ul>
+      </div>
+      <figure class="phone"><div class="screen"><img src="/img/shot-talk.webp" width="390" height="844" loading="lazy" alt="A chat with Ember about a running goal, with today's check: Did it."></div></figure>
+    </div>
+  </section>
+
+  <section class="wrap feature" id="find">
+    <div class="split flip">
+      <div>
+        <h2>Don't know what you want yet? Find out by trying</h2>
+        <p class="intro">Ember asks about your life: what makes you lose track of time, what drains you, what you're good at. Then it suggests small experiments to test what gives you energy.</p>
+        <ul>
+          <li>Experiments of a few days, with one clear question.</li>
+          <li>At the end, it looks back with you on how it actually went.</li>
+          <li>When a pattern keeps coming back, it names it, in your own words.</li>
+        </ul>
+      </div>
+      <figure class="phone"><div class="screen"><img src="/img/shot-first.webp" width="390" height="844" loading="lazy" alt="Ember suggesting a 7-day experiment after you say you lose track of time sketching."></div></figure>
+    </div>
+  </section>
+
+  <section class="wrap feature" id="goals">
+    <div class="split">
+      <div>
+        <h2>Goals in phases, one small step a day</h2>
+        <p class="intro">Plan a goal with Ember, or make one yourself in seconds: from a few hours to a year. Each day has one step, and telling Ember how it went takes one tap.</p>
+        <ul>
+          <li>Did it, Partly, or Not today: honest counts, and every answer earns something.</li>
+          <li>A path of your days, like a game: your goal levels up every 5 days you show up.</li>
+          <li>At the end of each phase, Ember looks back with you and plans the next one.</li>
+        </ul>
+      </div>
+      <figure class="phone"><div class="screen"><img src="/img/shot-goal.webp" width="390" height="844" loading="lazy" alt="A goal's page: today's step, the goal's level and its phases."></div></figure>
+    </div>
+  </section>
+
+  <section class="wrap feature" id="checkups">
+    <div class="split flip">
+      <div>
+        <h2>Check-ups at your time, not only when you remember</h2>
+        <p class="intro">Ember writes to you first. You choose when: every day, only on some days, only when it matters, or never.</p>
+        <ul>
+          <li>Pick the time and the days.</li>
+          <li>It asks how today's step went, and follows up on what you talked about.</li>
+          <li>Quiet at night, and never a guilt trip for being away.</li>
+        </ul>
+      </div>
+      <div class="lock" role="img" aria-label="A phone's lock screen with a notification from Ember: Today's step: run 10 minutes, walk 2, twice. How did it go?">
+        <div class="time">18:00</div>
+        <div class="date">Wednesday</div>
+        <div class="note"><img src="/icons/icon-192.png" alt=""><b>Ember sent you a message <span>now</span></b><p>Today's step: run 10 min, walk 2, twice. How did it go?</p></div>
+        <div class="note"><img src="/icons/icon-192.png" alt=""><b>Ember sent you a message <span>Mon</span></b><p>You said the interview is today. Thinking of you. Tell me how it went?</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap feature" id="memory">
+    <div class="split">
+      <div>
+        <h2>It remembers what you tell it, in your own words</h2>
+        <p class="intro">Every memory keeps the exact words you said and the day you said them. No guessing, no made-up details.</p>
+        <ul>
+          <li>Read everything it knows about you, any time.</li>
+          <li>Correct anything that's wrong, or make it forget.</li>
+          <li>Memory is never a paid feature. It's the point.</li>
+        </ul>
+      </div>
+      <figure class="phone"><div class="screen"><img src="/img/shot-knows.webp" width="390" height="844" loading="lazy" alt="What Ember knows about you: each memory with the words you said and the date."></div></figure>
+    </div>
+  </section>
+
+  <section class="wrap feature" id="grow">
+    <div class="split flip">
+      <div>
+        <h2>Levels and badges: progress you can see</h2>
+        <p class="intro">Talking, checking in and finishing phases give Ember XP. It grows from a Spark into an Ember, a Flame, and a Blaze.</p>
+        <ul>
+          <li>Badges that level up: streaks, days together, goals reached and more.</li>
+          <li>Share a badge as a picture when you're proud of it.</li>
+          <li>Everything is earned by levelling, never bought.</li>
+        </ul>
+      </div>
+      <figure class="phone"><div class="screen"><img src="/img/shot-badges.webp" width="390" height="844" loading="lazy" alt="The Ember tab: Ember at level 5 and its badges, each with a level and progress to the next."></div></figure>
+    </div>
+  </section>
+
+  <section class="wrap feature" id="looks">
+    <div class="split">
+      <div>
+        <h2>Make it yours</h2>
+        <p class="intro">Give Ember a name, choose its colour, something to wear, its eyes and its glow. New looks open as it levels up.</p>
+        <ul>
+          <li>Colours from Amber to Aurora.</li>
+          <li>A scarf, glasses, headphones, a little crown.</li>
+          <li>Five themes for the whole app, light or dark.</li>
+        </ul>
+      </div>
+      <figure class="phone"><div class="screen"><img src="/img/shot-looks.webp" width="390" height="844" loading="lazy" alt="Customize Ember: colours, things to wear and eyes, some opening at higher levels."></div></figure>
+    </div>
+  </section>
+
+  <section class="wrap feature" id="control">
+    <h2>Your words stay yours</h2>
+    <p class="intro">Plain rules, kept in the code, not just in a policy.</p>
+    <div class="control">
+      <p><b>No ads, no selling</b>Your conversations are never sold, never shared for advertising, and Ember shows no ads.</p>
+      <p><b>Stored in the EU</b>Ember's server runs in Frankfurt and its database in Dublin.</p>
+      <p><b>Download everything</b>All your data as one file, whenever you want it.</p>
+      <p><b>Delete for good</b>Your Ember and your account, gone within seconds. Any subscription is cancelled with it.</p>
+    </div>
+    <p style="margin-top:26px"><a class="more" href="/privacy">Read the privacy page</a></p>
+  </section>
+
+  <section class="end">
+    <h2>Try it for free</h2>
+    <p>10 messages a day, goals and check-ups included. No card needed.</p>
+    <a class="go" href="/?login=google"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</a>
+  </section>
+</main>
+<!--#footer-->
+</body>
+</html>

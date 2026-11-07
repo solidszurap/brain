@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pricing: Ember is free to start</title>
+<meta name="description" content="Ember is free with 10 messages a day; goals, daily checks and check-ups never count. Ember Plus has no daily limit: $7.99 a month or $49.99 a year. Cancel anytime.">
+<link rel="canonical" href="https://yourember.app/pricing">
+<meta name="theme-color" content="#1b120c">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ember">
+<meta property="og:url" content="https://yourember.app/pricing">
+<meta property="og:title" content="Ember pricing: free to start">
+<meta property="og:description" content="Free with 10 messages a day. Ember Plus: no daily limit, $7.99 a month or $49.99 a year.">
+<meta property="og:image" content="https://yourember.app/img/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="stylesheet" href="/site.css">
+<style>
+.always { margin-top: 48px; max-width: 54rem; }
+.always ul { columns: 2; column-gap: 40px; padding: 0; list-style: none; color: var(--ash); margin: 0; }
+.always li { break-inside: avoid; padding: 6px 0 6px 26px; position: relative; }
+.always li::before { content: ""; position: absolute; left: 2px; top: 15px; width: 8px; height: 8px; border-radius: 50%; background: var(--flame); }
+@media (max-width: 760px) { .always ul { columns: 1; } }
+</style>
+</head>
+<body>
+<!--#header-->
+<main id="main">
+  <div class="wrap pagehead">
+    <h1>Free to start. Plus when you want more.</h1>
+    <p class="lede">Most of Ember is free, for good. Ember Plus is for when you want to talk without a daily limit.</p>
+  </div>
+
+  <section class="wrap" style="padding-top:24px" aria-label="Plans">
+    <div class="plans">
+      <div class="plan">
+        <h3>Free</h3>
+        <p class="for">Everything you need to start, and to keep going.</p>
+        <p class="price">$0</p>
+        <p class="priceNote">No card needed.</p>
+        <ul>
+          <li>10 messages a day</li>
+          <li>Goals, daily checks and check-ups, without limits</li>
+          <li>Experiments and look backs</li>
+          <li>Full memory, in your own words</li>
+          <li>Levels, badges and looks</li>
+        </ul>
+        <a class="ghost" href="/?login=google">Start free</a>
+      </div>
+      <div class="plan plus">
+        <h3>Ember Plus</h3>
+        <p class="for">For when you want to talk it through, as much as you need.</p>
+        <div class="toggle" id="billing" role="group" aria-label="Billing">
+          <button type="button" data-period="year" aria-pressed="true">Yearly<span class="save">save 48%</span></button>
+          <button type="button" data-period="month" aria-pressed="false">Monthly</button>
+        </div>
+        <p class="price" id="plusPrice">$49.99<small>a year</small></p>
+        <p class="priceNote" id="plusNote">That's $4.17 a month, billed once a year.</p>
+        <ul>
+          <li>Everything in Free</li>
+          <li>No daily message limit</li>
+          <li>Cancel anytime, right in the app</li>
+          <li>14 days to change your mind, full refund</li>
+        </ul>
+        <a class="go" href="/?login=google">Start free, upgrade in the app</a>
+      </div>
+    </div>
+    <p class="small">Prices in US dollars. You subscribe in the app (the Ember tab), and pay on Stripe's secure page.</p>
+
+    <div class="always">
+      <h2>Never behind a paywall</h2>
+      <p class="intro">Some things matter too much to charge for.</p>
+      <ul>
+        <li>What Ember remembers about you</li>
+        <li>Your goals and your daily checks</li>
+        <li>Check-ups at your time</li>
+        <li>Downloading or deleting your data</li>
+        <li>Every look, earned by levelling</li>
+        <li>No ads, on any plan</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="wrap" aria-labelledby="payTitle" style="padding-top:24px">
+    <h2 id="payTitle">About paying</h2>
+    <div class="faq" style="max-width:46rem;margin-top:18px">
+    <details><summary>What counts as a message?</summary><div><p>Each thing you write to Ember in a chat. Telling it how today's step went, its check-ups, and looking back on a phase never count.</p></div></details>
+    <details><summary>What happens when I reach 10 messages?</summary><div><p>Ember tells you, and your free messages are back the next day. Your goals and daily checks keep working in between.</p></div></details>
+    <details><summary>How do I cancel?</summary><div><p>In Ember: the Ember tab → Manage Ember Plus → Cancel. You keep Plus until the end of the period you paid for, and you're not charged again.</p></div></details>
+    <details><summary>Can I get my money back?</summary><div><p>Yes, within 14 days of subscribing, for any reason: write to <a href="mailto:support@yourember.app">support@yourember.app</a> and you get a full refund. The details are in the <a href="/terms">terms</a>.</p></div></details>
+    <details><summary>Who handles the payment?</summary><div><p>Stripe, one of the world's largest payment companies. You pay on Stripe's own page; Ember never sees your card details.</p></div></details>
+    </div>
+  </section>
+</main>
+<!--#footer-->
+</body>
+</html>

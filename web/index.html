@@ -140,6 +140,13 @@ button { font: inherit; }
 .msg { max-width: 82%; padding: 10px 15px; border-radius: 20px; white-space: pre-wrap; word-wrap: break-word; border: 1px solid var(--edge); font-size: 16px; line-height: 1.55; }
 .msg.ember { background: var(--surface); align-self: flex-start; border-top-left-radius: 6px; }
 .msg.you { background: rgba(255, 150, 80, .15); border-color: rgba(255, 190, 140, .2); align-self: flex-end; border-bottom-right-radius: 6px; }
+.msg.daily { white-space: normal; }
+.msg.daily .dhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.msg.daily .dchip { font: 700 13px/1 var(--round); padding: 5px 10px; border-radius: 999px; background: var(--btn); color: #2a1a0c; white-space: nowrap; }
+.msg.daily .dchip.partly { background: rgba(255, 190, 140, .28); color: var(--text); }
+.msg.daily .dchip.skip { background: var(--raised); color: var(--dim); border: 1px solid var(--edge); }
+.msg.daily .dstep { font-size: 13.5px; color: var(--dim); }
+.msg.daily .dwords { display: block; margin-top: 6px; white-space: pre-wrap; }
 .msg .t { display: block; font-size: 11px; color: var(--faint); margin-top: 2px; }
 .msg.new { animation: rise .45s ease-out; }
 .msg.typing { color: var(--dim); }
@@ -1732,6 +1739,16 @@ function factsHtml(x) {
     <h4>${esc(x.title)}</h4>${x.question ? `<div class="q">${esc(doneWhen(x))}</div>` : ""}
     <div class="meta">${[days, `${f.steps_done}/${f.steps} steps`, sessions].filter(Boolean).join(" · ")}</div></div></div>`;
 }
+// a daily check in the chat: how it went (a chip), the step, then your words; the line itself keeps the plain
+// "[today: … · step] words" text, which is what Ember's mind reads
+const DAILY = {done: ["✓", "Did it"], partly: ["◐", "Partly"], skip: ["–", "Not today"]};
+function dailyHtml(l, fresh) {
+  const m = /^\[today: [^·\]]*(?: · ([^\]]*))?\]\s*([\s\S]*)$/.exec(l.text) || [];
+  const [mark, label] = DAILY[l.daily] || ["", l.daily];
+  return `<div class="msg you daily${fresh ? " new" : ""}"><span class="dhead"><span class="dchip ${esc(l.daily)}">${mark} ${esc(label)}</span>`
+    + (m[1] ? `<span class="dstep">${esc(m[1])}</span>` : "") + `</span>`
+    + (m[2] ? `<span class="dwords">${esc(m[2])}</span>` : "") + `<span class="t">${fmtTime(l.t)}</span></div>`;
+}
 function renderTalk() {
   const box = $("#talk"), chat = $("#chat");
   const atBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 80;
@@ -1744,7 +1761,8 @@ function renderTalk() {
     const d = fmtDay(l.t);
     if (d !== day) { day = d; html += `<div class="day">${esc(d)}</div>`; }
     const fresh = seenLines && i >= seenLines;
-    html += `<div class="msg ${l.who}${fresh ? " new" : ""}">${esc(l.text)}<span class="t">${fmtTime(l.t)}</span></div>`;
+    html += l.daily ? dailyHtml(l, fresh)
+      : `<div class="msg ${l.who}${fresh ? " new" : ""}">${esc(l.text)}<span class="t">${fmtTime(l.t)}</span></div>`;
     if (l.exps) html += `<div class="cards">${l.exps.map(id => S.exps[id]).filter(Boolean).map(cardHtml).join("")}</div>`;
     if (l.checkin && i === lastCheckin && S.checkin_due) {
       html += `<div class="checkin"><div class="rate">${[1, 2, 3, 4, 5].map(n => `<button class="btn ghost${n === rating ? " on" : ""}" data-rate="${n}">${n}</button>`).join("")}</div>

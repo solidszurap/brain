@@ -5,197 +5,169 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ember: find your purpose, with a companion who checks up on you</title>
 <meta name="description" content="Ember is a small companion that helps you find your purpose: it gets to know you, tries small experiments with you, turns what you find into daily steps, checks up on you, and remembers your story in your own words.">
+<link rel="canonical" href="https://yourember.app/home">
 <meta name="theme-color" content="#1b120c">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ember">
+<meta property="og:url" content="https://yourember.app/home">
 <meta property="og:title" content="Ember: find your purpose, one small step at a time">
 <meta property="og:description" content="A companion that helps you find what you're here for, then gets you there step by step, and checks up on you on the way.">
-<meta property="og:image" content="/icons/icon-512.png">
+<meta property="og:image" content="https://yourember.app/img/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="stylesheet" href="/site.css">
 <style>
-:root {
-  --night: #1b120c; --char: #2a1d15; --char2: #34251b; --edge: #43322560;
-  --flame: #ff9a4d; --glow: #ffcf8a; --ash: #b49d88; --cream: #f6e9da; --btn: #ffa862;
-  --round: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN", "Arial Rounded MT Bold", system-ui, sans-serif;
-  --text: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-}
-* { box-sizing: border-box; }
-html { background: var(--night); color-scheme: dark; }
-body { margin: 0; color: var(--cream); font: 17px/1.6 var(--text); -webkit-font-smoothing: antialiased;
-  /* the only light on the page is Ember's: a warm pool around it that fades as you read down */
-  background: radial-gradient(70rem 46rem at 50% 15rem, #ff8a3a2e, #ff8a3a0d 45%, transparent 70%) no-repeat, var(--night); }
-a { color: var(--glow); text-underline-offset: 3px; }
-a:focus-visible, button:focus-visible { outline: 2px solid var(--glow); outline-offset: 3px; border-radius: 10px; }
-
-/* the hero: Ember itself */
-.hero { text-align: center; padding: calc(40px + env(safe-area-inset-top)) 22px 64px; }
-.creature { width: 184px; height: 184px; margin: 0 auto 26px; display: block; background: none; border: 0; padding: 0; cursor: pointer;
-  -webkit-tap-highlight-color: transparent; position: relative; }
-.creature::before { content: ""; position: absolute; inset: -60px; border-radius: 50%; pointer-events: none;
-  background: radial-gradient(closest-side, #ffb36b55, #ff8a3a22 55%, transparent); animation: rise 1.6s ease-out both; }
-.creature svg { position: relative; width: 100%; height: 100%; overflow: visible; }
-.body { transform-origin: 50% 90%; transform-box: view-box; animation: breathe 4.2s ease-in-out 1.6s infinite; }
-.eyes { transform-origin: center; transform-box: fill-box; animation: wake 1.4s ease-out both, blink 5.6s 2.4s infinite; }
-.creature.hop .body { animation: hop .55s cubic-bezier(.3, 1.6, .5, 1); }
-.creature.hop .smile { d: path("M214 330 Q256 372 298 330"); }
-.smile { transition: d .3s; }
-@keyframes rise { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
-@keyframes wake { 0%, 35% { transform: scaleY(.08); } 55% { transform: scaleY(1); } 70% { transform: scaleY(.15); } 85%, 100% { transform: scaleY(1); } }
-@keyframes blink { 0%, 95%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
-@keyframes breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.025, .985); } }
-@keyframes hop { 0% { transform: none; } 35% { transform: translateY(-26px) scale(.97, 1.04); } 70% { transform: translateY(2px) scale(1.04, .96); } 100% { transform: none; } }
-@media (prefers-reduced-motion: reduce) { .creature::before, .body, .eyes, .creature.hop .body { animation: none; } }
-
-h1 { font: 800 clamp(34px, 8.4vw, 58px)/1.04 var(--round); letter-spacing: -.025em; margin: 0 auto 18px; max-width: 13ch; text-wrap: balance; }
-.lede { color: var(--ash); font-size: 18.5px; max-width: 34em; margin: 0 auto 30px; text-wrap: pretty; }
-.go { display: inline-flex; align-items: center; gap: 11px; background: var(--btn); color: #2a1a0c; text-decoration: none;
-  font: 700 17px/1 var(--text); padding: 16px 26px; border-radius: 999px; box-shadow: 0 10px 30px #ff8a3a40; }
-.go svg { background: #fff; border-radius: 50%; padding: 4px; width: 26px; height: 26px; }
-.go:hover { background: #ffb57a; }
-.small { color: var(--ash); font-size: 14.5px; margin: 16px auto 0; max-width: 24em; text-wrap: balance; }
-
-/* the reading column */
-main { max-width: 38rem; margin: 0 auto; padding: 0 22px; }
-section { padding: 52px 0 8px; }
-h2 { font: 800 clamp(26px, 5.6vw, 34px)/1.15 var(--round); letter-spacing: -.015em; margin: 0 0 10px; }
-.intro { color: var(--ash); margin: 0 0 30px; }
-
-/* a week with Ember: three real moments, in order */
-.week { list-style: none; margin: 0; padding: 0; position: relative; }
-.week::before { content: ""; position: absolute; left: 7px; top: 10px; bottom: 26px; width: 2px;
-  background: linear-gradient(var(--flame), #ff9a4d00); opacity: .55; }
-.day { position: relative; padding: 0 0 34px 34px; }
-.day::before { content: ""; position: absolute; left: 0; top: 5px; width: 16px; height: 16px; border-radius: 50%;
-  background: var(--night); border: 3px solid var(--flame); }
-.when { font: 700 15px/1.3 var(--round); color: var(--glow); margin: 0 0 12px; }
-.when span { color: var(--ash); font: 400 14px var(--text); margin-left: 6px; }
-.msg { max-width: min(30em, 84%); padding: 10px 15px; border-radius: 20px; margin: 0 0 8px; width: fit-content; font-size: 16px; line-height: 1.5; }
-.msg.you { margin-left: auto; background: #4a2f1c; border-bottom-right-radius: 6px; }
-.msg.ember { background: var(--char); border: 1px solid var(--edge); border-bottom-left-radius: 6px; }
-.goal { display: inline-block; margin: 2px 0 8px; padding: 9px 14px; border-radius: 14px; border: 1px dashed #ff9a4d88; color: var(--glow); font-size: 15px; }
-.goal b { color: var(--cream); }
-.checks { display: flex; gap: 8px; flex-wrap: wrap; margin: 2px 0 10px; }
-.checks span { padding: 8px 15px; border-radius: 999px; background: var(--char); border: 1px solid var(--edge); font-size: 15px; color: var(--ash); }
-.checks .on { background: var(--btn); color: #2a1a0c; border-color: var(--btn); font-weight: 650; }
-.xp { display: inline-block; font: 700 14px var(--round); color: #2a1a0c; background: var(--glow); border-radius: 999px; padding: 3px 11px; margin-left: 4px; vertical-align: 1px; }
-
-/* what it's for: plain paragraphs, each led by the situation it's for */
-.for p { margin: 0 0 18px; }
-.for b { font-family: var(--round); font-weight: 750; color: var(--glow); }
-
-.price p { margin: 0 0 14px; }
-.price .last { color: var(--ash); }
-.end { text-align: center; padding: 56px 0 24px; }
-.end h2 { margin-bottom: 22px; }
-footer { text-align: center; color: var(--ash); font-size: 14.5px; padding: 28px 22px calc(36px + env(safe-area-inset-bottom)); }
-footer a { color: var(--ash); margin: 0 10px; }
+.hero { padding-top: 56px; padding-bottom: 40px; }
+.hero h1 { max-width: 15ch; }
+.hero .split { gap: 48px; }
+@media (max-width: 860px) { .hero { padding-top: 36px; text-align: center; } .hero h1, .hero .lede { margin-left: auto; margin-right: auto; } }
+.promises { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; padding: 8px 0 24px; }
+.promises div { border-top: 2px solid var(--flame); padding-top: 16px; }
+.promises b { display: block; font: 750 18px/1.3 var(--round); margin-bottom: 4px; }
+.promises span { color: var(--ash); font-size: 15.5px; }
+@media (max-width: 760px) { .promises { grid-template-columns: 1fr; gap: 20px; } }
+.diff { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px 48px; }
+.diff p { margin: 0; color: var(--ash); }
+.diff b { display: block; font: 750 19px/1.3 var(--round); color: var(--glow); margin-bottom: 6px; }
+@media (max-width: 760px) { .diff { grid-template-columns: 1fr; } }
+.costs { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 0 0 18px; }
+.costs > div { background: var(--char); border: 1px solid var(--edge2); border-radius: 24px; padding: 22px 24px; }
+.costs .plus { border-color: #ff9a4d99; }
+.costs b { font: 800 26px/1.1 var(--round); display: block; margin: 2px 0 6px; }
+.costs h3 { margin: 0; font-size: 17px; color: var(--glow); }
+.costs p { margin: 0; color: var(--ash); font-size: 15.5px; }
+@media (max-width: 760px) { .costs { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
+<!--#header-->
+<main id="main">
+  <div class="wrap hero">
+    <div class="split">
+      <div>
+        <h1>Find your purpose. Then live it, one step at a time.</h1>
+        <p class="lede">Ember is a small companion that gets to know you. Not sure what you want from life? It helps you find out, with small experiments that show what gives you energy. Once you know, it turns it into daily steps, checks up on you, and remembers your story in your own words.</p>
+        <a class="go" href="/?login=google"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</a>
+        <p class="small">Free to start, right in your browser. Add it to your home screen like an app.</p>
+      </div>
+      <figure class="phone">
+        <div class="screen"><img src="/img/shot-talk.webp" width="390" height="844" alt="Ember's chat on a phone: Ember asks how today's run went, you tap Did it and say the second 10 minutes felt easier, and Ember answers that it's 7 days in a row."></div>
+      </figure>
+    </div>
+  </div>
 
-<header class="hero">
-  <button class="creature" id="ember" aria-label="Ember. Tap to say hi.">
-    <svg viewBox="0 0 512 512" aria-hidden="true">
-      <defs>
-        <radialGradient id="fire" cx="42%" cy="34%" r="70%">
-          <stop offset="0" stop-color="#ffd896"/><stop offset=".45" stop-color="#ff9e55"/><stop offset="1" stop-color="#e2692a"/>
-        </radialGradient>
-      </defs>
-      <g class="body">
-        <path d="M256 70 C300 132 412 206 412 304 A156 156 0 0 1 100 304 C100 206 212 132 256 70 Z" fill="url(#fire)"/>
-        <circle cx="168" cy="330" r="22" fill="#ff7a5c" opacity=".45"/>
-        <circle cx="344" cy="330" r="22" fill="#ff7a5c" opacity=".45"/>
-        <g class="eyes">
-          <ellipse cx="196" cy="276" rx="30" ry="33" fill="#2a140a"/><ellipse cx="316" cy="276" rx="30" ry="33" fill="#2a140a"/>
-          <circle cx="205" cy="264" r="10" fill="#fff6e6"/><circle cx="325" cy="264" r="10" fill="#fff6e6"/>
-        </g>
-        <path class="smile" d="M220 334 Q256 356 292 334" fill="none" stroke="#2a140a" stroke-width="13" stroke-linecap="round"/>
-      </g>
-    </svg>
-  </button>
-  <h1>Find your purpose. Then live it, one step at a time.</h1>
-  <p class="lede">Ember is a small companion that gets to know you. Not sure what you want from life? It helps you find out, with small experiments that show what gives you energy. Once you know, it turns it into daily steps, checks up on you, and remembers your story in your own words.</p>
-  <a class="go" href="/?login=google"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</a>
-  <p class="small">Free to start. No ads, and your words are never sold.</p>
-</header>
+  <div class="wrap">
+    <div class="promises">
+      <div><b>It remembers your words</b><span>Everything it knows about you keeps the exact words you said, and the day. You can read, correct or delete it.</span></div>
+      <div><b>It checks up on you</b><span>At the time and on the days you choose, not only when you open the app.</span></div>
+      <div><b>It's on your side</b><span>No ads, and your words are never sold. Memory is never a paid feature.</span></div>
+    </div>
+  </div>
 
-<main>
-  <section aria-labelledby="purposeTitle">
-    <h2 id="purposeTitle">How Ember helps you find your purpose</h2>
-    <p class="intro">Not by handing you an answer. By finding it with you, from your own life.</p>
-    <ol class="week">
-      <li class="day">
-        <p class="when">First <span>it gets to know you</span></p>
-        <p class="msg you">Honestly, I don't know what I want to do with my life.</p>
-        <p class="msg ember">That's more common than it feels. Let's find out by trying, not by thinking in circles. When did you last lose track of time?</p>
-        <p class="msg you">Sketching. Fixing up my friend's flyer last week, actually.</p>
-      </li>
-      <li class="day">
-        <p class="when">Then <span>a small experiment</span></p>
-        <p class="msg ember">Here's one for 7 days: design one small thing a day, 20 minutes. Each evening, tell me if it gave you energy or drained you.</p>
-        <p class="goal">Experiment: <b>Does making things for people light me up?</b> 7 days</p>
-      </li>
-      <li class="day">
-        <p class="when">After a few <span>a direction</span></p>
-        <p class="msg ember">Three experiments in, the same thing keeps coming back, in your words: "I love making something people actually use." Shall we turn that into a goal?</p>
-      </li>
-    </ol>
+  <section class="wrap" aria-labelledby="purposeTitle">
+    <div class="split flip">
+      <div>
+        <h2 id="purposeTitle">How Ember helps you find your purpose</h2>
+        <p class="intro">Not by handing you an answer. By finding it with you, from your own life.</p>
+        <ol class="week">
+          <li class="day">
+            <p class="when">First <span>it gets to know you</span></p>
+            <p class="msg you">Honestly, I don't know what I want to do with my life.</p>
+            <p class="msg ember">That's more common than it feels. When did you last lose track of time?</p>
+            <p class="msg you">Sketching. Fixing up my friend's flyer last week, I didn't notice two hours go by.</p>
+          </li>
+          <li class="day">
+            <p class="when">Then <span>a small experiment</span></p>
+            <p class="msg ember">For 7 days, design one small thing a day, 20 minutes. Each evening, tell me if it gave you energy or drained you.</p>
+          </li>
+          <li class="day">
+            <p class="when">After a few <span>a direction</span></p>
+            <p class="msg ember">The same thing keeps coming back, in your words: "I love making something people actually use." Shall we turn that into a goal?</p>
+          </li>
+        </ol>
+      </div>
+      <figure class="phone">
+        <div class="screen"><img src="/img/shot-first.webp" width="390" height="844" loading="lazy" alt="A first chat with Ember: you say you lose track of time sketching, and Ember suggests a 7-day experiment."></div>
+      </figure>
+    </div>
   </section>
 
-  <section aria-labelledby="weekTitle">
-    <h2 id="weekTitle">Then, a week of getting there</h2>
-    <p class="intro">Here's how it goes once you know what you want: say, to start running.</p>
-    <ol class="week">
-      <li class="day">
-        <p class="when">Monday <span>you talk it through</span></p>
-        <p class="msg you">I want to start running, but I always quit after a week.</p>
-        <p class="msg ember">What usually makes you stop?</p>
-        <p class="msg you">I go too hard, it hurts, and then I skip a day and that's it.</p>
-        <p class="msg ember">Then let's start gentle. Six weeks, in three phases. This week: walk and run for 20 minutes, three times.</p>
-        <p class="goal">Your goal: <b>Run 5 km without stopping</b>, in 6 weeks</p>
-      </li>
-      <li class="day">
-        <p class="when">Wednesday, 18:00 <span>it checks up on you</span></p>
-        <p class="msg ember">Today's step: walk and run for 20 minutes. How did it go?</p>
-        <div class="checks" aria-label="Your answer: Partly"><span>Did it</span><span class="on">Partly</span><span>Not today</span></div>
-        <p class="msg you">Only 10 minutes. It started raining.</p>
-        <p class="msg ember">Ten minutes in the rain still counts. Same plan on Friday? <span class="xp">+6 XP</span></p>
-      </li>
-      <li class="day">
-        <p class="when">Sunday <span>it looks back with you</span></p>
-        <p class="msg ember">First phase done. You went out three times, and you said going slow made it fun for once. Next phase: 25 minutes, with 2-minute runs.</p>
-      </li>
-    </ol>
+  <section class="wrap" aria-labelledby="weekTitle">
+    <div class="split">
+      <div>
+        <h2 id="weekTitle">Then, getting there, one day at a time</h2>
+        <p class="intro">A goal becomes phases and one small step a day. You tell Ember how it went with one tap, and every day you show up lights up your path.</p>
+        <ol class="week">
+          <li class="day">
+            <p class="when">Monday <span>you talk it through</span></p>
+            <p class="msg you">I want to start running, but I always quit after a week.</p>
+            <p class="msg ember">Then let's start gentle. Six weeks, in three phases. Today: walk 5 minutes, then run 1 and walk 2, six times.</p>
+            <p class="goal">Your goal: <b>Run 5 km without stopping</b>, in 6 weeks</p>
+          </li>
+          <li class="day">
+            <p class="when">Wednesday, 18:00 <span>it checks up on you</span></p>
+            <p class="msg ember">Today's step: same again, a little slower if it hurts. How did it go?</p>
+            <div class="checks" aria-label="Your answer: Partly"><span>Did it</span><span class="on">Partly</span><span>Not today</span></div>
+            <p class="msg ember">Ten minutes in the rain still counts. Same plan tomorrow? <span class="xp">+6 XP</span></p>
+          </li>
+          <li class="day">
+            <p class="when">Two weeks later <span>it looks back with you</span></p>
+            <p class="msg ember">First phase done: twelve runs in two weeks, and you said going slow made it fun for once. Next phase: longer runs.</p>
+          </li>
+        </ol>
+      </div>
+      <figure class="phone">
+        <div class="screen"><img src="/img/shot-goal.webp" width="390" height="844" loading="lazy" alt="A goal in Ember: today's step with Did it, Partly and Not today, the goal's level, and its finished first phase."></div>
+      </figure>
+    </div>
   </section>
 
-  <section class="for" aria-labelledby="forTitle">
-    <h2 id="forTitle">Made for when you're stuck</h2>
-    <p><b>When you don't know your purpose yet.</b> Ember suggests small experiments based on what you've told it, so you find out what gives you energy by trying, not by thinking in circles.</p>
-    <p><b>When you know, but don't get there.</b> A goal becomes phases and one step a day. Ember checks in at the time you choose, and changes the plan with you when life gets in the way.</p>
-    <p><b>When you want someone who remembers.</b> Every memory keeps the exact words you said and the day you said them. You can read, correct or delete all of it.</p>
-    <p><b>When a little reward helps.</b> Ember grows as you make progress. Earn levels and choose how it looks.</p>
+  <section class="wrap" aria-labelledby="diffTitle">
+    <h2 id="diffTitle">Why Ember is different</h2>
+    <p class="intro">Habit trackers count. Chatbots forget. Ember does neither.</p>
+    <div class="diff">
+      <p><b>It helps you find what you want</b>Most apps start once you already know your goal. Ember starts earlier: with small experiments that show you what gives you energy.</p>
+      <p><b>It comes to you</b>Ember checks up on you at the time you pick, asks how today's step went, and changes the plan with you when life gets in the way.</p>
+      <p><b>It knows your story</b>Your goals, what you tried, what worked, and what you said about it, in your own words. Not a fresh start every time.</p>
+      <p><b>It grows with you</b>Every step you take helps Ember grow: levels, badges that level up, and new looks to choose from. Progress you can see.</p>
+    </div>
+    <p style="margin-top:28px"><a class="more" href="/features">See everything Ember does</a></p>
   </section>
 
-  <section class="price" aria-labelledby="priceTitle">
+  <section class="wrap" aria-labelledby="priceTitle">
     <h2 id="priceTitle">What it costs</h2>
-    <p>Ember is free, with 10 messages a day. Daily checks, check-ups and look backs never count toward that.</p>
-    <p>Ember Plus removes the limit for $7.99 a month, or $49.99 a year. Cancel anytime.</p>
+    <p class="intro">Start free. Pay only if you want to talk more.</p>
+    <div class="costs">
+      <div><h3>Free</h3><b>$0</b><p>10 messages a day. Goals, daily checks, check-ups and look backs never count toward that.</p></div>
+      <div class="plus"><h3>Ember Plus</h3><b>$49.99 a year</b><p>Or $7.99 a month. No daily limit. Cancel anytime.</p></div>
+    </div>
+    <a class="more" href="/pricing">Compare plans</a>
+  </section>
+
+  <section class="wrap" aria-labelledby="faqTitle">
+    <h2 id="faqTitle">Questions people ask</h2>
+    <div class="faq" style="max-width:46rem;margin-top:18px">
+    <details><summary>Is Ember an AI?</summary><div><p>Yes. Ember thinks with an AI language model. Everything around it (what it remembers, your goals, the check-ups, how it grows) is built so it knows your story and stays on your side. It's honest about what it is: ask it, and it tells you.</p></div></details>
+    <details><summary>Who can read what I tell it?</summary><div><p>Nobody reads your conversations. They're stored in the EU, never sold and never used for ads. You can download everything or delete your Ember for good, any time. <a href="/privacy">Privacy, in plain words</a>.</p></div></details>
+    <details><summary>Do I need to download an app?</summary><div><p>No. Ember runs in your browser on your phone or computer. On a phone you can add it to your home screen, and it opens like an app and can send you notifications.</p></div></details>
+    </div>
+    <p style="margin-top:22px"><a class="more" href="/faq">All questions</a></p>
   </section>
 
   <section class="end">
+    <button class="creature" aria-label="Ember. Tap to say hi.">
+      <svg viewBox="0 0 512 512" aria-hidden="true"><defs><radialGradient id="fire" cx="42%" cy="34%" r="70%"><stop offset="0" stop-color="#ffd896"/><stop offset=".45" stop-color="#ff9e55"/><stop offset="1" stop-color="#e2692a"/></radialGradient></defs>
+        <g class="body"><path d="M256 70 C300 132 412 206 412 304 A156 156 0 0 1 100 304 C100 206 212 132 256 70 Z" fill="url(#fire)"/><circle cx="168" cy="330" r="22" fill="#ff7a5c" opacity=".45"/><circle cx="344" cy="330" r="22" fill="#ff7a5c" opacity=".45"/>
+          <g class="eyes"><ellipse cx="196" cy="276" rx="30" ry="33" fill="#2a140a"/><ellipse cx="316" cy="276" rx="30" ry="33" fill="#2a140a"/><circle cx="205" cy="264" r="10" fill="#fff6e6"/><circle cx="325" cy="264" r="10" fill="#fff6e6"/></g>
+          <path class="smile" d="M220 334 Q256 356 292 334" fill="none" stroke="#2a140a" stroke-width="13" stroke-linecap="round"/></g></svg>
+    </button>
     <h2>Say hello to Ember</h2>
+    <p>Tell it what you want, or that you don't know yet. That's where it starts.</p>
     <a class="go" href="/?login=google"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</a>
   </section>
 </main>
-
-<footer>
-  <a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="mailto:support@yourember.app">Contact</a><a href="/?login=google">Log in</a>
-</footer>
-
-<script>
-// tap Ember: it hops and smiles (answers you; nothing moves on its own except breathing and blinking)
-const e = document.getElementById("ember");
-e.addEventListener("click", () => { e.classList.remove("hop"); void e.offsetWidth; e.classList.add("hop"); });
-e.addEventListener("animationend", ev => { if (ev.animationName === "hop") setTimeout(() => e.classList.remove("hop"), 500); });
-</script>
+<!--#footer-->
 </body>
 </html>
