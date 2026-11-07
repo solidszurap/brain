@@ -382,6 +382,9 @@ ev = ck.due_checkups(d0 + D + 17 * H)             # 18:00 your time, the next da
 check("the next day at your hour, though you didn't answer: a check-up (Szilard: no matter if I didn't reply)",
       len(ev) == 1 and ev[0].get("regular") and ev[0]["chat"] == "c1")
 check("...only once", ck.due_checkups(d0 + D + 17 * H + 600) == [])
+ck2 = Ember.from_dict(json.loads(json.dumps(ck.to_dict())))
+check("a deploy (saved and loaded again) never sends the day's check-up again", ck2.due_checkups(d0 + D + 17 * H + 900) == []
+      and ck2.due_checkups(d0 + D + 23 * H) == [])
 _, user = ck.prompt(ev[0], d0 + D + 17 * H)
 check("its mind knows it's the check-up you asked for", "check up on them every day" in user)
 r = ck.respond(ev[0], mind_says(reply=""), d0 + D + 17 * H + 5)
