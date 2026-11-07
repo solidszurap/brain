@@ -1659,6 +1659,13 @@ async function waitGoalReply(g, since) {           // Ember's answer to today's 
     if (last && last.who === "ember" && last.t > since) { if (goalReplyWait) goalReplyWait.text = last.text; renderGoalPage(); return; }
   }
 }
+// planning with Ember couldn't start: out of today's free messages (Talk shows the paywall) or Ember can't be reached
+async function planFailed(btn) {
+  btn.disabled = false;
+  await poll();
+  if (S && S.plan && !S.plan.plus && S.plan.free_left === 0) home();
+  else say("Couldn't reach Ember. Try again in a moment.");
+}
 function goToChat(g, prefill) {
   openChat(g.chat);
   if (prefill) { ta.value = prefill; ta.dispatchEvent(new Event("input")); setTimeout(() => ta.focus(), 100); }
@@ -1673,7 +1680,7 @@ $("#gpBody").addEventListener("click", async e => {
       if (t.id === "ngEmber") {
         const r = await post("/goal/new", {title, with_ember: true});
         if (r && r.ok) openChat(r.chat);
-        else t.disabled = false;
+        else planFailed(t);
       } else {
         const steps = $("#ngSteps").value.split("\n").map(s => s.trim()).filter(Boolean);
         const n = Math.round(+$("#ngN").value), unit = $("#ngUnit").value;
@@ -1699,7 +1706,14 @@ $("#gpBody").addEventListener("click", async e => {
     checkNote = {id: g.id, text: r && r.ok ? (got > 0 ? `+${got} XP` : "Changed. Only the first check of the day earns XP.") : "Couldn't save that. Try again."};
     await loadGoals();
   } else if (b.hasAttribute("data-gtalk")) goToChat(g);
-  else if (b.hasAttribute("data-gplan")) goToChat(g, "Let's plan the details of this goal together.");
+  else if (b.hasAttribute("data-gplan")) {
+    // Ember starts planning at once, in the goal's chat (2026-11-07, Szilard: the button seemed to do nothing on his
+    // iPhone, where the words only waited in the box for Send and the keyboard didn't open)
+    b.disabled = true;
+    const text = "Let's plan the details of this goal together.";
+    if (await post("/talk", {text, chat: g.chat})) goToChat(g);
+    else planFailed(b);
+  }
   else if (b.dataset.gstep !== undefined) {
     const i = +b.dataset.gstep, xp0 = xpNow();
     await post("/experiment/step", {id: g.id, index: i, done: !g.steps[i].done}); loadGoals(); xpAfter(xp0);
