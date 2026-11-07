@@ -21,6 +21,15 @@ class BillingError(Exception):
     pass
 
 
+def branding(base_url):
+    """Ember's name, icon and colours on its Stripe payment page (just this page: the Stripe account may sell
+    other things, whose pages keep the account's own branding)."""
+    return {"branding_settings[display_name]": "Ember",
+            "branding_settings[icon][type]": "url", "branding_settings[icon][url]": f"{base_url}/icons/icon-512.png",
+            "branding_settings[background_color]": "#17130f", "branding_settings[button_color]": "#ffa862",
+            "branding_settings[border_style]": "pill", "branding_settings[font_family]": "nunito"}
+
+
 class Billing:
     def __init__(self, secret_key=None, price_id=None, webhook_secret=None, price_label="$4.99 / month",
                  api="https://api.stripe.com", terms_url=None):
@@ -50,6 +59,8 @@ class Billing:
         fields = {"mode": "subscription", "line_items[0][price]": self.price, "line_items[0][quantity]": "1",
                   "success_url": f"{base_url}/?plus=success", "cancel_url": f"{base_url}/?plus=cancel",
                   "client_reference_id": uid, "subscription_data[metadata][user_id]": uid,
+                  # tagged as Ember's: the Stripe account may sell other things too, and their events reach this webhook
+                  "metadata[app]": "ember", "subscription_data[metadata][app]": "ember",
                   "allow_promotion_codes": "true",
                   "payment_method_types[0]": "card"}           # cards (Apple Pay and Google Pay included), nothing else
         if self.terms_url:                                  # Stripe asks them to accept the terms (its Public details
@@ -58,7 +69,10 @@ class Billing:
             fields["customer"] = customer
         elif email:
             fields["customer_email"] = email
-        return self._post("/v1/checkout/sessions", fields)["url"]
+        try:                                                # the payment page in Ember's own look, not the account's
+            return self._post("/v1/checkout/sessions", {**fields, **branding(base_url)})["url"]
+        except BillingError:                                # an API version without branding_settings: plain is fine
+            return self._post("/v1/checkout/sessions", fields)["url"]
 
     def portal(self, customer, base_url):
         """Stripe's page where a subscriber cancels or changes their card; returns its address."""
@@ -94,9 +108,16 @@ class Billing:
         return json.loads(payload)
 
     @staticmethod
-    def plan_from_event(event):
-        """(user id, plan) for the events that change someone's plan; None for the rest."""
+    def plan_from_event(event, price=None):
+        """(user id, plan) for the events that change someone's Ember Plus; None for the rest, including
+        whatever else the same Stripe account sells: only Ember's own (tagged app=ember, or older ones
+        with Ember's price) count."""
         kind, obj = event.get("type"), (event.get("data") or {}).get("object") or {}
+        meta = obj.get("metadata") or {}
+        items = ((obj.get("items") or {}).get("data") or [])
+        ours = meta.get("app") == "ember" or bool(price and any((i.get("price") or {}).get("id") == price for i in items))
+        if not ours:
+            return None
         if kind == "checkout.session.completed" and obj.get("mode") == "subscription":
             uid = obj.get("client_reference_id")
             return (uid, {"status": "active", "customer": obj.get("customer"),

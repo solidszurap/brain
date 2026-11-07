@@ -8,6 +8,7 @@ A small being with a face that helps you get what you want. If you don't know ye
 
 ## Ember online
 
+- **Its address:** **https://yourember.app** (a Cloudflare domain pointing at Render). Render's own address, ember-dztb.onrender.com, forwards its pages there.
 - **Where it runs:** on a server at Render (Frankfurt). Your Ember (its memories, experiments, the whole conversation) is kept in a Supabase database (Ireland, eu-west-1).
 - **Its mind:** Claude Haiku 5.5, through Anthropic's API.
 - **Who can use it:** `EMBER_ALLOWED_EMAILS` is an invite list, or `*` for anyone with a Google account (the Google login must be published too; DEPLOY.md step 8). Who has logged in: Supabase → Authentication → Users.
@@ -45,7 +46,7 @@ A small being with a face that helps you get what you want. If you don't know ye
   - **At a new level** it says so once, after its own words, with a burst of sparks and a "Level N!" ribbon, and names what it unlocked.
   - **Customizing:** tap "Lv N · Stage" under its face, or the Ember tab → Customize Ember. A sheet opens from the bottom, so you see Ember change above it. There you pick its colour (Amber, Gold, Rose, Ocean, Forest, Violet, Moonlight, Aurora), something to wear (scarf, cap, glasses, flower, headphones, beanie, bow, crown), eyes, cheeks, sparks (stars, hearts, petals, snow) and glow (halo, aura). Each unlocks at a level, and everything is earned by levelling, for everyone. The sheet also lists how it grows and what it earned lately.
   - **Older Embers** got XP for everything done before levels existed, quietly (no level-up lines).
-- **Front page:** `/home` (`web/home.html`) tells strangers what Ember is, with Ember itself (it wakes up, breathes, blinks, and hops when you tap it), a week with Ember as a real conversation, and the price. Its Continue with Google goes to `/?login=google`, which starts Google's login at once. The login screen links to it ("What is Ember?"). It's also the home page Google's Branding asks for.
+- **Front page:** `/home` (`web/home.html`) tells strangers what Ember is, with Ember itself (it wakes up, breathes, blinks, and hops when you tap it), a week with Ember as a real conversation, and the price. Its Continue with Google goes to `/?login=google`, which starts Google's login at once. Online, anyone opening the main address without a login on that device lands here first, so an ad only needs the address; logged-in people go straight to their Ember. The login screen links to it ("What is Ember?"). It's also the home page Google's Branding asks for.
 - **Many people at once** (2026-11-06): Ember's mind answers up to 4 people at the same time (`EMBER_MIND_THREADS`), while each person's messages are still answered in order. An Ember nobody has used for an hour is saved and leaves the server's memory; it loads again the moment it's needed.
 - **Owner page:** the Ember tab → "Who uses Ember", only for `EMBER_OWNER_EMAILS`: how many people, who's active, whether they come back after a day and after a week, the cost, the feedback, and one line per person. Counts only, never what anyone said.
 - **Feedback:** the Ember tab → Send feedback (an idea, something's wrong, or something else) goes to the `feedback` table with their email, level and Plus; at most 10 an hour per person. It's in their export, and deleted with their Ember.

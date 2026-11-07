@@ -499,6 +499,7 @@ print("Free messages, the paywall and Ember Plus (against a fake Stripe)")
 
 class FakeStripe(BaseHTTPRequestHandler):
     seen = []
+    no_branding = False          # an older Stripe API that refuses branding_settings
 
     def log_message(self, *a):
         pass
@@ -514,6 +515,11 @@ class FakeStripe(BaseHTTPRequestHandler):
     def do_POST(self):
         fields = dict(urllib.parse.parse_qsl(self.rfile.read(int(self.headers["Content-Length"])).decode()))
         self.seen.append(("POST", self.path, fields, self.headers.get("Authorization")))
+        if self.no_branding and any(k.startswith("branding_settings") for k in fields):
+            self.send_response(400)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         self._send({"url": "https://pay.test/checkout" if "checkout" in self.path else "https://pay.test/portal"})
 
     def do_DELETE(self):
@@ -630,18 +636,39 @@ def hook(event, secret="whsec_x", t=None):
 
 
 paid = {"type": "checkout.session.completed", "data": {"object": {"mode": "subscription", "client_reference_id": "user-b",
-                                                                  "customer": "cus_b", "subscription": "sub_b"}}}
+                                                                  "customer": "cus_b", "subscription": "sub_b",
+                                                                  "metadata": {"app": "ember"}}}}
+check("Ember's payment page has its own name, icon and colours (not the Stripe account's)",
+      sent[2].get("branding_settings[display_name]") == "Ember" and sent[2].get("branding_settings[icon][url]", "").endswith("/icons/icon-512.png")
+      and sent[2].get("branding_settings[button_color]") == "#ffa862")
+FakeStripe.no_branding = True
+status_nb, out_nb = call(base4, "/plus/checkout", "tok-b", {})
+FakeStripe.no_branding = False
+check("...and if Stripe refuses the branding, the plain payment page still opens",
+      status_nb == 200 and out_nb["url"] == "https://pay.test/checkout" and "branding_settings[display_name]" not in FakeStripe.seen[-1][2])
+check("checkout tags the payment as Ember's", sent[2].get("metadata[app]") == "ember"
+      and sent[2].get("subscription_data[metadata][app]") == "ember")
+other = {"type": "checkout.session.completed", "data": {"object": {"mode": "subscription", "client_reference_id": "user-b",
+                                                                   "customer": "cus_x", "subscription": "sub_x"}}}
+check("someone buying something else on the same Stripe account doesn't change any Ember", hook(other) == 200 and not plan4()["plus"])
+other_sub = {"type": "customer.subscription.created", "data": {"object": {"id": "sub_x", "customer": "cus_x", "status": "active",
+             "metadata": {"user_id": "user-b"}, "items": {"data": [{"price": {"id": "price_other"}}]}}}}
+check("...nor their subscription", hook(other_sub) == 200 and not plan4()["plus"])
+ghost = {"type": "customer.subscription.created", "data": {"object": {"id": "sub_g", "customer": "cus_g", "status": "active",
+         "metadata": {"user_id": "nobody", "app": "ember"}}}}
+check("an Ember that no longer exists: received, nothing to do, no retries", hook(ghost) == 200)
 check("a webhook with a wrong signature is refused", hook(paid, secret="whsec_wrong") == 400)
 check("an old webhook (replayed) is refused", hook(paid, t=int(clock()) - 3600) == 400)
 check("Stripe says paid: Ember Plus is on", hook(paid) == 200 and plan4()["plus"] and plan4()["manage"])
 said4 = lambda: [l["text"] for l in call(base4, "/state", "tok-b")[1]["talk"]]
 created = {"type": "customer.subscription.created", "data": {"object": {"id": "sub_b", "customer": "cus_b",
-                                                                        "status": "active", "metadata": {"user_id": "user-b"}}}}
+                                                                        "status": "active", "metadata": {"user_id": "user-b"},
+                                                                        "items": {"data": [{"price": {"id": "price_plus"}}]}}}}
 check("...Ember says thank you in the conversation, once", hook(created) == 200 and said4().count(PLUS_ON) == 1)
 check("with Plus, you can talk again", call(base4, "/talk", "tok-b", {"text": "now plus"})[0] == 200)
 check("Manage Ember Plus opens Stripe's portal", call(base4, "/plus/portal", "tok-b", {})[1]["url"] == "https://pay.test/portal")
 ended = {"type": "customer.subscription.deleted", "data": {"object": {"id": "sub_b", "customer": "cus_b",
-                                                                      "status": "canceled", "metadata": {"user_id": "user-b"}}}}
+                                                                      "status": "canceled", "metadata": {"user_id": "user-b", "app": "ember"}}}}
 check("Stripe says canceled: back to free", hook(ended) == 200 and not plan4()["plus"])
 check("...and Ember says so", said4()[-1] == PLUS_ENDED)
 hook(paid)
@@ -787,6 +814,28 @@ check("...and never while it's thinking", "user-3" in us.cache)
 busy.jobs = 0
 us.get("user-5", touch=False)
 check("a look from the background (check-ups, a restart) doesn't keep it in memory", us.evict() >= 1 and "user-5" not in us.cache)
+
+print("Ember's own address (yourember.app)")
+import http.client  # noqa: E402
+baseh, srvh = serve(create_app(FileStore(os.path.join(tmp, "users_home")), FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock,
+                               public_url="https://yourember.app/"))
+
+
+def at(host, path, method="GET"):
+    c = http.client.HTTPConnection(baseh.split("//")[1], timeout=5)
+    c.request(method, path, body=b"{}" if method == "POST" else None, headers={"Host": host})
+    r = c.getresponse()
+    r.read()
+    return r.status, r.getheader("location")
+
+
+check("a page opened at Render's address moves to yourember.app", at("ember-dztb.onrender.com", "/") == (301, "https://yourember.app/"))
+check("...the terms too, with what came after the address",
+      at("ember-dztb.onrender.com", "/terms?x=1") == (301, "https://yourember.app/terms?x=1"))
+check("...but Ember's API there keeps answering (open windows, Stripe's webhook)",
+      at("ember-dztb.onrender.com", "/config")[0] == 200 and at("ember-dztb.onrender.com", "/stripe/webhook", "POST")[0] != 301)
+check("at yourember.app itself, nothing moves", at("yourember.app", "/terms")[0] == 200 and at("yourember.app", "/")[0] == 200)
+check("...nor on this computer", at("localhost:8765", "/")[0] == 200)
 
 print()
 print("All checks passed." if not failed else f"{len(failed)} FAILED: {failed}")

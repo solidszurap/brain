@@ -655,6 +655,7 @@ async function boot() {
   try { CFG = await (await fetch("/config", {cache: "no-store"})).json(); } catch (e) {}
   if (CFG.terms_url) $("#termsItem").href = CFG.terms_url;     // the terms (ÁSZF) Stripe asks you to accept, when set elsewhere
   if (CFG.mode === "online") {
+    if (!hasLogin() && !cameForLogin()) { location.replace("/home"); return; }   // a stranger at yourember.app: the front page first
     await new Promise((ok, fail) => {
       const s = document.createElement("script");
       s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js";
@@ -678,6 +679,16 @@ async function boot() {
     $("#whoami").textContent = "On this computer";
   }
   enter();
+}
+// a login kept on this device (supabase-js keeps it as sb-<project>-auth-token), without loading supabase-js first
+function hasLogin() {
+  try { for (let i = 0; i < localStorage.length; i++) if (/^sb-.+-auth-token$/.test(localStorage.key(i))) return true; } catch (e) { return true; }
+  return false;
+}
+// on the way to or back from Google's login, or opening a notification, a payment page's return or a chat: stay
+function cameForLogin() {
+  const q = new URLSearchParams(location.search);
+  return /access_token|error/.test(location.hash) || ["login", "code", "error", "chat", "plus"].some(k => q.has(k));
 }
 function enter() {          // the logo stays up until Ember's first state is drawn, so no empty window flashes by
   showCover("boot");

@@ -19,7 +19,7 @@ from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 
 from fastapi import Body, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 
 from mind import llm
 from mind.core import Ember
@@ -32,6 +32,7 @@ log = logging.getLogger("ember")
 WEB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web")
 PRESENT_FOR = 3.0            # you're here if your visible window asked within this many seconds
 SAVE_EVERY = 60.0
+PAGES = ("/", "/home", "/privacy", "/terms", "/manifest.webmanifest")   # what moves to Ember's own address
 IDLE_FOR = 3600.0            # an Ember nobody has used for an hour leaves memory (saved; it loads again when needed)
 MAX_TEXT = 2000
 MAX_BODY = 16384
@@ -260,7 +261,7 @@ class MindWorker:
 def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=150,
                retry_delay=10.0, retry_every=60.0, public_config=None, web_dir=WEB,
                billing=None, free_per_day=10, plus_emails=(), checkup_every=300.0, push=None, unlock_emails=(),
-               owner_emails=(), mind_threads=4):
+               owner_emails=(), mind_threads=4, public_url=None):
     users = Users(store, clock)
     plus_emails = {e.strip().lower() for e in plus_emails if e.strip()}
     plus_everyone = "*" in plus_emails             # Plus for everyone, for now (Szilard, 2026-11-06)
@@ -367,8 +368,18 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.users, app.state.worker = users, worker
 
+    home_url = (public_url or "").rstrip("/")
+    home_host = urlparse(home_url).netloc
+
     @app.middleware("http")
     async def _headers(request: Request, call_next):
+        # pages opened at Render's own address (…onrender.com) move to Ember's address (yourember.app), so links,
+        # logins and the home-screen app all live in one place; Ember's API there keeps answering for open windows
+        host = request.headers.get("host", "")
+        if (home_host and host != home_host and host.endswith(".onrender.com") and request.method in ("GET", "HEAD")
+                and request.url.path in PAGES):
+            q = ("?" + request.url.query) if request.url.query else ""
+            return RedirectResponse(home_url + request.url.path + q, status_code=301)
         if request.method == "POST" and request.url.path == "/stripe/webhook":
             if int(request.headers.get("content-length") or 0) > 512 * 1024:
                 return JSONResponse({"error": "too large"}, status_code=413)
@@ -824,10 +835,13 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         except (BillingError, ValueError) as e:
             log.warning("webhook refused: %s", e)
             raise HTTPException(400, "bad signature") from None
-        found = billing.plan_from_event(event)
+        found = billing.plan_from_event(event, billing.price)
         if found:
             uid, plan = found
             try:
+                if store.load_self(uid) is None:    # no such Ember (deleted since): nothing to change, no retries
+                    log.info("plan event for unknown %s ignored", uid)
+                    return {"received": True}
                 before = store.get_plan(uid)
                 store.set_plan(uid, plan)
             except StoreError as e:

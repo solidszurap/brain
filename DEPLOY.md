@@ -92,13 +92,13 @@ Taking real money needs a registered business (for example egyéni vállalkozó)
       - the 14-day withdrawal right for digital services;
       - that Stripe processes the payments.
 
-      Done for the terms (2026-11-07): they're at `https://ember-dztb.onrender.com/terms` (TermsFeed's text plus Ember Plus, cancelling, the 14-day withdrawal right, Stripe and feedback). Have the ÁSZF part checked by a lawyer or accountant before going live.
+      Done for the terms (2026-11-07): they're at `https://yourember.app/terms` (TermsFeed's text plus Ember Plus, cancelling, the 14-day withdrawal right, Stripe and feedback). Have the ÁSZF part checked by a lawyer or accountant before going live.
    3. **Stripe → activate your account:** business details, bank account and identity check.
-   4. **Switch to live mode** and redo steps 2–5 there: the product Ember Plus at $4.99 monthly; the secret key; the webhook to `/stripe/webhook` with the same 4 events; the customer portal. Live mode has its own product, price, keys and webhook secret.
+   4. **Done 2026-11-07** (product, price, webhook, statement text; the portal and public details were already right). **Switch to live mode** and redo steps 2–5 there: the product Ember Plus at $4.99 monthly; the secret key; the webhook to `/stripe/webhook` with the same 4 events; the customer portal. Live mode has its own product, price, keys and webhook secret.
    5. **Stripe → Settings → Public details:** your terms URL and a support email. **Settings → Emails:** turn on receipts for successful payments.
    6. **Render → Environment:**
       - paste the live `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID` and `STRIPE_WEBHOOK_SECRET` (never into a chat);
-      - set `EMBER_TERMS_URL` to `https://ember-dztb.onrender.com/terms`;
+      - set `EMBER_TERMS_URL` to `https://yourember.app/terms`;
       - set `EMBER_FREE_PER_DAY` to `10`, or delete it (10 is the default).
 
       Save, and Render restarts. Its log should say "payments: on (live)".
@@ -113,7 +113,7 @@ Taking real money needs a registered business (for example egyéni vállalkozó)
 1. On your PC, in the `brain` folder: `python tools/make_vapid.py`. It puts `VAPID_PRIVATE_KEY` into `.env` (it doesn't show it).
 2. Open `.env` in Notepad, copy the text after `VAPID_PRIVATE_KEY=`, and add it in **Render → ember → Environment** as `VAPID_PRIVATE_KEY`. Save; Render restarts, and its log says "notifications: on".
 3. Keep that key forever: a new one would switch everyone's notifications off.
-4. On iPhone: notifications only work in the home-screen app (iOS 16.4 or later). Open Ember from its home-screen icon, then **⋯ → Turn on notifications** and allow them.
+4. On iPhone: notifications only work in the home-screen app (iOS 16.4 or later). Open Ember from its home-screen icon, then **the Ember tab → Turn on notifications** and allow them.
 
 ## 7. Try it
 
@@ -128,7 +128,7 @@ Anyone with a Google account can then log in and get their own Ember. Do these i
 
 1. **Anthropic → Limits:** check the monthly spend limit (step 3.3) and set it to what you're willing to spend at most, e.g. $30. It's the one cap over everyone together. If it's reached, Ember tells people it can't think right now, until next month or until you raise it. Each person is also capped at `EMBER_DAILY_CAP` (150) replies a day, which is under $0.10 a day even for the busiest person.
 2. **Push the code** (`git push`), so the server understands `*` for Plus.
-3. **Google Cloud** (project `ember-513617`) → **Google Auth Platform → Branding** first: Application home page `https://ember-dztb.onrender.com/home` (the public front page), privacy policy link `https://ember-dztb.onrender.com/privacy`, and under Authorized domains add `ember-dztb.onrender.com`; Save. Until then the Publish button is greyed out. Then **Audience** (older menus: APIs & Services → OAuth consent screen) → **Publish app** → Confirm. Don't upload a logo: a logo makes Google review the app first. Ember asks Google only for the name and email, so Google doesn't need to review it. While it's "in testing", only the test users can log in. If Google asks for verification, don't fill anything in; ask us first.
+3. **Google Cloud** (project `ember-513617`) → **Google Auth Platform → Branding** first: Application home page `https://yourember.app/home` (the public front page), privacy policy link `https://yourember.app/privacy`, terms link `https://yourember.app/terms`, and under Authorized domains add `yourember.app`; Save. Until then the Publish button is greyed out. Then **Audience** (older menus: APIs & Services → OAuth consent screen) → **Publish app** → Confirm. Don't upload a logo: a logo makes Google review the app first. Ember asks Google only for the name and email, so Google doesn't need to review it. While it's "in testing", only the test users can log in. If Google asks for verification, don't fill anything in; ask us first.
 4. **Render → ember → Environment:**
    - `EMBER_ALLOWED_EMAILS` = `*` (everyone can log in);
    - `EMBER_PLUS_EMAILS` = `*` (everyone has Plus for free, for now).
@@ -140,9 +140,9 @@ To go back: put your own Gmail back in `EMBER_PLUS_EMAILS` to end free Plus (eve
 
 ## Afterwards
 
-- **The owner page (easiest):** put your Gmail in `EMBER_OWNER_EMAILS` in Render. Then in Ember, ⋯ → **Owner: who uses Ember** shows how many people use it, who was here today and this week, whether people come back after their first day and after their first week, the cost, the feedback, and one line per person (email, started, last seen, days, messages, level, goals). It never shows what anyone said.
+- **The owner page (easiest):** put your Gmail in `EMBER_OWNER_EMAILS` in Render. Then in Ember, the Ember tab → **Who uses Ember** shows how many people use it, who was here today and this week, whether people come back after their first day and after their first week, the cost, the feedback, and one line per person (email, started, last seen, days, messages, level, goals). It never shows what anyone said.
 - **Who has logged in:** Supabase → your project → **Authentication → Users**. It lists everyone who has ever signed in: their email, when they first signed in, and when they last signed in. Their **UID** there is the `user_id` in the database tables.
-- **Feedback:** people send it from ⋯ → Send feedback (an idea, something's wrong, or something else). Read it in Supabase → **Table Editor → `feedback`**: the text, their email (to answer them), the kind, and `extra` (level, Plus, where they were, browser). The table comes from `server/schema.sql`: if it isn't there yet, run the whole file once more in the SQL Editor (it only adds what's missing). Until then, sending feedback says "Couldn't send it right now".
+- **Feedback:** people send it from the Ember tab → Send feedback (an idea, something's wrong, or something else). Read it in Supabase → **Table Editor → `feedback`**: the text, their email (to answer them), the kind, and `extra` (level, Plus, where they were, browser). The table comes from `server/schema.sql`: if it isn't there yet, run the whole file once more in the SQL Editor (it only adds what's missing). Until then, sending feedback says "Couldn't send it right now".
 - **How much each person uses it:** Supabase → **Table Editor → `usage`**: replies (`calls`), counted messages and tokens per person per day.
 - **Try every look:** add your Gmail to `EMBER_UNLOCK_EMAILS` in Render. Every look is unlocked for you; your level and XP don't change.
 - **If Ember is slow:** Render → Logs, search for `mind answered`: each answer's time is there (a warning when it took over 20 seconds).
