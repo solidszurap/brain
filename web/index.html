@@ -417,7 +417,8 @@ div.grow { cursor: default; }
   border: 1px solid var(--edge2); border-radius: 12px; padding: 9px 12px; font: inherit; font-size: 16px; }
 .gpwords { margin-top: 10px; }
 #xpToast { position: fixed; left: 50%; bottom: calc(var(--tabbar) + 20px + env(safe-area-inset-bottom)); z-index: 25; transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
-  background: var(--btn); color: #2a1a0c; font-weight: 700; font-size: 15px; padding: 9px 18px; border-radius: 999px; box-shadow: var(--lift); white-space: nowrap;
+  background: var(--btn); color: #2a1a0c; font-weight: 700; font-size: 15px; padding: 9px 18px; border-radius: 22px; box-shadow: var(--lift);
+  width: max-content; max-width: min(420px, calc(100vw - 32px)); text-align: center; line-height: 1.35;   /* longer notes wrap */
   transition: opacity .25s, transform .25s; }
 #xpToast.on { opacity: 1; transform: translate(-50%, 0); }
 .gpxp { margin-top: 8px; font-size: 14px; font-weight: 600; color: var(--accent); }
@@ -560,14 +561,14 @@ div.grow { cursor: default; }
 </div>
 <form class="say" id="form">
   <textarea id="text" rows="1" placeholder="Say something to Ember…" maxlength="2000"></textarea>
-  <button class="btn" type="submit">Send</button>
+  <button class="btn" type="submit" id="sendBtn">Send</button>
 </form>
 <div id="paywall">
   <h3 id="pwTitle">That's today's free messages</h3>
   <p id="pwText"></p>
   <div class="pwbtns"><button class="btn" data-plus="year" id="pwYear"></button><button class="btn ghostbtn" data-plus="month" id="pwMonth"></button></div>
   <small>or come back tomorrow, when your free messages are back</small>
-  <small class="pwterms" id="pwTerms" style="display:none">By subscribing you accept the <a target="_blank" rel="noopener" id="pwTermsLink">terms (ÁSZF)</a>.</small>
+  <small class="pwterms" id="pwTerms" style="display:none">By subscribing you accept the <a target="_blank" rel="noopener" id="pwTermsLink">terms</a>.</small>
 </div>
 <div id="freehint"></div>
 <div class="note" id="note"></div>
@@ -746,7 +747,7 @@ function showCover(id) {
 
 async function boot() {
   try { CFG = await (await fetch("/config", {cache: "no-store"})).json(); } catch (e) {}
-  if (CFG.terms_url) $("#termsItem").href = CFG.terms_url;     // the terms (ÁSZF) Stripe asks you to accept, when set elsewhere
+  if (CFG.terms_url) $("#termsItem").href = CFG.terms_url;     // the terms Stripe asks you to accept, when set elsewhere
   if (CFG.mode === "online") {
     if (!hasLogin() && !cameForLogin()) { location.replace("/home"); return; }   // a stranger at yourember.app: the front page first
     await new Promise((ok, fail) => {
@@ -845,11 +846,7 @@ document.addEventListener("click", async e => {
   } else if (what === "owner") {
     go("owner");
   } else if (what === "install") {
-    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    $("#installSteps").innerHTML = ios
-      ? "<li>Open Ember in <b>Safari</b>.</li><li>Tap the <b>Share</b> button (the square with an arrow).</li><li>Tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>"
-      : "<li>Open the browser's menu (⋮).</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li>";
-    showCover("install");
+    openInstall();
   } else if (what === "plus") {
     goPlus(!!t.dataset.manage, null, !!t.dataset.year);
   } else if (what === "export") {
@@ -866,6 +863,13 @@ document.addEventListener("click", async e => {
     if (r && r.ok) { if (sb) await sb.auth.signOut(); location.reload(); }
   }
 });
+function openInstall() {
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  $("#installSteps").innerHTML = ios
+    ? "<li>Open Ember in <b>Safari</b>.</li><li>Tap the <b>Share</b> button (the square with an arrow).</li><li>Tap <b>Add to Home Screen</b>, then <b>Add</b>.</li><li>Open Ember from your home screen and turn notifications on there.</li>"
+    : "<li>Open the browser's menu (⋮).</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li>";
+  showCover("install");
+}
 $("#installDone").onclick = () => showCover(null);
 
 // the conversation's soft edges: a fade at the top once you've scrolled down, and at the bottom while there's more below
@@ -1968,6 +1972,18 @@ $("#expcard").addEventListener("click", async e => {
 const ta = $("#text");
 ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 160) + "px"; });
 ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#form").requestSubmit(); } });
+// Send keeps the keyboard up (2026-11-07, Szilard: on his phone, Send did nothing while the keyboard was up). A tap
+// used to take the focus from the box first: the tab bar came back and the keyboard closed, the composer jumped, and
+// the tap landed where Send no longer was. Now pressing Send never takes the focus (mousedown), and a finger lifted
+// on it sends at once (touchend, which also stops the late click, so it never sends twice).
+const sendBtn = $("#sendBtn");
+sendBtn.addEventListener("mousedown", e => e.preventDefault());
+sendBtn.addEventListener("touchend", e => {
+  const p = e.changedTouches[0], r = sendBtn.getBoundingClientRect();
+  if (!p || p.clientX < r.left || p.clientX > r.right || p.clientY < r.top || p.clientY > r.bottom) return;   // slid off: no send
+  e.preventDefault();
+  $("#form").requestSubmit();
+}, {passive: false});
 $("#form").onsubmit = async e => {
   e.preventDefault();
   const text = ta.value.trim();
@@ -2370,10 +2386,16 @@ function keyBytes(s) {
   const b = atob((s + "=".repeat((4 - s.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
   return Uint8Array.from(b, c => c.charCodeAt(0));
 }
+// the service worker that shows the notifications: registered again if it's missing, and never waited for forever
+async function swReady() {
+  if (!(await navigator.serviceWorker.getRegistration())) await navigator.serviceWorker.register("/sw.js");
+  return Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(() => no(new Error("no service worker")), 8000))]);
+}
 async function pushSubscription() {
   if (!canPush()) return null;
-  return (await navigator.serviceWorker.ready).pushManager.getSubscription();
+  return (await swReady()).pushManager.getSubscription();
 }
+let notifySynced = false;
 async function renderNotify() {
   const item = $("#notifyItem");
   item.style.display = CFG.vapid_public ? "" : "none";
@@ -2383,13 +2405,18 @@ async function renderNotify() {
   try { turnedOff = !!localStorage.getItem("ember.notifyOff"); } catch (e) {}
   if (!sub && canPush() && Notification.permission === "granted" && !turnedOff) {
     sub = await subscribePush().catch(() => null);      // allowed before (e.g. Ember added again): back on quietly
+  } else if (sub && !turnedOff && !notifySynced) {
+    // once each time Ember opens, tell the server this phone's address again (2026-11-07, Szilard: a day with no
+    // check-up): if the server had forgotten it (a send that failed) or the phone changed it, it's back
+    notifySynced = true;
+    post("/push/subscribe", {subscription: sub.toJSON()}).catch(() => {});
   }
   item.dataset.on = sub ? "1" : "";
   item.textContent = sub ? "Notifications: on · turn off" : "Turn on notifications";
   askNotify(!sub);
 }
 async function subscribePush() {
-  const reg = await navigator.serviceWorker.ready;
+  const reg = await swReady();
   const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: keyBytes(CFG.vapid_public)});
   const r = await post("/push/subscribe", {subscription: sub.toJSON()});
   return r && r.ok ? sub : null;
@@ -2408,27 +2435,39 @@ $("#notifyNo").onclick = () => {
   try { localStorage.setItem("ember.notifyAskAfter", String(Date.now() + 7 * 86400 * 1000)); } catch (e) {}
   $("#notifyAsk").classList.remove("on");
 };
-function say(html) { flash = {html, until: Date.now() + 9000}; if (S) render(); }
+// a short note from the window: in the conversation on the Talk tab, and at the bottom of the screen anywhere else
+// (2026-11-07, Szilard: "Turn on notifications" seemed to do nothing; its answers went to the Talk tab, behind the
+// Ember tab he was on)
+function say(html) {
+  if (view !== "talk") { const d = document.createElement("div"); d.innerHTML = html; toast(d.textContent, 6500); return; }
+  flash = {html, until: Date.now() + 9000}; if (S) render();
+}
+const notifyNote = text => toast(text, 6500);
 async function toggleNotify(item) {
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
   item.disabled = true;
   try {
     if (item.dataset.on) {
       const sub = await pushSubscription();
       if (sub) { await post("/push/unsubscribe", {endpoint: sub.endpoint}); await sub.unsubscribe(); }
       try { localStorage.setItem("ember.notifyOff", "1"); } catch (e) {}      // you turned them off: don't turn back on
-    } else if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !onHomeScreen()) {
-      say("On iPhone, notifications work once Ember is on your home screen: add it (the Ember tab → Add Ember to your home screen), open it from there, then turn them on.");
+      notifyNote("Notifications are off.");
+    } else if (ios && !onHomeScreen()) {
+      notifyNote("On iPhone, notifications work once Ember is on your home screen.");
+      openInstall();
     } else if (!canPush()) {
-      say("This browser can't show Ember's notifications.");
+      notifyNote("This browser can't show notifications. Open yourember.app in Safari or Chrome.");
     } else if (await Notification.requestPermission() !== "granted") {
-      say("Notifications are off for Ember in your settings. Allow them there, then try again.");
+      notifyNote(ios ? "Notifications are blocked: allow them in Settings → Notifications → Ember, then try again."
+        : "Notifications are blocked: allow them in the site settings (the icon left of the address), then try again.");
     } else {
       try { localStorage.removeItem("ember.notifyOff"); } catch (e) {}
-      say(await subscribePush() ? "Notifications are on. Ember will let you know when it checks up on you, never at night."
+      notifyNote(await subscribePush() ? "Notifications are on. Ember will let you know when it checks up on you, never at night."
         : "Couldn't turn notifications on. Try again in a moment.");
     }
   } catch (e) {
-    say("Couldn't turn notifications on here.");
+    console.warn("notifications:", e && e.message);
+    notifyNote("Couldn't turn notifications on. Try again in a moment.");
   }
   item.disabled = false;
   renderNotify();

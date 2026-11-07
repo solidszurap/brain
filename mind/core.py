@@ -40,12 +40,15 @@ FEELS = {
 VALENCE_REST, ENERGY_REST = 0.2, 0.5   # where they ease back to: valence over ~8 hours, energy over ~3
 FEEL_SHOWS = 2 * 3600       # a feeling shows on its face this long after
 DRIFT_QUESTIONS = 3        # this many questions in a row in a chat with nothing moving: it's told to propose instead
+PLAN_OPENING = "I'd like to plan a goal with you: "      # how a chat begins when you plan a goal with Ember (the Goals tab)
+PLAN_REPLIES = 2           # after this many of its replies in such a chat, it proposes the goal (Szilard, 2026-11-07: quicker)
 HEAVY_FEELS = ("worried", "sad", "quiet")   # after these its face isn't cheerful, whatever face its mind picked
 TALK_KEPT = 200             # lines kept in the save, per chat (all of them go to conversation.jsonl)
 FIRST_CHAT = "c1"           # lines and experiments from before chats belong to the first one
 QUIET_DAYS = 3              # a goal's chat this quiet: Ember checks in once (if its last check-up was answered)
 FOLLOW_MAX_HOURS = 21 * 24  # the furthest ahead Ember plans to check up on you
 QUIET_UNTIL, QUIET_FROM = 8, 22    # no check-ups (or notifications) before 8:00 or from 22:00, their time
+CHECKUP_WAIT = 20 * 60       # the regular check-up waits while you're talking with it, until you've been quiet this long
 NEW_CHAT = "New chat"       # a chat's title until you write in it
 CONTEXT_LINES = 24          # conversation lines its mind sees
 GREET_AFTER = 8 * 3600.0    # it writes first when you open it after this long away (unless its own words are unanswered)
@@ -165,12 +168,12 @@ How you talk:
 
 Experiments: you suggest small experiments: 3 to 14 days, concrete, mostly things they can do on their own, each answering one question about them (e.g. "Build a tiny game: do you still want to on day 5?"). Once you know them, build each on what you remember; before that, suggest starter experiments that help them find out what they enjoy. They pick one, and you work on it together: each day they check in on today's step (did it / partly / not today), and you help with the work itself (how to do something, ideas, feedback) and with the next small step.
 
-Goals: a goal can be anything they want in their life: a relationship (e.g. a girlfriend), friends, fitness, a job, money, a skill, a place to live. When they tell you something they want, don't jump to a plan. First talk it through with them, like a good friend who is also good at plans, one question at a time:
+Goals: a goal can be anything they want in their life: a relationship (e.g. a girlfriend), friends, fitness, a job, money, a skill, a place to live. When they tell you something they want, talk it through briefly first, like a good friend who is also good at plans, one question at a time:
 - what exactly they want (e.g. what kind of person, what kind of relationship), and why it matters to them;
 - where they are now, and what they've already tried;
 - what's in the way (time, money, fear, habits, where they live, how they feel about themselves);
 - what they're comfortable doing, and what they're not.
-Use what you remember, so you don't ask what you already know. Usually 2 to 4 questions are enough, never more than 5; fewer if they've already told you. Then propose: a plan they can start today is worth more than a perfect picture. Then say back in a sentence or two what you understood, and propose the goal in "goal": what having it looks like (so they'll know), a realistic number of days (7 to 180), the plan (how you'll get there: the approach, in 2 to 4 short sentences, built on what they told you), and its phases: a goal longer than two weeks goes in phases of 7 to 14 days each (e.g. "Weeks 1-2: build the habit"), so it never feels like too much at once; only the first phase gets concrete steps (3 to 6, the first doable today and small enough that they'll actually do it); later phases get just a title and their days, and you plan their steps together when you get there, from how things actually went. A goal of two weeks or less is one phase. They decide whether to make it their goal.
+Use what you remember, so you don't ask what you already know. Ask at most 2 questions, only what you really need; if they've already told you enough, propose straight away. A goal should go live fast: a plan they can start today is worth more than a perfect picture, and you'll adjust it together as you go (in "replan"). Then say back in a sentence or two what you understood, and propose the goal in "goal": what having it looks like (so they'll know), a realistic number of days (7 to 180), the plan (how you'll get there: the approach, in 2 to 4 short sentences, built on what they told you), and its phases: a goal longer than two weeks goes in phases of 7 to 14 days each (e.g. "Weeks 1-2: build the habit"), so it never feels like too much at once; only the first phase gets concrete steps (3 to 6, the first doable today and small enough that they'll actually do it); later phases get just a title and their days, and you plan their steps together when you get there, from how things actually went. A goal of two weeks or less is one phase. They decide whether to make it their goal.
 Then you work towards it together: they come back and tell you what happened, you help with the next step and with the hard parts (what to say, how to prepare, what to do when it goes badly), you add steps you agree on, and you change the plan with them (in "replan") when it isn't working or things change. Be honest about progress: if they're stuck, say what you see and suggest a smaller step; if it turns out they don't really want it, dropping it is fine. Some goals depend on other people (a relationship, a job): say plainly that the outcome isn't fully in their hands, and make the steps what is: becoming someone they'd like to be, going where the right people are, taking chances. Treat other people as people: no manipulation, no tricks, no pressure; respect a no. They can have several chats with you, each with at most one goal or experiment; a new goal goes in a new chat.
 
 Reply with JSON only:
@@ -882,20 +885,20 @@ class Ember:
         return events
 
     def _regular_checkup(self, now, every):
-        """The regular check-up you asked for: on your days, at your time (any time: you chose it, so not held
-        back at night), only if you haven't talked since an earlier day, and never while its last check-up is
-        unanswered."""
+        """The regular check-up you asked for: once on each of your days, at your time (any time: you chose it,
+        so not held back at night), whether or not you answered the last one and even if you've talked that day
+        (2026-11-07, Szilard: "it should send them, no matter if I didn't reply to a previous one"). It only
+        waits while you're talking with it right then, until you've been quiet for CHECKUP_WAIT."""
         tz = self.tz or 0
         lt = local(now, tz)
         if lt.tm_wday not in self.checkup_days or lt.tm_hour * 60 + lt.tm_min < self.checkup_at:
             return None
-        last_you = max((l["t"] for l in self.talk if l["who"] == "you"), default=self.born)
-        last_own = max((l["t"] for l in self.talk if l["who"] == "ember" and l.get("checkup")), default=0.0)
-        if max(last_own, self.last_regular) > last_you:
-            return None              # it asked and you haven't answered yet: it doesn't ask again
         day = lambda t: int((t + tz * 60) // 86400)
-        if day(max(last_you, self.last_regular)) >= day(now):
-            return None              # you've talked today (or it already asked today)
+        if self.last_regular and day(self.last_regular) >= day(now):
+            return None              # it already checked up today
+        last_you = max((l["t"] for l in self.talk if l["who"] == "you"), default=0.0)
+        if now - last_you < CHECKUP_WAIT:
+            return None              # you're talking with it right now: a little later
         act = [x for x in self.experiments if x["status"] == "active"]
         latest = self.latest_chat()["id"]
         x = next((x for x in act if chat_of(x) == latest), None) or (act[-1] if act else None)
@@ -1018,6 +1021,20 @@ class Ember:
         elif first and not (event["type"] == "talk" and len([l for l in mine if l["who"] == "you"]) <= 1):
             lines.append(f"What this chat is for: it began with them saying \"{first[:200]}\".")
         asked = self.asked_in_a_row(chat)
+        # a goal you asked to plan with it goes live fast: two questions at most, then the goal and its plan
+        proposed = any(e["status"] == "suggested" and chat_of(e) == chat for e in self.experiments)
+        if not x and not proposed and event["type"] == "talk" and first and first.startswith(PLAN_OPENING):
+            replies = len([l for l in mine if l["who"] == "ember"])
+            if replies >= PLAN_REPLIES:
+                lines.append("They asked you to plan this goal with them, and you've talked enough: propose it now, in "
+                             "\"goal\" with its plan and phases, from what you know. Don't ask anything first; what's "
+                             "still unclear you'll adjust together as you go.")
+            else:
+                left = PLAN_REPLIES - replies
+                lines.append(f"They asked you to plan this goal with them. Keep it short: ask at most {left} "
+                             + ("more " if replies else "") + "question" + ("s" if left > 1 else "") + ", one at a time, "
+                             "only what you really need, then propose the goal. If they've already told you enough, "
+                             "propose it now.")
         if event["type"] == "talk" and asked >= DRIFT_QUESTIONS:
             lines.append(f"Your last {asked} replies here were questions, and nothing has moved forward yet. This "
                          "time don't ask another: say in a sentence what you've understood, then propose something "
@@ -1106,7 +1123,8 @@ class Ember:
                              f"{ago(now - (max((l['t'] for l in self.talk if l['who'] == 'you'), default=now)))} ago. "
                              f"Check in on {event['about']}: one or two warm sentences and one question, picking "
                              "up something real from your memories or your chats when it fits. No guilt, no pep "
-                             "talk. Always say something (never \"\").")
+                             "talk. If they didn't answer your last check-up, don't mention it: just check in fresh. "
+                             "Always say something (never \"\").")
             elif event.get("auto"):
                 lines.append(f"It's been {ago(now - (self._last_t(chat) or now))} since you last talked in this chat. "
                              f"Check in on {event['about']}: one or two warm sentences and one question, about where "
@@ -1129,9 +1147,10 @@ class Ember:
         Returns what changed: {"reply", "face", "remembered": [...], "updated": [...], "dropped": [...]}."""
         from .llm import parse_json
         d = parse_json(raw) if raw else None
-        if event["type"] == "followup" and isinstance(d, dict) and not str(d.get("reply", "")).strip():
+        if event["type"] == "followup" and not event.get("regular") and isinstance(d, dict)                 and not str(d.get("reply", "")).strip():
             return {"reply": "", "face": "calm", "remembered": [], "updated": [], "dropped": [], "by": "mind",
                     "skipped": True}                      # they'd already told it: nothing to ask
+        # (the check-up you asked for always comes: an empty answer becomes a plain one, below)
         if not isinstance(d, dict) or not str(d.get("reply", "")).strip():
             d = self._template(event, now)
             d["by"] = "template"
@@ -1608,7 +1627,7 @@ class Ember:
             return None
         c = self.find_chat(self.new_chat(now))
         c["title"] = title[:60]
-        text = f"I'd like to plan a goal with you: {title}"
+        text = PLAN_OPENING + title
         self.hear(now, text, c["id"])
         return {"type": "talk", "text": text, "chat": c["id"]}
 

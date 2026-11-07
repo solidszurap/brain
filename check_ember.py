@@ -203,7 +203,7 @@ G = T + 10 * D
 f.end_experiment(f.active()["id"], "done", G)
 system, user = f.prompt({"type": "talk", "text": "I want to run 5 km", "mode": "work"}, G)
 check("its mind may propose a goal when nothing is active", "propose it as a goal" in user and "This is your chat" in user)
-check("its mind is told to talk a goal through before planning it", "don't jump to a plan" in system
+check("its mind is told to talk a goal through (briefly) before planning it", "talk it through briefly first" in system
       and "what's in the way" in system and "no manipulation" in system)
 f.hear(G + 1, "I want to run 5 km without stopping")
 r = f.respond({"type": "talk", "text": "I want to run 5 km without stopping"}, mind_says(
@@ -336,11 +336,12 @@ b.followups = []
 r = b.respond({"type": "talk", "text": "I want to run", "chat": "c1"}, mind_says(
     reply="A goal?", goal={"title": "Run 5 km", "done_when": "You run 5 km"}), t + 60 * H)
 b.pick(r["suggested"][0]["id"], t + 60 * H)
-check("a goal's chat isn't checked on while it's lively", b.due_checkups(t + 61 * H) == [])
+not_regular = lambda evs: [e for e in evs if not e.get("regular")]   # the daily one comes regardless (tested above)
+check("a goal's chat isn't checked on while it's lively", not_regular(b.due_checkups(t + 61 * H)) == [])
 due = b.due_checkups(t + 60 * H + 3 * D + 60)
 check("after 3 quiet days, Ember checks in on the goal", len(due) == 1 and due[0].get("auto") and "Run 5 km" in due[0]["about"])
 b.respond(due[0], mind_says(reply="How's the running going?"), t + 60 * H + 3 * D + 60)
-check("...and doesn't nag while that's unanswered", b.due_checkups(t + 60 * H + 9 * D) == [])
+check("...and doesn't nag while that's unanswered", not_regular(b.due_checkups(t + 60 * H + 9 * D)) == [])
 for i in range(30):
     b.hear(t + 70 * D + i, f"line {i}")
 _, user = b.prompt({"type": "talk", "text": "z", "chat": "c1"}, t + 71 * D)
@@ -357,7 +358,7 @@ n8 = Ember(now=t)
 n8.tz = 60                                       # Budapest in winter: UTC+1
 n8.followups.append({"chat": "c1", "at": t, "about": "x", "set": t})
 day0 = t - (t % 86400)                           # midnight UTC
-check("at 23:00 their time, it waits", n8.due_checkups(day0 + 22 * H) == [])
+check("at 23:00 their time, it waits", not_regular(n8.due_checkups(day0 + 22 * H)) == [])
 check("at 3:00 their time, it waits", n8.due_checkups(day0 + 86400 + 2 * H) == [])
 check("at 9:00 their time, the check-up comes", len(n8.due_checkups(day0 + 86400 + 8 * H)) == 1)
 _, user = n8.prompt({"type": "talk", "text": "hi", "chat": "c1"}, day0 + 86400 + 8 * H)
@@ -372,17 +373,23 @@ ck.hear(d0 + 9 * H, "hi")                         # you talked at 10:00 your tim
 ck.respond({"type": "talk", "text": "hi"}, mind_says(reply="Hi!"), d0 + 9 * H + 1)
 check("every day is the default, at 18:00, all week", ck.checkups == "daily" and ck.checkup_at == 18 * 60
       and ck.checkup_days == list(range(7)) and ck.snapshot(t, True)["checkups"]["at"] == "18:00")
-check("not the same day you talked", ck.due_checkups(d0 + 18 * H) == [])
+ev0 = ck.due_checkups(d0 + 17 * H)                # 18:00 your time, on the day you talked in the morning
+check("at your time it comes, even on a day you've talked", len(ev0) == 1 and ev0[0].get("regular"))
+check("...once a day", ck.due_checkups(d0 + 17 * H + 600) == [])
+ck.respond(ev0[0], mind_says(reply="How was your day?"), d0 + 17 * H + 5)
 check("not before your hour the next day", ck.due_checkups(d0 + D + 15 * H) == [])
 ev = ck.due_checkups(d0 + D + 17 * H)             # 18:00 your time, the next day
-check("the next day at your hour: a check-up", len(ev) == 1 and ev[0].get("regular") and ev[0]["chat"] == "c1")
+check("the next day at your hour, though you didn't answer: a check-up (Szilard: no matter if I didn't reply)",
+      len(ev) == 1 and ev[0].get("regular") and ev[0]["chat"] == "c1")
 check("...only once", ck.due_checkups(d0 + D + 17 * H + 600) == [])
 _, user = ck.prompt(ev[0], d0 + D + 17 * H)
 check("its mind knows it's the check-up you asked for", "check up on them every day" in user)
-ck.respond(ev[0], mind_says(reply="How was your day?"), d0 + D + 17 * H + 5)
-check("unanswered: it doesn't ask again the day after", ck.due_checkups(d0 + 2 * D + 17 * H) == [])
-ck.hear(d0 + 2 * D + 19 * H, "good, thanks")
-check("answered: it checks up again the next day", len(ck.due_checkups(d0 + 3 * D + 17 * H)) == 1)
+r = ck.respond(ev[0], mind_says(reply=""), d0 + D + 17 * H + 5)
+check("an empty answer from its mind still checks up, with a plain question",
+      r["reply"].strip() and ck.talk[-1]["who"] == "ember" and ck.talk[-1]["text"] == r["reply"])
+ck.hear(d0 + 2 * D + 17 * H - 300, "busy day")    # you're talking with it at 17:55
+check("while you're talking with it right then, it waits a little", ck.due_checkups(d0 + 2 * D + 17 * H) == [])
+check("...and comes once you've been quiet for a while", len(ck.due_checkups(d0 + 2 * D + 17 * H + 20 * 60)) == 1)
 check("you can choose when", ck.set_checkups("daily", "09:00") and ck.checkup_at == 9 * 60)
 check("...not a time that doesn't exist, no days at all, or a made-up choice", not ck.set_checkups("daily", "25:00")
       and not ck.set_checkups("daily", "18:75") and not ck.set_checkups("daily", None, [])
@@ -447,7 +454,24 @@ _, user = fo.prompt({"type": "talk", "text": "ok", "chat": "c1"}, t + 130)
 check("...and the nudge is gone", "This time don't ask another" not in user)
 from mind.core import SYSTEM as _S
 check("its instructions: keep moving, few questions, then propose", "Keep each chat moving" in _S
-      and "never more than 5" in _S)
+      and "Ask at most 2 questions" in _S)
+# planning a goal with Ember goes live fast (Szilard, 2026-11-07): two questions at most, then the goal
+from mind.core import PLAN_REPLIES
+pg = Ember(now=t)
+ev = pg.plan_with_ember("Run a 5k", t + 1)
+_, user = pg.prompt(ev, t + 2)
+check("planning a goal: it's told to ask at most 2 questions", "ask at most 2 questions" in user)
+for i in range(PLAN_REPLIES):
+    pg.respond(ev, mind_says(reply=f"Question {i}?"), t + 10 + i * 10)
+    ev = {"type": "talk", "text": f"answer {i}", "chat": ev["chat"]}
+    pg.hear(t + 15 + i * 10, ev["text"], ev["chat"])
+_, user = pg.prompt(ev, t + 100)
+check("...after two of its replies, it's told to propose the goal now", 'propose it now, in "goal"' in user)
+pg.respond(ev, mind_says(reply="Here's a plan.", goal={"title": "Run a 5k", "done_when": "I run 5 km in one go",
+           "why": "you want it", "based_on": [], "days": 42, "plan": "Start small.",
+           "phases": [{"title": "Weeks 1-2", "days": 14, "steps": ["Walk 10 minutes"]}]}), t + 110)
+_, user = pg.prompt({"type": "talk", "text": "hmm", "chat": ev["chat"]}, t + 120)
+check("...and once it has proposed one, the nudge stops", "propose it now" not in user and "ask at most" not in user)
 check("...never stall or back off on its own; feelings about a goal are part of the work", "Never stall or back off"
       in _S and "are part of the work, not a reason to stop" in _S)
 

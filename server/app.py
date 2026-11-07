@@ -317,20 +317,26 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
 
     def notify(u, text, chat):
         """A notification on each of your devices, sent in the background; devices that are gone are forgotten."""
-        if not push or not u.ember.devices:
+        if not push:
+            return
+        if not u.ember.devices:
+            log.info("check-up for %s: no device to notify", u.uid)
             return
         devices = [dict(d) for d in u.ember.devices]
         message = {"title": f"{u.ember.name} sent you a message", "body": text[:180], "chat": chat}
 
         def send():
-            gone = []
+            gone, sent = [], 0
             for d in devices:
                 try:
                     push.send(d, message)
+                    sent += 1
                 except PushGone:
                     gone.append(d["endpoint"])
                 except Exception as e:              # a push service that's down: this one is missed
                     log.warning("notification failed for %s: %s", u.uid, type(e).__name__)
+            log.info("notification for %s: sent to %d of %d device(s)%s", u.uid, sent, len(devices),
+                     f", {len(gone)} gone (forgotten; it's sent again when that phone opens Ember)" if gone else "")
             if gone:
                 with u.lock:
                     u.ember.devices = [d for d in u.ember.devices if d["endpoint"] not in gone]
@@ -350,6 +356,8 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
                         if due:
                             users.save(u)
                     for event in due:
+                        log.info("check-up due for %s: %s", uid, "regular" if event.get("regular") else
+                                 "quiet goal" if event.get("auto") else "planned")
                         worker.put(uid, event)
             except Exception as e:                  # keep checking whatever happens
                 log.error("check-ups failed: %s", type(e).__name__)

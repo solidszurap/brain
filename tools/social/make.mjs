@@ -1,4 +1,5 @@
 // Makes the videos: node tools/social/make.mjs [scene ids...] [--stills DIR] [--avatar (the profile picture only)] [--at 1,4.5 (when the stills are)]
+//   [--out DIR --bitrate 4500000 (lighter copies somewhere else, e.g. for a preview page)]
 // Needs a Chrome with remote debugging on port 9333, for example:
 //   chrome --headless=new --remote-debugging-port=9333 --user-data-dir=<a scratch folder>
 // Serves the repo on http://localhost:8790 (the studio reads Ember's face from web/index.html), opens
@@ -10,10 +11,12 @@ import { join, extname, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const OUT = join(ROOT, "tools/social/out");
+const flag = name => { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : null; };
+const OUT = flag("--out") ? resolve(flag("--out")) : join(ROOT, "tools/social/out");
+const BITRATE = +(flag("--bitrate") || 0) || null;       // e.g. --bitrate 4500000 for lighter preview copies
 const args = process.argv.slice(2), si = args.indexOf("--stills");
 const stills = si >= 0 ? resolve(args[si + 1]) : null;
-const only = args.filter((a, i) => !a.startsWith("--") && (si < 0 || i !== si + 1) && args[i - 1] !== "--at");
+const only = args.filter((a, i) => !a.startsWith("--") && !["--stills", "--at", "--out", "--bitrate"].includes(args[i - 1]));
 
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".png": "image/png", ".webp": "image/webp", ".svg": "image/svg+xml" };
 const server = createServer(async (req, res) => {
@@ -54,7 +57,7 @@ try {
         await writeFile(join(stills, `${s.id}-${name}.png`), Buffer.from(url.split(",")[1], "base64"));
       }
     } else {
-      const b64 = await js(`render(${JSON.stringify(s.id)})`);
+      const b64 = await js(`render(${JSON.stringify(s.id)}, ${BITRATE})`);
       await writeFile(join(OUT, `${s.id}.mp4`), Buffer.from(b64, "base64"));
     }
     console.log(s.id, `${((Date.now() - t0) / 1000).toFixed(1)}s`);

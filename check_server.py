@@ -369,6 +369,8 @@ check("a bad subscription is refused", call(base6, "/push/subscribe", "tok-a",
 call(base6, "/state?v=0&tz=60", "tok-a")
 u6 = next(iter(app6.state.users.cache.values()))
 check("the window tells Ember its clock", u6.ember.tz == 60 and len(u6.ember.devices) == 1)
+check("the same phone sent again (each time Ember opens) stays one device",
+      call(base6, "/push/subscribe", "tok-a", {"subscription": sub})[1]["ok"] and len(u6.ember.devices) == 1)
 day = T[0] - (T[0] % 86400)
 T_saved = T[0]
 T[0] = day + 9 * 3600                            # 10:00 their time
