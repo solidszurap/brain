@@ -65,14 +65,15 @@ class Billing:
                   "payment_method_types[0]": "card"}           # cards (Apple Pay and Google Pay included), nothing else
         if self.terms_url:                                  # Stripe asks them to accept the terms (its Public details
             fields["consent_collection[terms_of_service]"] = "required"     # must have the same terms URL)
-        if customer:
-            fields["customer"] = customer
-        elif email:
-            fields["customer_email"] = email
-        try:                                                # the payment page in Ember's own look, not the account's
-            return self._post("/v1/checkout/sessions", {**fields, **branding(base_url)})["url"]
-        except BillingError:                                # an API version without branding_settings: plain is fine
-            return self._post("/v1/checkout/sessions", fields)["url"]
+        who = ([{"customer": customer}] if customer else []) + ([{"customer_email": email}] if email else [{}])
+        last = None
+        for w in who:                    # a customer Stripe no longer knows (say, from test mode): start fresh by email
+            for brand in (branding(base_url), {}):          # Ember's own look; plain if this API version refuses it
+                try:
+                    return self._post("/v1/checkout/sessions", {**fields, **w, **brand})["url"]
+                except BillingError as e:
+                    last = e
+        raise last
 
     def portal(self, customer, base_url):
         """Stripe's page where a subscriber cancels or changes their card; returns its address."""

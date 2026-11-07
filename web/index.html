@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Ember</title>
-<meta name="description" content="Your companion who checks up on you and grows with you. It helps you find what you want and gets you there step by step.">
+<meta name="description" content="Your companion who checks up on you and grows with you. It helps you find your purpose and gets you there step by step.">
 <meta name="theme-color" content="#17130f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -62,7 +62,10 @@ body::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-e
   background: radial-gradient(55% 34% at 50% 27%, var(--glow1), transparent 72%),
     radial-gradient(45% 35% at 92% 78%, var(--glow2), transparent 70%),
     radial-gradient(42% 32% at 6% 62%, var(--glow3), transparent 70%);
-  opacity: var(--moodglow, .85); transition: opacity 4s ease; }   /* the window's glow follows Ember's mood */
+  opacity: var(--moodglow, .85); transition: opacity 4s ease;   /* the window's glow follows Ember's mood */
+  /* and it fades in below the top bar, so the bar's plain colour never meets it in a hard line */
+  -webkit-mask-image: linear-gradient(to bottom, transparent calc(env(safe-area-inset-top) + var(--topbar)), #000 calc(env(safe-area-inset-top) + var(--topbar) + 120px));
+  mask-image: linear-gradient(to bottom, transparent calc(env(safe-area-inset-top) + var(--topbar)), #000 calc(env(safe-area-inset-top) + var(--topbar) + 120px)); }
 button { font: inherit; }
 
 /* top bar */
@@ -71,8 +74,6 @@ button { font: inherit; }
 .top { position: fixed; top: 0; left: 0; right: 0; z-index: 8; display: flex; align-items: center; gap: 8px; box-sizing: border-box;
   height: calc(env(safe-area-inset-top) + var(--topbar)); background: var(--bg);
   padding: env(safe-area-inset-top) calc(14px + env(safe-area-inset-right)) 0 calc(14px + env(safe-area-inset-left)); }
-.top::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 16px; pointer-events: none;
-  background: linear-gradient(var(--bg), transparent); }
 .top .title { flex: 1; min-width: 0; display: flex; justify-content: center; }
 .top .title button { display: flex; align-items: baseline; max-width: 100%; background: none; border: 0; color: var(--text); font: inherit; font-weight: 600;
   font-size: 15px; cursor: pointer; padding: 6px 8px; border-radius: 12px; }
@@ -109,9 +110,11 @@ button { font: inherit; }
 }
 /* the stage: Ember above, your conversation below it */
 .stage { min-height: 0; display: flex; flex-direction: column; align-items: center; padding: 0 16px; }
-.facewrap { position: relative; flex: none; }
-#face { display: block; width: min(26vh, 60vw, 240px); aspect-ratio: 1; cursor: pointer; touch-action: manipulation; }
-.whybtn { position: absolute; top: 8%; right: -8%; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--edge); background: var(--raised); color: var(--dim); cursor: pointer; }
+.facewrap { position: relative; flex: none; margin: -22px 0 12px; }
+#face { display: block; width: min(26vh, 60vw, 240px); aspect-ratio: 1; cursor: pointer; touch-action: manipulation;
+  /* its glow fades out at the top, so the top bar (one plain colour, for the iPhone's clock) never cuts it in a hard line */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%); mask-image: linear-gradient(to bottom, transparent 0, #000 22%); }
+.whybtn { position: absolute; top: 24%; right: -8%; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--edge); background: var(--raised); color: var(--dim); cursor: pointer; }
 .whybtn:hover { color: var(--text); }
 .pop { display: none; position: absolute; top: 22%; left: 50%; transform: translateX(-50%); width: min(340px, 86vw); z-index: 5; background: var(--overlay); border: 1px solid var(--edge); border-radius: 20px; padding: 12px 14px; font-size: 13px; color: var(--dim);
   box-shadow: var(--lift); }
@@ -236,6 +239,37 @@ div.grow { cursor: default; }
 .colours { gap: 10px; }
 .colours button { width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 2px solid var(--edge2); cursor: pointer; flex: none; }
 .colours button.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--bg), 0 0 10px rgba(255, 150, 70, .5); }
+/* badges: a grid on the Ember tab, a sheet to show one (and celebrate a new one), and a picture to share */
+.badgegrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 560px) { .badgegrid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.badge { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; padding: 12px 4px 10px; min-height: 92px;
+  border-radius: 16px; background: var(--surface); border: 1px solid var(--edge); color: var(--text); font: 650 12px/1.2 var(--round);
+  text-align: center; cursor: pointer; overflow-wrap: anywhere; }
+.badge:hover { border-color: var(--edge2); background: var(--raised); }
+.badge i { display: block; width: 50px; height: 50px; }
+.badge .bn { min-height: 2.4em; display: flex; align-items: center; }
+.badge .bp, .bshow .bp { display: block; width: 80%; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.badge .bp b, .bshow .bp b { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.badge small { color: var(--dim); font: 600 11px var(--round); }
+.bshow .bp.big2 { width: min(260px, 80%); height: 8px; margin: 10px auto 4px; }
+.bshow .blv { display: inline-block; vertical-align: middle; font: 800 13px/1.6 var(--round); padding: 0 10px; border-radius: 999px; background: var(--btn); color: #2a1406; }
+.bshow .bnext { color: var(--text); margin-top: 12px; }
+.bshow .bcount { margin-top: 2px; }
+.badge i svg { display: block; width: 100%; height: 100%; }
+.badge.locked { color: var(--faint); background: none; border-style: dashed; }
+.badge.locked i { filter: grayscale(1); opacity: .32; }
+.sheet.badgesheet { height: auto; max-height: 86dvh; }
+.bshow { text-align: center; padding: 10px 0 8px; }
+.bshow .big { display: inline-block; width: 120px; height: 120px; filter: drop-shadow(0 8px 22px rgba(255, 140, 60, .35)); }
+.bshow .big svg { display: block; width: 100%; height: 100%; }
+.bshow.locked .big { filter: grayscale(1); opacity: .4; }
+.bshow.celebrate .big { animation: badgepop .7s cubic-bezier(.2, 1.6, .4, 1) both; }
+@keyframes badgepop { from { transform: scale(.3) rotate(-14deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.bshow h3 { font: 800 26px/1.15 var(--round); margin: 10px 0 4px; letter-spacing: -.01em; }
+.bshow p { color: var(--dim); margin: 0 0 4px; font-size: 15px; }
+.bshow .row { justify-content: center; margin-top: 16px; }
+.bshow .btn { padding: 11px 26px; font-size: 16px; }
+.bshow small { display: block; color: var(--faint); font-size: 13px; margin-top: 10px; }
 .phead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 2px 16px; }
 .phead h1 { margin: 0; font: 800 30px/1.1 var(--round); letter-spacing: -.02em; }
 
@@ -271,7 +305,7 @@ div.grow { cursor: default; }
 .drawer header button { background: none; border: 0; color: var(--dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 2px 6px; }
 .drawer .body { flex: 1; overflow-y: auto; padding: 16px; }
 /* the level under its face, and the customizer: a sheet from the bottom, so Ember above it shows every change */
-.facebar { position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.facebar { position: absolute; left: 50%; bottom: -10px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .namebtn { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--edge); background: var(--raised); color: var(--text);
   font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: var(--lift); max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
 .namebtn::after { content: " \270E"; color: var(--dim); font-weight: 400; }
@@ -325,6 +359,7 @@ div.grow { cursor: default; }
 .goalitem .gt { font-weight: 700; font-size: 17px; display: flex; justify-content: space-between; gap: 8px; }
 .goalitem .gt i { font-style: normal; color: var(--accent); }
 .goalitem .gm { color: var(--dim); font-size: 13px; margin-top: 2px; }
+.goalitem .glv { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--btn); color: #2a1406; font: 800 11.5px/1.5 var(--round); margin-right: 4px; }
 .goalitem .gs { font-size: 15px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--edge); }
 .goalitem.past { opacity: .6; background: none; }
 .golabel { color: var(--dim); font-size: 13.5px; font-weight: 600; margin: 24px 6px 8px; }
@@ -394,6 +429,44 @@ div.grow { cursor: default; }
 .gpform .howlong input { width: 92px; flex: none; }
 .gpform .howlong select { flex: 1; }
 .gpnote { color: var(--faint); font-size: 13px; margin-top: 10px; }
+/* a goal's path (Szilard, 2026-11-07: "levels to goals, like Duolingo"): its days winding down, in its phases */
+.glevel { display: flex; align-items: center; gap: 12px; }
+.glevel .gl-n { flex: none; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: var(--btn); color: #2a1406;
+  font: 800 22px/1 var(--round); box-shadow: 0 4px 0 #c4642b, 0 8px 18px rgba(255, 140, 60, .25); }
+.glevel .gl-t { flex: 1; min-width: 0; }
+.glevel b { font: 800 18px var(--round); display: block; }
+.glevel small { color: var(--dim); font-size: 13.5px; }
+.glevel i { display: block; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin: 6px 0 4px; }
+.glevel i b { height: 100%; background: var(--accent); border-radius: 4px; }
+.gpath { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 22px 0 6px; }
+.pn.today { margin-top: 10px; }
+.gphase { align-self: stretch; display: flex; align-items: center; gap: 10px; margin: 14px 0 2px; padding: 10px 14px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--edge); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.gphase:first-child { margin-top: 4px; }
+.gphase .gpt { flex: 1; min-width: 0; font: 700 15px/1.3 var(--round); }
+.gphase .gpt small { display: block; font: 400 13px var(--font, system-ui); color: var(--dim); margin-top: 1px; }
+.gphase .gpi { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; background: var(--raised); color: var(--dim); }
+.gphase.won .gpi { background: linear-gradient(#ffe08a, #f2a93b); color: #5a3208; box-shadow: 0 3px 0 #c27a1f; }
+.gphase.now { border-color: rgba(255, 179, 107, .5); }
+.gphase.now .gpi { background: var(--btn); color: #2a1406; }
+.pn { position: relative; width: 58px; height: 58px; border-radius: 50%; flex: none; display: grid; place-items: center; transform: translateX(var(--x, 0));
+  font: 800 16px/1 var(--round); color: var(--faint); background: var(--raised); border: 0; box-shadow: 0 5px 0 rgba(0, 0, 0, .35); }
+.pn svg { width: 26px; height: 26px; }
+.pn.done { background: var(--btn); color: #fff7ee; box-shadow: 0 5px 0 #c4642b; }
+.pn.partly { background: linear-gradient(90deg, var(--btn) 50%, #8a5a3a 50%); color: #fff7ee; box-shadow: 0 5px 0 #8f4f26; }
+.pn.skip { background: #3b2f27; color: #a8988a; box-shadow: 0 5px 0 #241b15; }
+.pn.missed { background: none; border: 2px dashed var(--edge2); box-shadow: none; }
+.pn.ahead { background: #3a2d24; color: #a08c7c; box-shadow: 0 5px 0 #231a14; }
+.pn.closed { opacity: .45; }
+.pn.today { width: 70px; height: 70px; outline: 4px solid rgba(255, 179, 107, .35); outline-offset: 5px; }
+.pn.today:not(.done):not(.partly):not(.skip) { background: var(--raised); color: var(--accent); animation: pnpulse 1.8s ease-in-out infinite; }
+@keyframes pnpulse { 50% { outline-color: rgba(255, 179, 107, .75); outline-offset: 8px; } }
+.pn .tag { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 4px 10px; border-radius: 10px;
+  background: var(--btn); color: #2a1406; font: 800 12px var(--round); }
+.pn .tag::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border: 5px solid transparent; border-top-color: var(--btn); }
+.pn.trophy { width: 64px; height: 64px; background: linear-gradient(#ffe08a, #f2a93b); color: #5a3208; box-shadow: 0 5px 0 #c27a1f; }
+@media (prefers-reduced-motion: reduce) { .pn.today { animation: none !important; } }
+
 .chatitem { display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 14px; padding: 9px 12px; margin-bottom: 4px; color: var(--text); cursor: pointer; font: inherit; }
 .chatitem:hover { background: var(--surface); }
 .chatitem.on { background: var(--raised); border-color: var(--edge); }
@@ -492,7 +565,7 @@ div.grow { cursor: default; }
   <img src="/icons/icon-192.png" alt="">
   <h1>Ember</h1>
   <p class="tagline">Your companion who checks up on you and grows with you.</p>
-  <p>It helps you find what you want, gets you there step by step, and remembers your story.</p>
+  <p>It helps you find your purpose, gets you there step by step, and remembers your story.</p>
   <button class="gbtn" id="googleBtn"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>
   <small>By continuing you agree to the <a href="/terms">terms</a>, and that Ember keeps what you tell it, as described in the <a href="/privacy">privacy page</a>. 16+.</small>
   <a class="whatis" href="/home">What is Ember?</a>
@@ -541,6 +614,8 @@ div.grow { cursor: default; }
         <button class="btn" data-menu="look">Customize Ember</button>
       </div>
     </div>
+    <h2 class="ghead" id="badgeHead">Badges</h2>
+    <div class="badgegrid" id="badgeGrid"></div>
     <h2 class="ghead">Your Ember</h2>
     <div class="group">
       <button class="grow go" data-menu="knows">What it knows about you</button>
@@ -613,6 +688,10 @@ div.grow { cursor: default; }
   <div class="body" id="gpBody"></div>
 </section>
 <div id="xpToast" role="status" aria-live="polite"></div>
+<section class="sheet badgesheet" id="badgeSheet" aria-label="Badge">
+  <header><h2 id="bsHead">Badge</h2><button id="bsClose" aria-label="Close">×</button></header>
+  <div class="body" id="bsBody"></div>
+</section>
 <section class="page" id="ownerPage" aria-label="Owner">
   <header><button id="ownerBack">‹ Back</button><h2>Who uses Ember</h2><button id="ownerReload">Refresh</button></header>
   <div class="body" id="ownerBody"></div>
@@ -667,11 +746,14 @@ async function boot() {
     setSession(data.session);
     sb.auth.onAuthStateChange((_e, session) => setSession(session));
     if (!token) {
-      showCover("login");
-      if (new URLSearchParams(location.search).get("login") === "google") {   // from the front page: straight to Google
-        history.replaceState(null, "", "/");
-        $("#googleBtn").click();
+      if (new URLSearchParams(location.search).get("login") === "google") {   // from the front page: straight to Google,
+        history.replaceState(null, "", "/");                                  // with only the logo in between
+        gate = "login";
+        const r = await sb.auth.signInWithOAuth({provider: "google", options: {redirectTo: location.origin}}).catch(e => ({error: e}));
+        if (r && r.error) showCover("login");
+        return;
       }
+      showCover("login");
       return;
     }
   } else {
@@ -883,6 +965,181 @@ async function loadOwner() {
 $("#ownerBack").onclick = back;
 $("#ownerReload").onclick = loadOwner;
 
+// ------------------------------------------------------------------ badges: earned once, celebrated once on each device, shared as a picture
+// Ember's badges, drawn by hand: a medallion (amber ring, warm dark centre) with one symbol each; the stages get a gold ring
+const BC = "#ffe6c4", BA = "#ffb36b", BO = "#ff8a3a", BD = "#2b1b12", BY = "#ffd25a";
+const ROUNDED_FONT = `ui-rounded, 'SF Pro Rounded', 'Arial Rounded MT Bold', system-ui, sans-serif`;
+const bPill = (n, w) => `<rect x="${32 - w / 2}" y="43.5" width="${w}" height="10" rx="5" fill="${BC}"/>`
+  + `<text x="32" y="51.4" text-anchor="middle" font-size="8.6" font-weight="800" font-family="${ROUNDED_FONT}" fill="${BD}">${n}</text>`;
+const bFlame = `<path d="M32 12.5c1.6 5.6 9.5 9.2 9.5 19.5a9.5 9.5 0 0 1-19 0c0-4.6 2.4-7.4 4-10.8 1.4 2.6 2.6 3.8 4.6 4.2-1-4.8.1-8.9.9-12.9z" fill="${BO}"/>`
+  + `<path d="M32 29.5c2.9 3 5 5.1 5 8.1a5 5 0 0 1-10 0c0-3 2.1-5.1 5-8.1z" fill="${BY}"/>`;
+const bFace = (cy, s) => `<circle cx="${32 - 4 * s}" cy="${cy}" r="${1.7 * s}" fill="${BD}"/><circle cx="${32 + 4 * s}" cy="${cy}" r="${1.7 * s}" fill="${BD}"/>`
+  + `<path d="M${32 - 3 * s} ${cy + 4 * s}q${3 * s} ${2.6 * s} ${6 * s} 0" stroke="${BD}" stroke-width="${1.5 * s}" fill="none" stroke-linecap="round"/>`;
+const bStar = (cx, cy, r, fill) => `<path d="M${cx} ${cy - r}l${r * .32} ${r * .68} ${r * .68} ${r * .32}-${r * .68} ${r * .32}-${r * .32} ${r * .68}-${r * .32}-${r * .68}-${r * .68}-${r * .32} ${r * .68}-${r * .32}z" fill="${fill}"/>`;
+const BADGE_ART = {
+  hello: `<path d="M19 20.5h26a4.5 4.5 0 0 1 4.5 4.5v12a4.5 4.5 0 0 1-4.5 4.5H31l-7.5 6.5v-6.5H19a4.5 4.5 0 0 1-4.5-4.5V25a4.5 4.5 0 0 1 4.5-4.5z" fill="${BC}"/>`
+    + `<circle cx="25" cy="31" r="2.5" fill="${BO}"/><circle cx="32" cy="31" r="2.5" fill="${BA}"/><circle cx="39" cy="31" r="2.5" fill="${BO}"/>`,
+  named: `<path d="M17.5 23h20.5l9.5 9-9.5 9H17.5a3.5 3.5 0 0 1-3.5-3.5v-11a3.5 3.5 0 0 1 3.5-3.5z" fill="${BC}"/>`
+    + `<circle cx="40" cy="32" r="2.6" fill="${BD}"/><rect x="19.5" y="28.4" width="14" height="2.8" rx="1.4" fill="${BO}"/><rect x="19.5" y="33.6" width="9" height="2.8" rx="1.4" fill="${BA}"/>`,
+  first_goal: `<circle cx="32" cy="32" r="16" fill="${BC}"/><circle cx="32" cy="32" r="11" fill="${BO}"/><circle cx="32" cy="32" r="6" fill="${BC}"/><circle cx="32" cy="32" r="2.6" fill="${BD}"/>`
+    + `<path d="M33 31l12-12" stroke="${BD}" stroke-width="2" stroke-linecap="round"/><path d="M45 19h4.6M45 19v-4.6M42.6 21.4h4.2M42.6 21.4v-4.2" stroke="${BA}" stroke-width="2.2" stroke-linecap="round"/>`,
+  first_check: `<circle cx="32" cy="32" r="16" fill="${BO}"/><path d="M24.5 32.6l5.2 5.2 10.4-11.3" fill="none" stroke="#fff3e2" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>`,
+  streak_3: bFlame + bPill(3, 14),
+  streak_7: bFlame + bPill(7, 14),
+  streak_30: bFlame + bPill(30, 19),
+  phase: `<rect x="16.5" y="37" width="9.5" height="10" rx="2.2" fill="${BA}"/><rect x="27.3" y="30" width="9.5" height="17" rx="2.2" fill="${BO}"/>`
+    + `<rect x="38" y="23" width="9.5" height="24" rx="2.2" fill="${BC}"/><path d="M42.7 22.5v-8.6l5.6 2.6-5.6 2.6" fill="${BY}" stroke="${BY}" stroke-width="1.2" stroke-linejoin="round"/>`,
+  goal_done: `<ellipse cx="23" cy="48" rx="7" ry="2.2" fill="${BA}" opacity=".7"/><rect x="21.4" y="14.5" width="3.2" height="34" rx="1.6" fill="${BC}"/>`
+    + `<path d="M24.5 16.5h21l-5 7.2 5 7.2h-21z" fill="${BO}"/><path d="M29.5 16.5h5.2v7.2h-5.2zM34.7 23.7h5.2v7.2h-5.2zM24.5 23.7h5v7.2h-5z" fill="${BC}" opacity=".95"/>`,
+  explorer: `<path d="M27.5 15h9v10.5l8.7 15.4A4.2 4.2 0 0 1 41.5 47h-19a4.2 4.2 0 0 1-3.7-6.1l8.7-15.4z" fill="${BC}"/>`
+    + `<path d="M22.6 36.5h18.8l3.4 6a2.4 2.4 0 0 1-2.1 3.5H21.3a2.4 2.4 0 0 1-2.1-3.5z" fill="${BO}"/>`
+    + `<rect x="25.5" y="12.8" width="13" height="3.6" rx="1.8" fill="${BA}"/><circle cx="29.5" cy="41" r="1.6" fill="${BC}"/><circle cx="35" cy="42.6" r="1.1" fill="${BC}"/>`
+    + `<circle cx="33.5" cy="31.5" r="1.3" fill="${BA}"/><circle cx="31" cy="27.6" r=".9" fill="${BA}"/>`,
+  known: `<path d="M32 47s-14-7.8-14-17a7.4 7.4 0 0 1 14-3.6A7.4 7.4 0 0 1 46 30c0 9.2-14 17-14 17z" fill="${BO}"/>`
+    + `<ellipse cx="25.8" cy="29.2" rx="2.3" ry="3.2" fill="${BY}" opacity=".85" transform="rotate(-25 25.8 29.2)"/>` + bStar(45, 18.5, 5, BC) + bStar(19, 18, 3, BA),
+  week: `<rect x="17.5" y="18.5" width="29" height="28" rx="5.5" fill="${BC}"/><path d="M17.5 24a5.5 5.5 0 0 1 5.5-5.5h18a5.5 5.5 0 0 1 5.5 5.5v3.4h-29z" fill="${BO}"/>`
+    + `<rect x="23" y="14.5" width="3.4" height="7.5" rx="1.7" fill="${BA}"/><rect x="37.6" y="14.5" width="3.4" height="7.5" rx="1.7" fill="${BA}"/>`
+    + `<path d="M32 43.2s-6.4-3.6-6.4-7.8a3.4 3.4 0 0 1 6.4-1.6 3.4 3.4 0 0 1 6.4 1.6c0 4.2-6.4 7.8-6.4 7.8z" fill="${BO}"/>`,
+  month: `<path d="M36.5 14.6A17.5 17.5 0 1 0 49.4 37 13.6 13.6 0 0 1 36.5 14.6z" fill="${BC}"/>` + bStar(41, 22, 4.5, BY) + bStar(46.5, 31, 2.6, BA)
+    + `<circle cx="25" cy="35" r="2" fill="${BA}" opacity=".7"/><circle cx="30" cy="42" r="1.4" fill="${BA}" opacity=".7"/>`,
+  stage_ember: `<path d="M32 14.5c6.4 7.3 12.5 13.4 12.5 20.5a12.5 12.5 0 0 1-25 0c0-7.1 6.1-13.2 12.5-20.5z" fill="${BY}"/>`
+    + `<ellipse cx="27.4" cy="29" rx="2.4" ry="3.6" fill="#fff4d6" opacity=".75"/>` + bFace(36, 1),
+  stage_flame: `<path d="M32 11c1.8 5 7.6 7.4 9.4 12.6 1.8-1.6 2.4-3.6 2.4-5.8 3.8 4.6 5.7 9.6 5.7 14.8a17.5 17.5 0 0 1-35 0c0-4.8 1.8-8.8 4.9-12 .2 2.8 1.2 4.8 3 6 .8-6.8 6.4-10 9.6-15.6z" fill="${BO}"/>`
+    + `<path d="M32 23.5c5 5.6 9.6 10 9.6 14.6a9.6 9.6 0 0 1-19.2 0c0-4.6 4.6-9 9.6-14.6z" fill="${BY}"/>` + bFace(38.5, .85),
+  stage_blaze: [0, 1, 2, 3, 4, 5, 6, 7].map(k => `<path d="M32 8.8l3.4 7.4h-6.8z" fill="${k % 2 ? BA : BO}" transform="rotate(${k * 45} 32 32)"/>`).join("")
+    + `<circle cx="32" cy="32" r="13" fill="${BY}"/><circle cx="27.6" cy="27.4" r="3.4" fill="#fff4d6" opacity=".6"/>` + bFace(31, 1),
+};
+// which drawing each badge wears; the level is a tag on the ring, and the ring's colour climbs with it
+const BADGE_PIC = {streak: "streak_7", checks: "first_check", talk: "hello", goals: "first_goal", phases: "phase", done: "goal_done",
+  explorer: "explorer", together: "week", known: "known", growing: "stage_ember", named: "named"};
+BADGE_ART.streak_7 = bFlame;
+const RINGS = [["#ffd8a3", "#ff9a4d", "#d9622a"], ["#ffc9b0", "#ff6f4f", "#c2402c"], ["#ffc8de", "#f0699e", "#b23c6c"],
+  ["#ddcbff", "#a675e8", "#6c42b3"], ["#c4e6ff", "#43a8e2", "#2169a6"], ["#ccf1cf", "#4cbd6b", "#2a7b45"], ["#fff3cf", "#f7c04a", "#d9822b"]];
+let badgeSvgN = 0;
+function badgeSVG(id, px, level) {     // a whole SVG (its own gradient ids), for the page and for the share picture
+  const n = ++badgeSvgN, lv = level || 0;
+  const ring = RINGS[Math.min(Math.max(lv, 1), RINGS.length) - 1];
+  const tag = lv ? `<rect x="22" y="51" width="20" height="12" rx="6" fill="#fff4e6" stroke="${ring[2]}" stroke-width="1.6"/>`
+    + `<text x="32" y="60" text-anchor="middle" font-size="9" font-weight="800" font-family="${ROUNDED_FONT}" fill="${BD}">${lv}</text>` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"${px ? ` width="${px}" height="${px}"` : ""} aria-hidden="true">`
+    + `<defs><linearGradient id="br${n}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${ring[0]}"/><stop offset=".55" stop-color="${ring[1]}"/>`
+    + `<stop offset="1" stop-color="${ring[2]}"/></linearGradient><radialGradient id="bd${n}" cx=".5" cy=".36" r=".72"><stop offset="0" stop-color="#43291a"/>`
+    + `<stop offset="1" stop-color="#1c120b"/></radialGradient></defs>`
+    + `<circle cx="32" cy="32" r="30.5" fill="url(#br${n})"/><circle cx="32" cy="32" r="25.6" fill="url(#bd${n})"/>`
+    + `<path d="M12 27a21 21 0 0 1 40 0" fill="none" stroke="#fff" stroke-opacity=".07" stroke-width="5" stroke-linecap="round"/>`
+    + (BADGE_ART[BADGE_PIC[id] || id] || "") + tag + `</svg>`;
+}
+let BADGES = null, badgeShown = null, badgesAt = 0;
+let seenBadges = null;                     // "id:level" this device has already celebrated (null: first time here)
+try { seenBadges = JSON.parse(localStorage.getItem("ember.badgeLevelsSeen") || "null"); } catch (e) {}
+async function ensureBadges(fresh) {       // the list with your progress; fetched again when a level changed
+  if (BADGES && !fresh) return BADGES;
+  const r = await api("/badges").catch(() => null);
+  if (r && r.ok) { BADGES = (await r.json()).badges; badgesAt = Date.now(); }
+  return BADGES;
+}
+const levelOf = id => (S && S.badges && S.badges[id]) || 0;
+const badgeKey = () => S && S.badges ? Object.entries(S.badges).map(([k, v]) => k + ":" + v).sort().join(",") : "";
+let badgeListKey = "";
+async function renderBadges() {
+  if (!S) return;
+  if (!BADGES || badgeListKey !== badgeKey() || Date.now() - badgesAt > 60000) { badgeListKey = badgeKey(); await ensureBadges(true); }
+  if (!BADGES) return;
+  const levels = BADGES.reduce((a, b) => a + b.level, 0), all = BADGES.reduce((a, b) => a + b.levels, 0);
+  $("#badgeHead").textContent = `Badges · ${levels} of ${all} levels`;
+  const html = BADGES.map(b => {
+    const max = b.level >= b.levels, part = max ? 1 : Math.max(0, Math.min(1, (b.value - b.prev) / ((b.next - b.prev) || 1)));
+    return `<button class="badge${b.level ? "" : " locked"}" data-badge="${esc(b.id)}" title="${esc(max ? b.reached : b.how)}">`
+      + `<i>${badgeSVG(b.id, 0, b.level)}</i><span class="bn">${esc(b.name)}</span>`
+      + `<span class="bp"><b style="width:${Math.round(part * 100)}%"></b></span>`
+      + `<small>${max ? "Top level" : `${Math.min(b.value, b.next)} / ${b.next}`}</small></button>`;
+  }).join("");
+  if ($("#badgeGrid").dataset.html !== html) { $("#badgeGrid").dataset.html = html; $("#badgeGrid").innerHTML = html; }
+}
+const dayOf = t => new Date(t * 1000).toLocaleDateString([], {day: "numeric", month: "long", year: "numeric"});
+function openBadge(id, celebrate, more) {
+  const b = BADGES && BADGES.find(x => x.id === id);
+  if (!b) return;
+  badgeShown = b;
+  const max = b.level >= b.levels;
+  $("#bsHead").textContent = celebrate ? (b.level > 1 ? "Level up!" : "New badge!") : b.level ? `Level ${b.level} of ${b.levels}` : "Not yet";
+  $("#bsBody").innerHTML = `<div class="bshow${b.level ? "" : " locked"}${celebrate ? " celebrate" : ""}"><span class="big">${badgeSVG(b.id, 0, b.level)}</span>`
+    + `<h3>${esc(b.name)}${b.level ? ` <span class="blv">Level ${b.level}</span>` : ""}</h3>`
+    + (b.level ? `<p>${esc(b.reached)} · ${esc(dayOf(b.times[b.level - 1]))}</p>` : "")
+    + (max ? `<p>That's the top level. Wow.</p>`
+       : `<p class="bnext">${b.level ? "Next level" : "To get it"}: ${esc(b.how)}</p>`
+         + `<span class="bp big2"><b style="width:${Math.round(Math.max(0, Math.min(1, (b.value - b.prev) / ((b.next - b.prev) || 1))) * 100)}%"></b></span>`
+         + `<small class="bcount">${Math.min(b.value, b.next)} / ${b.next}</small>`)
+    + (b.level ? `<div class="row"><button class="btn" id="bsShare">Share</button>${celebrate ? `<button class="btn ghost" id="bsLater">Nice!</button>` : ""}</div>`
+       : `<small>Locked: you'll get it the moment you do it.</small>`)
+    + (more ? `<small>And ${more} more: see them all on the Ember tab.</small>` : "") + `</div>`;
+  $("#lookSheet").classList.remove("on");
+  $("#fbSheet").classList.remove("on");
+  $("#badgeSheet").classList.add("on");
+  if (celebrate) burst(18);
+}
+async function badgeNews() {               // new badge levels since this device last looked: celebrate the biggest, once
+  if (!S || !S.badges) return;
+  const now = Object.entries(S.badges).flatMap(([id, lv]) => Array.from({length: lv}, (_, i) => `${id}:${i + 1}`));
+  if (seenBadges === null) {               // first time on this device: what you had before isn't news
+    seenBadges = now;
+    try { localStorage.setItem("ember.badgeLevelsSeen", JSON.stringify(seenBadges)); } catch (e) {}
+    return;
+  }
+  if (view === "ember") renderBadges();
+  const fresh = now.filter(k => !seenBadges.includes(k));
+  if (!fresh.length || gate || document.hidden || $("#badgeSheet").classList.contains("on")) return;
+  seenBadges = [...seenBadges, ...fresh];
+  try { localStorage.setItem("ember.badgeLevelsSeen", JSON.stringify(seenBadges)); } catch (e) {}
+  if (await ensureBadges(true)) {
+    const ids = [...new Set(fresh.map(k => k.split(":")[0]))];
+    ids.sort((a, b) => levelOf(b) - levelOf(a));
+    openBadge(ids[0], true, ids.length - 1);
+  }
+}
+// the picture to share: Ember itself, the badge with its level, and where to find Ember
+async function shareBadge(b) {
+  const W = 1080, H = 1350, c = document.createElement("canvas"), x = c.getContext("2d");
+  c.width = W; c.height = H;
+  const round = getComputedStyle(document.documentElement).getPropertyValue("--round").trim() || "system-ui";
+  x.fillStyle = "#17130f"; x.fillRect(0, 0, W, H);
+  const g = x.createRadialGradient(W / 2, 430, 40, W / 2, 430, 620);
+  g.addColorStop(0, "rgba(255, 150, 70, .38)"); g.addColorStop(1, "rgba(255, 150, 70, 0)");
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  const f = $("#face");
+  if (f.width) x.drawImage(f, W / 2 - 260, 150, 520, 520);
+  x.textAlign = "center"; x.textBaseline = "alphabetic";
+  const art = new Image();                  // the badge itself, drawn from its SVG
+  art.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(badgeSVG(b.id, 240, b.level));
+  try { await art.decode(); x.drawImage(art, W / 2 - 120, 650, 240, 240); } catch (e) {}
+  x.fillStyle = "#f1e7dc"; x.font = `800 74px ${round}`;
+  x.fillText(`${b.name} · Level ${b.level}`, W / 2, 985, W - 100);
+  x.fillStyle = "#a8988a"; x.font = `500 40px system-ui, "Segoe UI", sans-serif`;
+  const who = S && S.name && S.name !== "Ember" ? `${S.name}, my Ember` : "my Ember";
+  x.fillText(`${b.reached}, with ${who}`, W / 2, 1055, W - 100);
+  x.fillStyle = "#ffa862"; x.font = `800 46px ${round}`;
+  x.fillText("yourember.app", W / 2, 1250);
+  const blob = await new Promise(ok => c.toBlob(ok, "image/png"));
+  const file = new File([blob], `ember-${b.id}-${b.level}.png`, {type: "image/png"});
+  const text = `"${b.name}", level ${b.level}, with ${who}. yourember.app`;
+  try {
+    if (navigator.canShare && navigator.canShare({files: [file]})) { await navigator.share({files: [file], text}); return; }
+  } catch (e) { if (e && e.name === "AbortError") return; }
+  const url = URL.createObjectURL(blob), a = document.createElement("a");     // no sharing here: save the picture
+  a.href = url; a.download = file.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  toast("The picture is saved: post it anywhere.");
+}
+$("#badgeGrid").addEventListener("click", e => { const b = e.target.closest("[data-badge]"); if (b) openBadge(b.dataset.badge, false, 0); });
+$("#bsClose").onclick = () => $("#badgeSheet").classList.remove("on");
+$("#bsBody").addEventListener("click", e => {
+  if (e.target.id === "bsShare" && badgeShown) shareBadge(badgeShown);
+  if (e.target.id === "bsLater") $("#badgeSheet").classList.remove("on");
+});
+document.addEventListener("click", e => {
+  if ($("#badgeSheet").classList.contains("on") && !e.target.closest("#badgeSheet, [data-badge]")) $("#badgeSheet").classList.remove("on");
+});
+
 // feedback: an idea, a problem or anything else, sent to the feedback table with their email
 const FB_HINT = {idea: "What would make Ember better for you?", problem: "What went wrong, and what were you doing when it happened?",
                  other: "Anything you'd like to tell us."};
@@ -1024,6 +1281,7 @@ function render() {
   $("#ownerGroup").style.display = S.owner ? "" : "none";
   renderCheckups();
   renderLevel();
+  badgeNews();
   $("#note").innerHTML = S.problem
     ? `<span class="problem">Its mind had a problem: ${esc(S.problem)}. The simple template mind answered instead.</span>`
     : Date.now() < flash.until ? flash.html : "";
@@ -1063,9 +1321,13 @@ function renderPlan() {
 let flash = {html: "", until: 0};      // a short note under the input that outlives the next poll
 async function goPlus(manage, btn) {
   if (btn) btn.disabled = true;
-  const r = await post(manage ? "/plus/portal" : "/plus/checkout");
-  if (r && r.url) location.href = r.url;
-  else if (btn) { btn.disabled = false; flash = {html: `<span class="problem">Couldn't open the payment page. Try again in a moment.</span>`, until: Date.now() + 8000}; }
+  const r = await api(manage ? "/plus/portal" : "/plus/checkout", {method: "POST", headers: {"Content-Type": "application/json", "X-Ember": "1"},
+    body: "{}"}).catch(() => null);
+  const d = r && r.ok ? await r.json().catch(() => null) : null;
+  if (d && d.url) { location.href = d.url; return; }
+  if (btn) btn.disabled = false;
+  toast(r && r.status === 404 ? "There's no subscription to manage yet."
+    : r && r.status === 503 && !manage ? "Ember Plus isn't on sale yet. Soon!" : "Couldn't open the payment page. Try again in a moment.");
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-plus]");
@@ -1209,7 +1471,7 @@ function goalMeta(g) {
 function renderGoalList() {
   const act = GOALS.filter(g => g.status === "active"), past = GOALS.filter(g => g.status !== "active");
   const item = g => `<button class="goalitem${g.status === "active" ? "" : " past"}" data-goal="${esc(g.id)}">
-    <div class="gt"><span>${esc(g.title)}</span>${g.checked_today ? "<i>✓</i>" : ""}</div><div class="gm">${esc(goalMeta(g))}</div>
+    <div class="gt"><span>${esc(g.title)}</span>${g.checked_today ? "<i>✓</i>" : ""}</div><div class="gm">${g.glevel ? `<span class="glv">Lv ${g.glevel.level}</span> ` : ""}${esc(goalMeta(g))}</div>
     ${g.status === "active" ? `<div class="gs">${g.today_step ? "Today: " + esc(g.today_step.text) : "No step yet"}</div>` : ""}</button>`;
   $("#goallist").innerHTML = (act.length ? act.map(item).join("")
     : `<div class="gpnote">No goals yet. Make one yourself, or tell Ember what you want and it'll help you plan it.</div>`)
@@ -1226,10 +1488,11 @@ function openGoal(id) {
 }
 // a short "+N XP" at the bottom of the screen after a goal action that earned some
 let xpToastTimer = null, xpWatch = null;   // xpWatch {x0, until}: XP still to come, e.g. a phase's, given once Ember has looked back
-function xpToast(n) {
+function xpToast(n) { toast(`+${n} XP`); }
+function toast(text, ms) {                 // a short note at the bottom of the screen, wherever you are
   const el = $("#xpToast");
-  el.textContent = `+${n} XP`; el.classList.add("on");
-  clearTimeout(xpToastTimer); xpToastTimer = setTimeout(() => el.classList.remove("on"), 2200);
+  el.textContent = text; el.classList.add("on");
+  clearTimeout(xpToastTimer); xpToastTimer = setTimeout(() => el.classList.remove("on"), ms || Math.max(2200, text.length * 70));
 }
 const xpNow = () => S && S.level ? S.level.xp : null;
 async function xpAfter(x0) {   // call after the action: refreshes, then shows what it earned; returns it
@@ -1249,7 +1512,6 @@ function renderGoalPage() {
   if ($("#gpBody [data-armed]") && $("#gpTitle").textContent === g.title) return;   // "click again to drop it" must survive a redraw
   $("#gpTitle").textContent = g.title;
   const active = g.status === "active", ph = g.phase_info, multi = ph && ph.count > 1;
-  const dots = g.recent.map(d => `<i class="${d.how || ""}" title="${esc(d.day)}${d.how ? ": " + ({done: "did it", partly: "partly", skip: "not today"}[d.how]) : ""}"></i>`).join("");
   let h = `<div class="gpk">${esc(goalMeta(g))}</div><h1 class="gph1">${esc(g.title)}</h1>`
     + (g.question ? `<div class="gpdw">${isGoal(g) ? "You'll know you're there when: " : ""}${esc(g.question)}</div>` : "")
     + (g.why ? `<div class="gpwhy">${esc(g.why)}</div>` : "");
@@ -1263,19 +1525,15 @@ function renderGoalPage() {
       + `<input type="text" class="gpwords" id="gpWords" maxlength="300" placeholder="A few words, if you like" value="${esc(typing)}">`
       + (goalReplyWait && goalReplyWait.text ? `<div class="gpreply">${esc(goalReplyWait.text)} <a data-gtalk>Talk about it →</a></div>`
          : goalReplyWait ? `<div class="gpreply">Ember is answering… <a data-gtalk>Open the chat →</a></div>` : "")
-      + `<div class="gpdots">${dots}<span>last 2 weeks</span></div></div>`;
+      + `</div>`;
+  }
+  h += pathCard(g);
+  if (active) {
     h += `<div class="gpcard"><h3>${multi ? `Phase ${ph.index + 1} of ${ph.count}: ${esc(ph.title)}` : "Steps"}${ph ? `<small>${ph.left != null ? leftText(ph.left) : leftText(ph.days_left * 86400)} left</small>` : ""}</h3>`
       + `<ul class="steps">${g.steps.map((s, i) => `<li class="${s.done ? "done" : ""}" data-gstep="${i}"><input type="checkbox" ${s.done ? "checked" : ""}><span>${esc(s.text)}</span></li>`).join("")}</ul>`
       + `<form class="gpadd" id="gpAdd"><input type="text" id="gpNewStep" maxlength="160" placeholder="Add a step"><button class="btn ghost">Add</button></form>`
       + (multi && ph.index < ph.count - 1 ? `<div class="gpactions"><button class="btn${ph.up ? "" : " ghost"}" id="gpNext">${ph.up ? "Look back and plan the next phase" : "Ready early? On to the next phase"}</button></div>` : "")
       + `</div>`;
-  }
-  if (g.phases && g.phases.length > 1) {
-    h += `<div class="gpcard"><h3>All phases</h3><ol class="gpphases">` + g.phases.map((p, i) => {
-      const now = i === g.phase && active, done = i < g.phase || !active;
-      return `<li class="${now ? "now" : ""}">${done ? "✓ " : now ? "● " : ""}${esc(p.title)} · ${durText(p.days)}`
-        + (p.look_back ? `<small>${esc(p.look_back)}</small>` : "") + `</li>`;
-    }).join("") + `</ol></div>`;
   }
   if (g.plan) h += `<div class="gpcard"><h3>The plan</h3><div>${esc(g.plan)}</div></div>`;
   if (g.review) h += `<div class="gpcard"><h3>Looking back</h3><div>${esc(g.review)}</div></div>`;
@@ -1284,6 +1542,57 @@ function renderGoalPage() {
        + `<button class="btn ghost" id="gpDrop">Drop it</button>` : "") + `</div>`;
   $("#gpBody").innerHTML = h;
 }
+// the path: a goal's level, then its days winding down in its phases. Finished phases fold into a trophy and
+// later ones into a locked row (tap to open), so a long goal stays short; the phase you're in is always open
+const PATH_X = [0, 34, 52, 34, 0, -34, -52, -34];
+const PN_ICON = {done: `<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  skip: `<svg viewBox="0 0 24 24"><path d="M7 12h10" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>`,
+  trophy: `<svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0zM7 6H4.5a2.5 2.5 0 0 0 2.6 3.6M17 6h2.5a2.5 2.5 0 0 1-2.6 3.6M10.5 13.5h3l.5 3.5h-4zM8 20h8" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>`,
+  star: `<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" fill="currentColor"/></svg>`};
+let pathOpen = {};                         // "goal:phase" → opened by you (true) or closed (false)
+const goalLevelSeen = {};
+function pathCard(g) {
+  if (!g.path || !g.path.length) return "";
+  const L = g.glevel, cur = g.phase || 0, multi = g.path.length > 1;
+  if (L && goalLevelSeen[g.id] != null && L.level > goalLevelSeen[g.id]) { toast(`Goal level ${L.level}!`, 2600); burst(16); }
+  if (L) goalLevelSeen[g.id] = L.level;
+  let h = `<div class="gpcard"><div class="glevel"><span class="gl-n">${L.level}</span><div class="gl-t"><b>Goal level ${L.level}</b>`
+    + `<i><b style="width:${Math.round(L.progress * 100)}%"></b></i><small>${L.next} more day${L.next === 1 ? "" : "s"} of doing it to level ${L.level + 1}</small></div></div>`
+    + `<div class="gpath">`;
+  let k = 0;
+  for (const p of g.path) {
+    const key = g.id + ":" + p.phase, now = p.phase === cur && g.status === "active";
+    const open = pathOpen[key] != null ? pathOpen[key] : now || !multi;
+    const did = p.nodes.filter(n => n.state === "done" || n.state === "partly").length;
+    if (multi) {
+      const ph = (g.phases || [])[p.phase] || {};
+      h += `<button class="gphase${p.done ? " won" : ""}${now ? " now" : ""}" data-gphase="${esc(key)}"><span class="gpi">${p.done ? PN_ICON.trophy : now ? "●" : p.phase + 1}</span>`
+        + `<span class="gpt">Phase ${p.phase + 1}${p.title ? ": " + esc(p.title) : ""}<small>${did} of ${p.nodes.length} days done${ph.look_back && !open ? " · tap to see the look back" : ""}${!open ? "" : ""}</small></span>`
+        + `<span class="gpi">${open ? "▴" : "▾"}</span></button>`;
+      if (open && ph.look_back) h += `<div class="gpnote" style="align-self:stretch">${esc(ph.look_back)}</div>`;
+    }
+    if (!open) { k += p.nodes.length; continue; }
+    for (const n of p.nodes) {
+      const x = PATH_X[k++ % PATH_X.length], st = n.state;
+      const icon = st === "done" || st === "partly" ? PN_ICON.done : st === "skip" ? PN_ICON.skip : n.today ? PN_ICON.star : n.n;
+      const what = {done: "did it", partly: "partly", skip: "not today", missed: "no check", ahead: "ahead", closed: "after it ended"}[st] || "today";
+      h += `<div class="pn ${st}${n.today ? " today" : ""}" style="--x:${x}px" title="Day ${n.n} · ${esc(n.date)} · ${what}">`
+        + (n.today ? `<span class="tag">${st === "today" ? "Today" : "Today ✓"}</span>` : "") + icon + `</div>`;
+    }
+    if (p.done) h += `<div class="pn trophy" style="--x:${PATH_X[k++ % PATH_X.length]}px" title="Phase ${p.phase + 1} done">${PN_ICON.trophy}</div>`;
+  }
+  return h + `</div></div>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-gphase]");
+  if (!b) return;
+  const key = b.dataset.gphase, g = GOALS.find(x => x.id === goalOpen);
+  const p = g && g.path.find(q => g.id + ":" + q.phase === key);
+  const was = pathOpen[key] != null ? pathOpen[key] : !!(p && p.phase === (g.phase || 0) && g.status === "active");
+  pathOpen[key] = !was;
+  renderGoalPage();
+});
+
 function renderNewGoal() {
   $("#gpTitle").textContent = "New goal";
   $("#gpBody").innerHTML = `<h1 class="gph1">A new goal</h1><div class="gpwhy">Make it yourself, or plan it with Ember. Either way it gets its own page, and a long goal goes in phases of 1–2 weeks so it never feels like too much.</div>
@@ -1508,6 +1817,7 @@ function show(v) {
   $("#why").classList.remove("on");
   $("#lookSheet").classList.remove("on");
   $("#fbSheet").classList.remove("on");
+  $("#badgeSheet").classList.remove("on");
   if (view === "goal" && v !== "goal") closeGoal();
   view = v;
   for (const [k, sel] of Object.entries(VIEWS)) $(sel).classList.toggle("on", k === v);
@@ -1519,7 +1829,7 @@ function show(v) {
   if (v === "goals") loadGoals();
   if (v === "knows") loadMemory();
   if (v === "owner") loadOwner();
-  if (v === "ember") miniFace();
+  if (v === "ember") { miniFace(); ensureBadges().then(renderBadges); }
   if (v === "talk") requestAnimationFrame(chatEdges);
 }
 function go(v) {

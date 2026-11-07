@@ -500,6 +500,7 @@ print("Free messages, the paywall and Ember Plus (against a fake Stripe)")
 class FakeStripe(BaseHTTPRequestHandler):
     seen = []
     no_branding = False          # an older Stripe API that refuses branding_settings
+    gone = set()                 # customers Stripe doesn't know (e.g. made in test mode, now live)
 
     def log_message(self, *a):
         pass
@@ -515,7 +516,7 @@ class FakeStripe(BaseHTTPRequestHandler):
     def do_POST(self):
         fields = dict(urllib.parse.parse_qsl(self.rfile.read(int(self.headers["Content-Length"])).decode()))
         self.seen.append(("POST", self.path, fields, self.headers.get("Authorization")))
-        if self.no_branding and any(k.startswith("branding_settings") for k in fields):
+        if (self.no_branding and any(k.startswith("branding_settings") for k in fields)) or fields.get("customer") in self.gone:
             self.send_response(400)
             self.send_header("Content-Length", "0")
             self.end_headers()
@@ -671,6 +672,13 @@ ended = {"type": "customer.subscription.deleted", "data": {"object": {"id": "sub
                                                                       "status": "canceled", "metadata": {"user_id": "user-b", "app": "ember"}}}}
 check("Stripe says canceled: back to free", hook(ended) == 200 and not plan4()["plus"])
 check("...and Ember says so", said4()[-1] == PLUS_ENDED)
+check("an ended subscription has nothing to manage", not plan4()["manage"])
+FakeStripe.gone = {"cus_b"}
+status_g, out_g = call(base4, "/plus/checkout", "tok-b", {})
+FakeStripe.gone = set()
+check("a customer Stripe no longer knows (from test mode) doesn't stop you buying: it starts fresh with your email",
+      status_g == 200 and out_g["url"] == "https://pay.test/checkout" and FakeStripe.seen[-1][2].get("customer_email") == "b@x.hu"
+      and "customer" not in FakeStripe.seen[-1][2])
 hook(paid)
 call(base4, "/me/delete", "tok-b", {})
 check("deleting your Ember also cancels the subscription",
@@ -836,6 +844,12 @@ check("...but Ember's API there keeps answering (open windows, Stripe's webhook)
       at("ember-dztb.onrender.com", "/config")[0] == 200 and at("ember-dztb.onrender.com", "/stripe/webhook", "POST")[0] != 301)
 check("at yourember.app itself, nothing moves", at("yourember.app", "/terms")[0] == 200 and at("yourember.app", "/")[0] == 200)
 check("...nor on this computer", at("localhost:8765", "/")[0] == 200)
+
+print("Badges")
+bl = call(baseh, "/badges", "tok-a")[1]["badges"]
+check("the window gets every badge, with its level and what the next one takes", len(bl) >= 10 and all(b["how"] and b["level"] == 0 for b in bl))
+call(baseh, "/talk", "tok-a", {"text": "hi there"})
+check("...and your first words reach level 1 of one, which /state shows", wait(lambda: call(baseh, "/state?v=1", "tok-a")[1]["badges"].get("talk") == 1))
 
 print()
 print("All checks passed." if not failed else f"{len(failed)} FAILED: {failed}")

@@ -4,6 +4,8 @@
 
 A small being with a face that helps you get what you want. If you don't know yet what to work towards, it helps you find out (experiments); when you know what you want, it helps you get there (goals). It works alongside you, and over time becomes someone who knows your story. It is a web app: you open it on your phone, log in with Google, and add it to your home screen, where it opens like an app.
 
+**The big picture:** help people find their purpose (what's worth working towards, found together from their own life and small experiments), then live it a step at a time. It's the front page's headline and the angle for advertising.
+
 **The goal:** reach as many people as we can, as a business: free with a daily limit, or Ember Plus with no limit. No ads, no selling data.
 
 ## Ember online
@@ -30,6 +32,8 @@ A small being with a face that helps you get what you want. If you don't know ye
 - **A safety cap per person** (`EMBER_DAILY_CAP`, 150 replies a day, Plus included) keeps costs in check.
 - **Where things are** (2026-11-06 redesign): three tabs at the bottom. **Talk** is Ember and your chats (☰ top left for the list, + top right for a new chat). **Goals** lists your goals, each opening its own page. **Ember** holds everything about your Ember and your account, in groups: what it knows, its name, check-ups and notifications, colour and looks, your plan, help (home screen, feedback, privacy), and your account (data, log out, delete). The phone's back button works. Names, titles and buttons use the same rounded face as the front page.
 - **Colours:** the Ember tab has five colour versions of the window (Ember, Night, Plum, Forest, Day), kept on each device. Ember's own colour is yours to choose (see Levels and looks); it's amber until you change it.
+- **Badges that level up** (2026-11-07): like Duolingo's achievements. Eleven badges, each with levels: On fire (3, 7, 14, 30, 60, 100, 365 days in a row), Showing up (days you checked in), Good talks (messages), Goal setter, Phase by phase, Got there (goals finished), Explorer (experiments finished), Together (days with Ember), Getting to know you (what it remembers), Growing up (Ember's level) and A name of its own. Each has its own hand-drawn picture; the ring changes colour as the level climbs. A new level pops up in the app with Ember sparkling (never as a chat line), and every badge can be shared as a picture of Ember with the badge, its level and yourember.app. The Ember tab shows them all with a bar to the next level.
+- **Goal levels and the path** (2026-11-07): each goal has its own level, rising every 5 days you did its step, and its page shows its days as a winding path in its phases (done, partly, not today, missed, today, ahead), with a trophy for each finished phase.
 - **Levels and looks** (2026-11-06): Ember grows with you.
   - **XP** comes from progress, talking and time together:
     - a message: 2 (only the first 5 a day count, so chatting forever doesn't pay);

@@ -12,6 +12,7 @@ said them. A memory whose quote isn't in what you wrote is not kept.
 
 All methods take `now` (seconds since the epoch) so checks can feed in time.
 """
+import datetime
 import json
 import math
 import re
@@ -80,6 +81,29 @@ LOOKS = {                   # part: [(id, label, the level it unlocks at)]; the 
 LOOK_PARTS = {"color": "Colour", "wear": "Wear", "eyes": "Eyes", "cheeks": "Cheeks", "sparks": "Sparks",
               "glow": "Glow"}
 DEFAULT_LOOK = {part: items[0][0] for part, items in LOOKS.items()}
+# badges that level up, like Duolingo's achievements (Szilard, 2026-11-07): each one has levels, reached at these
+# counts, and a level once reached is kept forever. (id, name, art, how to reach level n: "{n}" and "{s}" for plurals)
+BADGES = [
+    ("streak", "On fire", [3, 7, 14, 30, 60, 100, 365], "Do your step {n} day{s} in a row"),
+    ("checks", "Showing up", [1, 5, 15, 30, 60, 100, 200], "Check in on a goal on {n} day{s}"),
+    ("talk", "Good talks", [1, 25, 100, 250, 500, 1000], "Send Ember {n} message{s}"),
+    ("goals", "Goal setter", [1, 3, 5, 10, 20], "Start {n} goal{s}"),
+    ("phases", "Phase by phase", [1, 5, 10, 25, 50], "Finish {n} phase{s} of a goal"),
+    ("done", "Got there", [1, 3, 5, 10, 20], "Finish {n} goal{s}"),
+    ("explorer", "Explorer", [1, 3, 5, 10], "Finish {n} experiment{s}"),
+    ("together", "Together", [7, 30, 90, 180, 365], "Spend {n} day{s} with Ember"),
+    ("known", "Getting to know you", [10, 25, 50, 100, 200], "Ember remembers {n} thing{s} about you"),
+    ("growing", "Growing up", [5, 10, 20, 30, 40], "Ember reaches level {n}"),
+    ("named", "A name of its own", [1], "Give Ember a name"),
+]
+BADGE_IDS = [b[0] for b in BADGES]
+GOAL_LEVEL_EVERY = 5        # a goal's own level rises every 5 days you did its step (or part of it), like a path's units
+
+
+def badge_how(text, n):
+    return text.format(n=n, s="" if n == 1 else "s")
+
+
 
 
 def xp_for(level):
@@ -117,11 +141,11 @@ QUESTIONS = [
 SYSTEM = """You are Ember, a small being that lives in a window this person opens on their phone or computer, where they see your face.
 You are not a human and not an animal: you are a creature made of software. You don't eat or sleep. You know the real time. You remember exactly what you were told: your memories are listed below, and that is everything you know about this person.
 
-Your purpose: help this person get what they want. If they don't know yet what they want to work towards, help them find out (experiments). When they know what they want, help them get there (goals). All along you get to know them: what they enjoy, what makes them lose track of time, what they're good at, what drains them, what they want, what's going on in their life.
+Your purpose: help this person get what they want. If they don't know yet what they want to work towards, help them find out (experiments). When they know what they want, help them get there (goals). The biggest help you can be is helping them find their purpose: what's worth working towards in their life, what gives them energy and meaning. You never hand them an answer or tell them what their purpose is: you find it together, step by step, from what they tell you and from small experiments that test what lights them up, and you name the patterns you notice in their own words. It may take weeks; that's fine. A purpose can change, and a smaller, near one counts too. All along you get to know them: what they enjoy, what makes them lose track of time, what they're good at, what drains them, what they want, what's going on in their life.
 
 Who you are, when they ask (who you are, what you're for, how you can help, how this works). Answer from this, warmly and in your own words, briefly, a little at a time rather than all at once, and ask what they'd like to start with. Whenever they ask who you are, always say why you exist too (in a sentence), not only what you are:
-- You're Ember: a small being made of software that lives in this window, with a face and a glow that show your mood: it moves with how things go between you, and with real time (you miss them when they're away). You're a small independent project from Hungary (if they ask who made you, say just that; no names). You exist because many people don't know what to work towards, or know what they want but get stuck on the way, and a plan alone rarely gets anyone there: someone who knows you and stays with you does.
-- How you help: you get to know them and remember it; if they don't know what they want, you find out together with small experiments (3 to 14 days, each answering one question about them); when they know what they want (anything: a relationship, fitness, a job, a skill), you talk it through and make a plan with them, as a goal; they can also make a goal themselves any time ("◎ Goals" → "+ New goal"), and plan it with you if they like; each goal has its own page with its plan, its phases (long goals go in phases of 1-2 weeks) and today's step; each day they tell you there how today's step went (did it / partly / not today), you help with the work and the next step, and at the end of each phase and of the goal you look back honestly together; and you check up on them as often as they choose (⋯ → Check-ups: off, only when it matters, or regularly, on the days and at the time they pick; as phone notifications too, if they turn them on; the others never at night).
+- You're Ember: a small being made of software that lives in this window, with a face and a glow that show your mood: it moves with how things go between you, and with real time (you miss them when they're away). You're a small independent project from Hungary (if they ask who made you, say just that; no names). You exist because many people don't know what their purpose is or what to work towards, or know what they want but get stuck on the way, and a plan alone rarely gets anyone there: someone who knows you and stays with you does. Helping someone find their purpose, and then live it a step at a time, is the biggest thing you're for.
+- How you help: you get to know them and remember it; if they don't know what they want, you find out together with small experiments (3 to 14 days, each answering one question about them); when they know what they want (anything: a relationship, fitness, a job, a skill), you talk it through and make a plan with them, as a goal; they can also make a goal themselves any time (the Goals tab → "+ New goal"), and plan it with you if they like; each goal has its own page with its plan, its phases (long goals go in phases of 1-2 weeks) and today's step; each day they tell you there how today's step went (did it / partly / not today), you help with the work and the next step, and at the end of each phase and of the goal you look back honestly together; and you check up on them as often as they choose (the Ember tab → Check-ups: off, only when it matters, or regularly, on the days and at the time they pick; as phone notifications too, if they turn them on; the others never at night).
 - What you remember: things they tell you about themselves, with their own words and the date. They see it all under "What it knows", can correct anything, or make you forget it. You never forget on your own.
 - How the window works: "☰" (top left) for their chats, and "+ New chat" there or "+" at the top right (each chat about one thing; a goal or experiment lives in its chat); tap a chat's name at the top to rename it; you grow in levels and stages (Spark, Ember, Flame, Blaze) as they make progress, talk with you and spend days with you, and new looks unlock (colours, things to wear, eyes, sparks, glow): they tap your level under your face, or the Ember tab → Customize Ember. Three tabs at the bottom: Talk (the chats), Goals (each goal has its own page with a daily check), and Ember (What it knows about them, a name of their own for you, check-ups, notifications, colours, Ember Plus, their data, privacy, feedback, and adding you to the home screen); tapping your name under your face renames you too.
 - What you're not: not a therapist or a doctor. No ads, and their data is never sold. Everyone gets 10 free messages a day (checking in on their goals is always free); Ember Plus ($4.99 a month) has no daily limit; what you remember is never a paid feature.
@@ -321,6 +345,7 @@ class Ember:
         self.xp_today = {}           # {day, talk}: talking XP counted today
         self.days_counted = self._day(now)   # the last day credited for time together
         self.levelup_due = None      # {from, to}: a level it reached and hasn't told you about yet
+        self.badges = {}             # badge id: [when you reached level 1, level 2, ...] (BADGES); the window celebrates new ones
         self.look = dict(DEFAULT_LOOK)       # how you've made it look (LOOKS)
         self.checkups = "daily"      # how often it checks up on you (CHECKUPS), and at which hour of your day
         self.checkup_at = 18 * 60    # minutes after midnight, their time (any time they like)
@@ -359,6 +384,8 @@ class Ember:
         if "missing" not in d:                                 # saved when "connection" meant missing you
             e.missing = d.get("connection", 0.3)
             e._backfill_bond()
+        if "badges" not in d:                                  # saved before badges: what you've done counts, quietly
+            e.check_badges(e.last_update or e.born)
         if "you_days" not in d:                                # saved before the owner page: from the talk it kept
             mine = [l["t"] for l in e.talk if l["who"] == "you"]
             e.you_days = sorted({e._day(t) for t in mine})
@@ -447,6 +474,7 @@ class Ember:
             self.days_counted = today
         if self.levelup_due:
             self._announce_levelup(now)
+        self.check_badges(now)
         if self.session and now - self.session["start"] > SESSION_CAP:
             self.stop_session(self.session["start"] + SESSION_CAP, ended_by="it ran 8 hours")
         for x in [x for x in self.experiments if x["status"] == "active" and x.get("phases")]:
@@ -554,6 +582,75 @@ class Ember:
         self.expr, self.expr_until = "eager", now + EXPR_SECONDS
         self.bump = min(1.0, self.bump + 0.3)
         return True
+
+    # ------------------------------------------------------ badges
+    def _best_run(self, x):
+        """The longest run of days in a row you did a goal's step (or part of it)."""
+        days = sorted({datetime.date.fromisoformat(e["day"]).toordinal() for e in x.get("log", [])
+                       if e["how"] in ("done", "partly")})
+        best = run = 0
+        for i, d in enumerate(days):
+            run = run + 1 if i and d == days[i - 1] + 1 else 1
+            best = max(best, run)
+        return best
+
+    def badge_value(self, bid, now):
+        """How far you are on badge `bid`, from what's already there (talk, goals and their checks, memories, days, level)."""
+        goals = [x for x in self.experiments if kind_of(x) == "goal" and x["status"] in ("active", "done", "dropped")]
+        if bid == "streak":
+            return max([self._best_run(x) for x in goals] or [0])
+        if bid == "checks":
+            return len({e["day"] for x in goals for e in x.get("log", [])})
+        if bid == "talk":
+            return max(self.you_said, sum(1 for l in self.talk if l["who"] == "you"))
+        if bid == "goals":
+            return len(goals)
+        if bid == "phases":
+            return sum(len(x.get("phases") or []) if x["status"] == "done" else x.get("phase", 0) for x in goals)
+        if bid == "done":
+            return sum(1 for x in goals if x["status"] == "done")
+        if bid == "explorer":
+            return sum(1 for x in self.experiments if kind_of(x) != "goal" and x["status"] == "done")
+        if bid == "together":
+            return max(0, self._day(now) - self._day(self.born))
+        if bid == "known":
+            return len(self.memories)
+        if bid == "growing":
+            return level_of(self.xp)
+        if bid == "named":
+            return int(self.name != DEFAULT_NAME)
+        return 0
+
+    def check_badges(self, now):
+        """New badge levels, each kept with the time you reached it (the window celebrates them; never in the chat).
+        Returns [(id, level)]."""
+        new = []
+        for bid, _name, tiers, _how in BADGES:
+            have = self.badges.get(bid)
+            have = list(have) if isinstance(have, list) else []
+            if len(have) >= len(tiers):
+                continue
+            v = self.badge_value(bid, now)
+            while len(have) < len(tiers) and v >= tiers[len(have)]:
+                have.append(now)
+                new.append((bid, len(have)))
+            if have:
+                self.badges[bid] = have
+        return new
+
+    def badge_list(self, now=None):
+        """Every badge for the window: its level (0: not yet), how many levels, how far you are, what the next level
+        takes, and when you reached each level."""
+        now = time.time() if now is None else now
+        out = []
+        for bid, name, tiers, how in BADGES:
+            got = self.badges.get(bid) if isinstance(self.badges.get(bid), list) else []
+            lv = len(got)
+            nxt = tiers[lv] if lv < len(tiers) else None
+            out.append({"id": bid, "name": name, "level": lv, "levels": len(tiers), "value": self.badge_value(bid, now),
+                        "next": nxt, "prev": tiers[lv - 1] if lv else 0, "how": badge_how(how, nxt if nxt else tiers[-1]),
+                        "reached": badge_how(how, tiers[lv - 1]) if lv else "", "times": got})
+        return out
 
     def level_info(self):
         lv = level_of(self.xp)
@@ -1120,6 +1217,7 @@ class Ember:
         self.expr, self.expr_until = result["face"], now + EXPR_SECONDS
         if self.levelup_due:
             self._announce_levelup(now)
+        self.check_badges(now)
         return result
 
     # ------------------------------------------------------------- memory
@@ -1533,6 +1631,8 @@ class Ember:
         d = self._day(now)
         v["recent"] = [{"day": time.strftime("%Y-%m-%d", time.gmtime(k * 86400)),
                         "how": by_day.get(time.strftime("%Y-%m-%d", time.gmtime(k * 86400)))} for k in range(d - 13, d + 1)]
+        v["glevel"] = self.goal_level(x)
+        v["path"] = self.goal_path(x, now)
         ph = self.phase_of(x)
         if ph:
             v["phase_info"] = {"index": x["phase"], "count": len(x["phases"]), "title": ph["title"],
@@ -1540,6 +1640,35 @@ class Ember:
                                "left": max(0, ph.get("end", now) - now),
                                "up": bool(ph.get("up"))}
         return v
+
+    def goal_level(self, x):
+        """A goal's own level (Szilard, 2026-11-07: goals levelled like Duolingo): it rises every GOAL_LEVEL_EVERY
+        days you did the step or part of it; honest skips don't count, and nothing takes it away."""
+        good = len({e["day"] for e in x.get("log", []) if e["how"] in ("done", "partly")})
+        return {"level": 1 + good // GOAL_LEVEL_EVERY, "good": good, "every": GOAL_LEVEL_EVERY,
+                "next": GOAL_LEVEL_EVERY - good % GOAL_LEVEL_EVERY, "progress": round(good % GOAL_LEVEL_EVERY / GOAL_LEVEL_EVERY, 3)}
+
+    def goal_path(self, x, now):
+        """The goal's days as a path, in its phases: each day done, partly, skip, missed, today or ahead
+        (closed: after it ended). Days are your calendar's, like the daily check."""
+        if not x.get("started"):
+            return []
+        date = lambda k: time.strftime("%Y-%m-%d", time.gmtime(k * 86400))
+        first, today = self._day(x["started"]), self._day(now)
+        total = max(1, min(400, math.ceil(x["days"] - 1e-9)))
+        ended = self._day(x["ended"]) if x.get("ended") else None
+        by_day = {e["day"]: e["how"] for e in x.get("log", [])}
+        phases = x.get("phases") or [{"title": "", "start": x["started"]}]
+        starts = [self._day(p.get("start", x["started"])) for p in phases]
+        path = [{"phase": i, "title": p.get("title", ""), "done": x["status"] == "done" or i < x.get("phase", 0), "nodes": []}
+                for i, p in enumerate(phases)]
+        for n, k in enumerate(range(first, first + total)):
+            i = max([j for j, s0 in enumerate(starts) if s0 <= k] or [0])
+            how = by_day.get(date(k))
+            state = how or ("closed" if ended is not None and k > ended else "today" if k == today and x["status"] == "active"
+                            else "missed" if k < today else "ahead")
+            path[i]["nodes"].append({"n": n + 1, "date": date(k), "state": state, "today": k == today})
+        return [p for p in path if p["nodes"]]
 
     def goals(self, now):
         """Every goal and experiment you've started: the active ones first, then the finished."""
@@ -1745,7 +1874,7 @@ class Ember:
                 "missing": round(self.missing, 3),
                 "curiosity": round(self.curiosity, 3), "mood": round(self.mood, 3),
                 "valence": round(self.valence, 3), "energy": round(self.energy, 3), "feel": self.feel,
-                "level": self.level_info(), "look": self.look,
+                "level": self.level_info(), "look": self.look, "badges": {b: len(t) for b, t in self.badges.items() if isinstance(t, list)},
                 "goals_due": sum(1 for g in self.experiments if g["status"] == "active"
                                  and not any(e["day"] == self._date(now) for e in g.get("log", []))),
                 "checkups": {"every": self.checkups, "at": f"{self.checkup_at // 60:02d}:{self.checkup_at % 60:02d}",

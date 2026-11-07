@@ -479,7 +479,9 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         s["plan"] = {"plus": is_plus(u), "free_left": free_left(u, now), "free_per_day": free_per_day,
                      "price": billing.price_label if billing else None,
                      "payments": bool(billing and billing.selling),
-                     "manage": bool(billing and billing.enabled and plan and plan.get("customer"))}
+                     # Manage Ember Plus: only for a subscription that's running (an old or test one can't be managed)
+                     "manage": bool(billing and billing.enabled and plan and plan.get("customer")
+                                    and plan.get("status") in PLUS_STATUSES)}
         s["owner"] = is_owner(u)
         return s
 
@@ -512,6 +514,12 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
     @app.post("/chat/rename")
     def chat_rename(request: Request, body: dict = Body(default={})):
         return act(request, lambda u, now: u.ember.rename_chat(body.get("id"), body.get("title", "")))
+
+    @app.get("/badges")
+    def badges(request: Request):                   # every badge, earned or not (the window celebrates new ones)
+        u = who(request)
+        with u.lock:
+            return {"badges": u.ember.badge_list(clock())}
 
     @app.get("/looks")
     def looks(request: Request):

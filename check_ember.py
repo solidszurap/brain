@@ -883,6 +883,55 @@ old.pop("you_days"), old.pop("you_said")
 b = Ember.from_dict(old)
 check("an Ember saved before this counts its days from the talk it kept", b.you_said == 4 and len(b.you_days) == 3)
 
+print("Badges that level up")
+from mind.core import BADGES  # noqa: E402
+bg = Ember(now=t)
+lst = bg.badge_list(t)
+check("a new Ember has every badge at level 0, with what level 1 takes",
+      bg.badges == {} and len(lst) == len(BADGES) and all(b["level"] == 0 and b["next"] and b["how"] for b in lst))
+bg.hear(t + 5, "hi")
+bg.update(t + 6, present=True)
+talk = next(b for b in bg.badge_list(t + 6) if b["id"] == "talk")
+check("your first words: Good talks, level 1", bg.badges.get("talk") == [t + 6] and talk["level"] == 1)
+check("...and how far to level 2", talk["value"] == 1 and talk["next"] == 25 and talk["how"] == "Send Ember 25 messages")
+check("...told in the window, never as a chat line", not any(l.get("badges") for l in bg.talk))
+gid = bg.new_goal("Walk every day", "", 30, ["Walk 10 minutes"], t + 10)["id"]
+for k in range(7):
+    bg.daily_check(gid, "done" if k != 3 else "partly", "", t + 20 + k * 86400)
+lv = lambda b: len(bg.badges.get(b, []))
+check("7 days in a row of done or partly: On fire reaches level 2 (3, then 7 days)", lv("streak") == 2)
+check("...Showing up level 2 (5 days of checks), Goal setter level 1", lv("checks") == 2 and lv("goals") == 1)
+bg.daily_check(gid, "skip", "", t + 20 + 8 * 86400)
+check("a level once reached stays, even after a skip", lv("streak") == 2)
+check("...and a week together: Together level 1", lv("together") == 1)
+bg.set_name("Pip")
+bg.update(t + 9 * 86400, present=True)
+check("a name of its own: its only level, so it's at the top", lv("named") == 1
+      and next(b for b in bg.badge_list(t + 9 * 86400) if b["id"] == "named")["next"] is None)
+before = {k: list(v) for k, v in bg.badges.items()}
+check("nothing new: no level moves, no time changes", bg.check_badges(t + 10 * 86400) == [] and bg.badges == before)
+check("the window gets the level of each badge", bg.snapshot(t + 10 * 86400, True)["badges"]["streak"] == 2)
+old = bg.to_dict()
+old.pop("badges")
+ob2 = Ember.from_dict(old)
+ob2.update(t + 10 * 86400, present=False)
+check("an Ember saved before badges reaches the levels it already earned", len(ob2.badges.get("streak", [])) == 2 and "talk" in ob2.badges)
+
+print("Goal levels and the path")
+gp = Ember(now=t)
+pg = gp.new_goal("Learn to juggle", "", 21, ["Two balls"], t + 10)
+for k in range(6):
+    gp.daily_check(pg["id"], ["done", "done", "partly", "skip", "done", "done"][k], "", t + 20 + k * 86400)
+v = gp.goal_view(pg, t + 30 + 6 * 86400)
+check("a goal's level rises every 5 days of doing it (skips don't count)", v["glevel"]["level"] == 2 and v["glevel"]["good"] == 5
+      and v["glevel"]["next"] == 5)
+nodes = [n for p in v["path"] for n in p["nodes"]]
+check("the path has one stop per day, in its phases", len(nodes) == 21 and len(v["path"]) == len(pg["phases"]))
+check("...each day as it went: done, partly, skip", [n["state"] for n in nodes[:6]] == ["done", "done", "partly", "skip", "done", "done"])
+check("...today, then the days ahead", nodes[6]["state"] == "today" and nodes[6]["today"] and nodes[7]["state"] == "ahead")
+v2 = gp.goal_view(pg, t + 30 + 9 * 86400)
+check("a day without a check is shown as missed", [n["state"] for n in [n for p in v2["path"] for n in p["nodes"]]][6:10] == ["missed", "missed", "missed", "today"])
+
 print()
 print("All checks passed." if not failed else f"{len(failed)} FAILED: {failed}")
 raise SystemExit(1 if failed else 0)
