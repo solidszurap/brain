@@ -24,7 +24,7 @@ import uvicorn
 
 from mind import llm
 from server.app import CAPPED, FAILED, PLUS_ENDED, PLUS_ON, UNREACHABLE, create_app
-from server.auth import NotInvited, NotLoggedIn, SupabaseAuth
+from server.auth import LocalAuth, NotInvited, NotLoggedIn, SupabaseAuth
 from server.store import FileStore, StoreError, SupabaseStore
 
 logging.getLogger("ember").setLevel(logging.CRITICAL)
@@ -171,6 +171,15 @@ check("...and the usual short answer for anything else", get_page("/nowhere", "a
 check("a sitemap with every page, and robots.txt pointing to it",
       all(f"https://yourember.app{p}<" in get_page("/sitemap.xml", "*/*")[1] for p in site)
       and "Sitemap: https://yourember.app/sitemap.xml" in get_page("/robots.txt", "*/*")[1])
+front = get_page("/")[1]
+check("online, the window is marked so in its first line, and sends a stranger to the front page before it draws anything",
+      '<html lang="en" data-mode="online">' in front
+      and front.index('location.replace("/home")') < front.index("<style>") < front.index("<body"))
+local_dir = os.path.join(tmp, "local")
+basel, _ = serve(create_app(FileStore(local_dir, fixed=local_dir), LocalAuth(), FakeCfg(), call=FakeMind(), clock=clock))
+local_page = urllib.request.urlopen(basel + "/").read().decode()
+check("...but Ember on this computer has no front page: its window isn't marked",
+      '<html lang="en">' in local_page and 'data-mode="online">' not in local_page)
 
 print("Each person has their own Ember")
 state("tok-a")

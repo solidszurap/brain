@@ -13,6 +13,24 @@
 <link rel="apple-touch-icon" href="/icons/icon-180.png">
 <link rel="icon" type="image/png" href="/icons/icon-192.png">
 <script>try { document.documentElement.dataset.theme = localStorage.getItem("ember.theme") || ""; } catch (e) {}</script>
+<script>
+// online (the server marks the page data-mode="online"), a stranger at yourember.app goes straight to the front page
+// (/home) from here, before anything is drawn or asked of the server, so no logo or login screen flashes by
+// (Szilard, 2026-11-07). Staying: a login kept on this device, or a visit that's part of a login, a notification,
+// a payment's return or a chat link.
+const toFront = document.documentElement.dataset.mode === "online" && !hasLogin() && !cameForLogin();
+if (toFront) { document.documentElement.classList.add("away"); location.replace("/home"); }
+// a login kept on this device (supabase-js keeps it as sb-<project>-auth-token), without loading supabase-js first
+function hasLogin() {
+  try { for (let i = 0; i < localStorage.length; i++) if (/^sb-.+-auth-token$/.test(localStorage.key(i))) return true; } catch (e) { return true; }
+  return false;
+}
+// on the way to or back from Google's login, or opening a notification, a payment page's return or a chat: stay
+function cameForLogin() {
+  const q = new URLSearchParams(location.search);
+  return /access_token|error/.test(location.hash) || ["login", "code", "error", "chat", "plus"].some(k => q.has(k));
+}
+</script>
 <style>
 :root {
   --bg: #17130f; --panel: #211b16; --panel2: #2a221c; --line: #3a3029; --text: #f1e7dc; --dim: #a8988a; --faint: #6f6156;
@@ -53,6 +71,9 @@
 ::-webkit-scrollbar-button { display: none; }
 html { background: var(--bg); }
 html, body { margin: 0; }
+/* on the way to the front page: nothing drawn, only its background (site.css's --night), so it just appears */
+html.away { background: #1b120c; }
+html.away body { display: none; }
 /* iOS 26 paints the strip behind the clock from the pinned layer at the top (here the body) when it has one plain
    colour, and blurs the page there when it doesn't: so the body is plain and the glow is a layer of its own */
 body { position: fixed; inset: 0; background: var(--bg); color: var(--text);
@@ -746,10 +767,10 @@ function showCover(id) {
 }
 
 async function boot() {
+  if (toFront) return;                  // a stranger, already on the way to the front page (the script at the top)
   try { CFG = await (await fetch("/config", {cache: "no-store"})).json(); } catch (e) {}
   if (CFG.terms_url) $("#termsItem").href = CFG.terms_url;     // the terms Stripe asks you to accept, when set elsewhere
   if (CFG.mode === "online") {
-    if (!hasLogin() && !cameForLogin()) { location.replace("/home"); return; }   // a stranger at yourember.app: the front page first
     await new Promise((ok, fail) => {
       const s = document.createElement("script");
       s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js";
@@ -776,16 +797,6 @@ async function boot() {
     $("#whoami").textContent = "On this computer";
   }
   enter();
-}
-// a login kept on this device (supabase-js keeps it as sb-<project>-auth-token), without loading supabase-js first
-function hasLogin() {
-  try { for (let i = 0; i < localStorage.length; i++) if (/^sb-.+-auth-token$/.test(localStorage.key(i))) return true; } catch (e) { return true; }
-  return false;
-}
-// on the way to or back from Google's login, or opening a notification, a payment page's return or a chat: stay
-function cameForLogin() {
-  const q = new URLSearchParams(location.search);
-  return /access_token|error/.test(location.hash) || ["login", "code", "error", "chat", "plus"].some(k => q.has(k));
 }
 function enter() {          // the logo stays up until Ember's first state is drawn, so no empty window flashes by
   showCover("boot");

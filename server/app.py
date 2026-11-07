@@ -433,13 +433,18 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
     def page(name, media=None):
         return FileResponse(os.path.join(web_dir, name), media_type=media)
 
-    @app.get("/")
-    def index():
-        return page("index.html", "text/html; charset=utf-8")
-
     def read(name):
         with open(os.path.join(web_dir, name), encoding="utf-8") as f:
             return f.read()
+
+    @app.get("/")
+    def index():
+        # online, the window knows it from its first line, so a stranger goes straight to the front page (/home)
+        # before anything is drawn (the script at the top of index.html); this computer's Ember has no front page
+        html = read("index.html")
+        if auth.mode == "online":
+            html = html.replace('<html lang="en">', '<html lang="en" data-mode="online">', 1)
+        return HTMLResponse(html)
 
     def site_page(name, path=None, status=200):
         """A page of the website with its header (this page's link marked) and footer put in."""
