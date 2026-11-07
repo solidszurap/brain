@@ -830,7 +830,24 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         try:
             return {"url": billing.portal(plan["customer"], base_url(request))}
         except BillingError as e:
-            log.error("portal failed for %s: %s", u.uid, e)
+            if e.code != "resource_missing":
+                log.error("portal failed for %s: %s", u.uid, e)
+                raise HTTPException(503, "couldn't reach the payment page, try again") from None
+        # Stripe doesn't know this customer (say, one from test mode): nothing to manage, so the plan is forgotten
+        # and they get the payment page instead
+        log.info("stale Stripe customer for %s forgotten", u.uid)
+        stale = {"status": "gone", "customer": None, "subscription": None}
+        try:
+            users.store.set_plan(u.uid, stale)
+        except StoreError as e:
+            log.error("plan save failed for %s: %s", u.uid, e)
+        u.plan = stale
+        if not billing.selling:
+            raise HTTPException(404, "no subscription")
+        try:
+            return {"url": billing.checkout(u.uid, u.email, None, base_url(request))}
+        except BillingError as e:
+            log.error("checkout failed for %s: %s", u.uid, e)
             raise HTTPException(503, "couldn't reach the payment page, try again") from None
 
     @app.post("/stripe/webhook")

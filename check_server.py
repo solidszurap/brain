@@ -517,9 +517,12 @@ class FakeStripe(BaseHTTPRequestHandler):
         fields = dict(urllib.parse.parse_qsl(self.rfile.read(int(self.headers["Content-Length"])).decode()))
         self.seen.append(("POST", self.path, fields, self.headers.get("Authorization")))
         if (self.no_branding and any(k.startswith("branding_settings") for k in fields)) or fields.get("customer") in self.gone:
+            raw = json.dumps({"error": {"code": "resource_missing", "param": "customer", "message": "No such customer"}
+                              if fields.get("customer") in self.gone else {"code": "parameter_unknown"}}).encode()
             self.send_response(400)
-            self.send_header("Content-Length", "0")
+            self.send_header("Content-Length", str(len(raw)))
             self.end_headers()
+            self.wfile.write(raw)
             return
         self._send({"url": "https://pay.test/checkout" if "checkout" in self.path else "https://pay.test/portal"})
 
@@ -679,6 +682,12 @@ FakeStripe.gone = set()
 check("a customer Stripe no longer knows (from test mode) doesn't stop you buying: it starts fresh with your email",
       status_g == 200 and out_g["url"] == "https://pay.test/checkout" and FakeStripe.seen[-1][2].get("customer_email") == "b@x.hu"
       and "customer" not in FakeStripe.seen[-1][2])
+hook(paid)
+FakeStripe.gone = {"cus_b"}
+status_m, out_m = call(base4, "/plus/portal", "tok-b", {})
+FakeStripe.gone = set()
+check("Manage Ember Plus with a customer Stripe no longer knows: the plan is forgotten and the payment page opens",
+      status_m == 200 and out_m["url"] == "https://pay.test/checkout" and not plan4()["plus"] and not plan4()["manage"])
 hook(paid)
 call(base4, "/me/delete", "tok-b", {})
 check("deleting your Ember also cancels the subscription",

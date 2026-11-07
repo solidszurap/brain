@@ -110,11 +110,14 @@ button { font: inherit; }
 }
 /* the stage: Ember above, your conversation below it */
 .stage { min-height: 0; display: flex; flex-direction: column; align-items: center; padding: 0 16px; }
-.facewrap { position: relative; flex: none; margin: -22px 0 12px; }
-#face { display: block; width: min(26vh, 60vw, 240px); aspect-ratio: 1; cursor: pointer; touch-action: manipulation;
-  /* its glow fades out at the top, so the top bar (one plain colour, for the iPhone's clock) never cuts it in a hard line */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%); mask-image: linear-gradient(to bottom, transparent 0, #000 22%); }
-.whybtn { position: absolute; top: 24%; right: -8%; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--edge); background: var(--raised); color: var(--dim); cursor: pointer; }
+/* Ember reaches up over the top bar's lower edge (drawn above it, so the bar never cuts its head or glow); its picture
+   fades out at its top edge, so there's never a hard line, and the bar's clock strip stays one plain colour */
+.facewrap { --fw: min(26vh, 60vw, 240px); position: relative; z-index: 9; flex: none; margin: calc(var(--fw) * -.15) 0 12px; pointer-events: none; }
+.facewrap > :not(canvas) { pointer-events: auto; }
+#face { display: block; width: var(--fw); aspect-ratio: 1;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14%); mask-image: linear-gradient(to bottom, transparent 0, #000 14%); }
+.facehit { position: absolute; left: 22%; right: 22%; top: 22%; bottom: 16%; border-radius: 50%; cursor: pointer; touch-action: manipulation; }
+.whybtn { position: absolute; top: 32%; right: -8%; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--edge); background: var(--raised); color: var(--dim); cursor: pointer; }
 .whybtn:hover { color: var(--text); }
 .pop { display: none; position: absolute; top: 22%; left: 50%; transform: translateX(-50%); width: min(340px, 86vw); z-index: 5; background: var(--overlay); border: 1px solid var(--edge); border-radius: 20px; padding: 12px 14px; font-size: 13px; color: var(--dim);
   box-shadow: var(--lift); }
@@ -517,7 +520,7 @@ div.grow { cursor: default; }
   .top { padding-left: calc(10px + env(safe-area-inset-left)); padding-right: calc(10px + env(safe-area-inset-right)); gap: 6px; }
   .tbtn { padding: 7px 12px; font-size: 14px; }
   .tbtn.icon { padding: 0; font-size: 19px; }
-  #face { width: min(22vh, 50vw); }
+  .facewrap { --fw: min(22vh, 50vw); }
   .msg { max-width: 90%; }
   .pill { border-radius: 18px; padding: 6px 8px 6px 14px; gap: 6px 10px; font-size: 13.5px; }
 }
@@ -534,7 +537,7 @@ div.grow { cursor: default; }
 </div>
 <main class="stage">
   <div class="facewrap">
-    <canvas id="face" title="Poke Ember"></canvas>
+    <canvas id="face"></canvas><div class="facehit" id="faceHit" title="Poke Ember"></div>
     <div class="facebar"><button class="namebtn" id="nameBtn" title="Rename Ember" style="display:none"></button><button class="lvbadge" id="lvBadge" title="Customize Ember" style="display:none"><span id="lvText"></span><i><b id="lvBar"></b></i></button></div>
     <button class="whybtn" id="whybtn" title="Why this face?">?</button>
     <div class="pop" id="why"></div>
@@ -2008,7 +2011,7 @@ window.addEventListener("pointermove", e => {
   const r = cv.getBoundingClientRect();
   mouse = {x: (e.clientX - (r.left + r.width / 2)) / r.width, y: (e.clientY - (r.top + r.height / 2)) / r.height, at: performance.now()};
 });
-cv.addEventListener("click", () => { post("/poke"); wiggleT = performance.now(); });
+$("#faceHit").addEventListener("click", () => { post("/poke"); wiggleT = performance.now(); });
 
 function size() {
   const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;

@@ -18,7 +18,9 @@ TOLERANCE = 300                                       # seconds a webhook signat
 
 
 class BillingError(Exception):
-    pass
+    def __init__(self, text, code=None):
+        super().__init__(text)
+        self.code = code            # Stripe's error code, e.g. "resource_missing" for a customer it doesn't know
 
 
 def branding(base_url):
@@ -50,7 +52,12 @@ class Billing:
             with urllib.request.urlopen(req, timeout=20) as r:
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
-            raise BillingError(f"Stripe {path}: HTTP {e.code}") from None
+            try:                                    # Stripe says why (its code, the field and its message; no keys)
+                err = json.loads(e.read() or b"{}").get("error") or {}
+            except (ValueError, OSError):
+                err = {}
+            why = " ".join(str(err[k]) for k in ("code", "param", "message") if err.get(k))
+            raise BillingError(f"Stripe {path}: HTTP {e.code} {why}".strip(), err.get("code")) from None
         except (urllib.error.URLError, TimeoutError) as e:
             raise BillingError(f"Stripe unreachable: {getattr(e, 'reason', e)}") from None
 

@@ -25,7 +25,7 @@ A small being with a face that helps you get what you want. If you don't know ye
   - **Older Embers:** the bond was worked out from your history.
 - **Free and Plus.** Everyone gets **10 free messages a day** (`EMBER_FREE_PER_DAY`). A message is anything you send that makes Ember think; its greetings are free.
   - After its answer to your last free one, Ember says so, and the input becomes an **Ember Plus** card: **$4.99 / month**, no daily limit, cancel anytime.
-  - Payment goes through **Stripe**: its checkout page to subscribe, its portal ("Manage Ember Plus") to cancel. A signed webhook tells the server, and Ember never sees card details.
+  - Payment goes through **Stripe**: its checkout page to subscribe, its portal ("Manage Ember Plus") to cancel. A signed webhook tells the server, and Ember never sees card details. A saved customer Stripe no longer knows (an old test one) is forgotten, and the payment page opens instead.
   - Deleting your Ember also cancels the subscription.
   - Comped Plus by email: `EMBER_PLUS_EMAILS`, or `*` for everyone (Szilard, 2026-11-06: Plus for everyone for now, while sign-up opens).
 - **Testers** in `EMBER_UNLOCK_EMAILS` can wear every look without levelling up (their XP stays real).
