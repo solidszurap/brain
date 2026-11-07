@@ -6,3 +6,4 @@ ember_state/
 ember_archive_*/
 trials/bank/
 .claude/launch.json
+tools/social/out/

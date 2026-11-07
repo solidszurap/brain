@@ -158,6 +158,7 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
   - "What it knows" and the Ember tab.
 - `web/privacy.html`, `web/manifest.webmanifest`, `web/sw.js`, `web/icons/` (drawn by `tools/make_icons.py`).
 - `tools/import_local.py`: moves a local Ember into an online account.
+- `tools/social/`: the TikTok and Instagram videos. `node tools/social/make.mjs` draws them (with a Chrome on port 9333) into `tools/social/out/`; `scenes.js` is what each video shows and says.
 - `ember.py`: local mode, plus archiving the grid-world life.
 - `check_ember.py`, `check_server.py`: the quick checks.
 - `ember_state/` (not in git): your local Ember (`ember.json`, `conversation.jsonl`, `usage.json`, `archive/`).

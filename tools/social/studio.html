@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ember video studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.1/build/mp4-muxer.js"></script>
+<style>
+  body { margin: 0; background: #111; color: #eee; font: 14px system-ui; }
+  canvas { width: 360px; height: 640px; display: block; margin: 12px; background: #000; }
+</style>
+</head>
+<body>
+<canvas id="out" width="1080" height="1920"></canvas>
+<p id="info">Open with ?scene=&lt;id&gt; to preview a scene, or let make.mjs drive it.</p>
+<script>
+// Ember's video studio: every video is a scene drawn frame by frame on a 1080×1920 canvas, with Ember drawn by the
+// app's own face code (taken from web/index.html at load, so it always looks exactly like the app), then encoded to MP4
+// with WebCodecs. Time is the frame number, not the clock, so every video comes out the same however slow the machine.
+const W = 1080, H = 1920, FPS = 30;
+const C = { bg: "#17130f", surface: "#211b16", raised: "#2a231d", edge: "rgba(255,245,235,.12)", text: "#f1e7dc",
+  dim: "#a8988a", faint: "#6f6156", btn: "#ffa862", you: "rgba(255,150,80,.18)", youEdge: "rgba(255,190,140,.25)", ink: "#2a140a" };
+const FONT = "Nunito, ui-rounded, system-ui, sans-serif";
+const out = document.getElementById("out"), c = out.getContext("2d");
+
+// ---- a repeatable Math.random (the face's sparks and blinks use it)
+let seed = 1;
+Math.random = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+
+// ---- Ember's face, from the app
+let FACE_SRC = "";
+async function loadFace() {
+  const html = await (await fetch("/web/index.html")).text();
+  const a = html.indexOf("// ------------------------------------------------------------------ the face");
+  const b = html.lastIndexOf("requestAnimationFrame(draw);");
+  if (a < 0 || b < 0) throw new Error("the face code moved in web/index.html");
+  FACE_SRC = html.slice(a, b)
+    .replace(/^  size\(\);$/m, "")                       // the canvas keeps the size we give it
+    .replace(/^  requestAnimationFrame\(draw\);$/m, "");  // we call draw ourselves, once per frame
+}
+// a new Ember on its own canvas (size px square); set({face, look, level}) is what /state would say
+function makeEmber(size = 720) {
+  const canvas = document.createElement("canvas"); canvas.width = canvas.height = size;
+  const $ = s => s === "#face" ? canvas : { addEventListener() {} };
+  const make = new Function("$", "post", "document", `let S = null, offline = false;
+    ${FACE_SRC}
+    return { draw, burst, set(s) { S = s; } };`);
+  const fakeDoc = { body: { style: { setProperty() {} } } };
+  const e = make($, () => {}, fakeDoc);
+  const base = performance.now();
+  e.canvas = canvas;
+  e.state = { face: { expression: "calm", glow: .6, energy: .6, gaze: "you" }, look: {}, level: { level: 5, stage: "Ember" } };
+  e.set(e.state);
+  e.at = t => { e.draw(base + t * 1000 - 1000 / 60); e.draw(base + t * 1000); };   // two steps a frame: the app runs at 60
+  e.face = (expression, glow) => { e.state.face = { ...e.state.face, expression, ...(glow != null ? { glow } : {}) }; };
+  return e;
+}
+
+// ---- timing helpers: t is seconds into the scene
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ease = x => { x = clamp(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const out3 = x => 1 - Math.pow(1 - clamp(x), 3);
+const back = x => { x = clamp(x); const k = 1.6; return 1 + (k + 1) * Math.pow(x - 1, 3) + k * Math.pow(x - 1, 2); };
+const fade = (t, a, b, f = .35) => clamp(Math.min((t - a) / f, (b - t) / f));   // 0→1 at a, 1→0 at b
+const appear = (t, a, f = .4) => out3((t - a) / f);
+
+// ---- drawing helpers
+function bg(glowY = 700, glowA = .55, hue = 26) {
+  c.fillStyle = C.bg; c.fillRect(0, 0, W, H);
+  const g = c.createRadialGradient(W / 2, glowY, 40, W / 2, glowY, 1100);
+  g.addColorStop(0, `hsla(${hue}, 100%, 60%, ${glowA * .38})`); g.addColorStop(.45, `hsla(${hue - 6}, 90%, 45%, ${glowA * .12})`);
+  g.addColorStop(1, "hsla(20, 80%, 30%, 0)");
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+}
+function rr(x, y, w, h, r) { c.beginPath(); c.roundRect(x, y, w, h, r); }
+function lines(text, maxW, font) {
+  c.font = font; const words = text.split(" "), ls = []; let l = "";
+  for (const w of words) { const tryL = l ? l + " " + w : w; if (c.measureText(tryL).width > maxW && l) { ls.push(l); l = w; } else l = tryL; }
+  if (l) ls.push(l); return ls;
+}
+// text centred at x (or left with align "left"); returns the height used
+function say(text, x, y, { size = 76, weight = 900, color = C.text, maxW = 900, lh = 1.15, align = "center", alpha = 1, rise = 0 } = {}) {
+  if (alpha <= 0) return 0;
+  const font = `${weight} ${size}px ${FONT}`, ls = text.split("\n").flatMap(p => lines(p, maxW, font));
+  c.save(); c.globalAlpha = alpha; c.font = font; c.fillStyle = color; c.textAlign = align; c.textBaseline = "top";
+  ls.forEach((l, i) => c.fillText(l, x, y + i * size * lh + (1 - alpha) * rise));
+  c.restore(); return ls.length * size * lh;
+}
+function ember(e, t, x, y, size, alpha = 1) {
+  e.at(t); c.save(); c.globalAlpha = alpha; c.drawImage(e.canvas, x - size / 2, y - size / 2, size, size); c.restore();
+}
+// a chat bubble like the app's; who: "ember" | "you"; returns its height
+function bubble(text, who, y, { alpha = 1, maxW = 860, size = 52 } = {}) {
+  const font = `600 ${size}px ${FONT}`, ls = lines(text, maxW - 72, font);
+  c.font = font; const w = Math.min(maxW, Math.max(...ls.map(l => c.measureText(l).width)) + 72), h = ls.length * size * 1.32 + 52;
+  if (alpha <= 0) return h;
+  const x = who === "you" ? W - 80 - w : 80, dy = (1 - alpha) * 30;
+  c.save(); c.globalAlpha = alpha;
+  rr(x, y + dy, w, h, who === "you" ? [40, 40, 12, 40] : [12, 40, 40, 40]);
+  c.fillStyle = who === "you" ? "#3a2618" : C.surface; c.fill();
+  c.strokeStyle = who === "you" ? C.youEdge : C.edge; c.lineWidth = 2; c.stroke();
+  c.fillStyle = C.text; c.textBaseline = "top"; c.textAlign = "left";
+  ls.forEach((l, i) => c.fillText(l, x + 36, y + dy + 26 + i * size * 1.32));
+  c.restore(); return h;
+}
+// a conversation: [[text, who, at], ...] stacked from y with a gap; returns the y under the last one
+function chat(t, items, y, gap = 26) {
+  for (const [text, who, at, end] of items) y += bubble(text, who, y, { alpha: end ? fade(t, at, end) : appear(t, at) }) + gap;
+  return y;
+}
+// a pill: a check's answer, a step, an XP note
+function pill(text, x, y, { alpha = 1, fill = C.btn, color = C.ink, size = 42, scale = 1, align = "center" } = {}) {
+  if (alpha <= 0) return;
+  c.save(); c.globalAlpha = alpha; c.font = `800 ${size}px ${FONT}`;
+  const w = c.measureText(text).width + size * 1.4, h = size * 1.9, left = align === "center" ? -w / 2 : 0;
+  c.translate(x, y); c.scale(scale, scale);
+  rr(left, -h / 2, w, h, h / 2); c.fillStyle = fill; c.fill();
+  c.fillStyle = color; c.textAlign = "left"; c.textBaseline = "middle"; c.fillText(text, left + size * .7, 2);
+  c.restore();
+}
+const IMG = {};
+function loadImg(name, src) { return new Promise(ok => { const i = new Image(); i.onload = () => { IMG[name] = i; ok(); }; i.src = src; }); }
+// the app in a phone: a real screenshot from the demo Ember
+function phone(name, cxp, cyp, width = 620, { alpha = 1, rot = 0, scroll = 0 } = {}) {
+  if (alpha <= 0) return;
+  const img = IMG[name], h = width * 844 / 390, pad = width * .035;
+  c.save(); c.globalAlpha = alpha; c.translate(cxp, cyp); c.rotate(rot);
+  c.shadowColor = "rgba(0,0,0,.55)"; c.shadowBlur = 80; c.shadowOffsetY = 30;
+  rr(-width / 2 - pad, -h / 2 - pad, width + pad * 2, h + pad * 2, width * .16); c.fillStyle = "#0b0907"; c.fill();
+  c.shadowColor = "transparent";
+  c.strokeStyle = "rgba(255,240,225,.14)"; c.lineWidth = 3; c.stroke();
+  rr(-width / 2, -h / 2, width, h, width * .13); c.save(); c.clip();
+  c.drawImage(img, 0, scroll * img.height, img.width, img.height * (1 - scroll), -width / 2, -h / 2, width, h * (1 - scroll));
+  c.restore(); c.restore();
+}
+// a lock screen with Ember's notifications sliding in
+function lockScreen(t, time, day, notes) {
+  const g = c.createRadialGradient(W / 2, -200, 100, W / 2, 400, 1900);
+  g.addColorStop(0, "#5a3218"); g.addColorStop(.55, "#24170f"); g.addColorStop(1, "#120c08");
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  say(day, W / 2, 250, { size: 46, weight: 700, color: "rgba(255,240,225,.75)" });
+  say(time, W / 2, 310, { size: 230, weight: 700, color: "rgba(255,244,232,.95)" });
+  let y = 680;
+  for (const n of notes) {
+    const a = appear(t, n.at, .5); if (a <= 0) continue;
+    const ls = lines(n.text, 760, `500 40px ${FONT}`), h = 150 + ls.length * 52;
+    c.save(); c.globalAlpha = a; c.translate(0, (1 - a) * -80);
+    rr(70, y, W - 140, h, 46); c.fillStyle = "rgba(255,240,228,.13)"; c.fill(); c.strokeStyle = "rgba(255,240,228,.1)"; c.lineWidth = 2; c.stroke();
+    if (IMG.icon) { c.save(); rr(104, y + 36, 84, 84, 20); c.clip(); c.drawImage(IMG.icon, 104, y + 36, 84, 84); c.restore(); }
+    say(n.title || "Ember sent you a message", 220, y + 34, { size: 40, weight: 800, align: "left", maxW: 600 });
+    say(n.when || "now", W - 110, y + 36, { size: 34, weight: 600, align: "right", color: "rgba(255,240,228,.6)" });
+    ls.forEach((l, i) => say(l, 220, y + 90 + i * 52, { size: 40, weight: 500, align: "left", maxW: 760, color: "rgba(255,244,232,.92)" }));
+    c.restore(); y += h + 22;
+  }
+}
+// a finger tap: a ring that grows and fades
+function tap(t, at, x, y) {
+  const k = (t - at) / .5; if (k < 0 || k > 1) return;
+  c.save(); c.globalAlpha = 1 - k; c.strokeStyle = "#fff"; c.lineWidth = 8;
+  c.beginPath(); c.arc(x, y, 30 + k * 60, 0, Math.PI * 2); c.stroke();
+  c.globalAlpha = (1 - k) * .5; c.fillStyle = "#fff"; c.beginPath(); c.arc(x, y, 36, 0, Math.PI * 2); c.fill(); c.restore();
+}
+// the last two and a half seconds of every video: Ember and the address
+function endCard(t, start, e, line = "Your companion who checks up on you") {
+  const a = appear(t, start, .5); if (a <= 0) return;
+  c.save(); c.globalAlpha = a; bg(820, .9); c.restore();
+  if (t > start) { e.face("happy", .9); ember(e, t, W / 2, 830, 640, a); }
+  say("yourember.app", W / 2, 1180, { size: 96, weight: 900, alpha: a, rise: 40 });
+  say(line, W / 2, 1300, { size: 46, weight: 700, color: C.dim, alpha: appear(t, start + .3, .5), maxW: 940 });
+}
+
+// ---- the medallion for badge videos (the app's ring colours climb with the level)
+const RINGS = ["#c98b5a", "#c0c6d0", "#f2c14e", "#7fd4c1", "#b48cff"];
+function medal(x, y, r, level, alpha = 1, scale = 1) {
+  if (alpha <= 0) return;
+  c.save(); c.globalAlpha = alpha; c.translate(x, y); c.scale(scale, scale);
+  c.fillStyle = RINGS[Math.min(RINGS.length - 1, level - 1)]; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill();
+  const g = c.createRadialGradient(-r * .2, -r * .3, r * .1, 0, 0, r * .85);
+  g.addColorStop(0, "#3a2a1f"); g.addColorStop(1, "#1d140e"); c.fillStyle = g; c.beginPath(); c.arc(0, 0, r * .84, 0, Math.PI * 2); c.fill();
+  // a flame in the middle
+  const s = r * .42; const fg = c.createRadialGradient(0, s * .1, s * .1, 0, -s * .2, s * 1.3);
+  fg.addColorStop(0, "#fff1c4"); fg.addColorStop(.5, "#ffb15c"); fg.addColorStop(1, "#e2602a");
+  c.fillStyle = fg; c.beginPath(); c.moveTo(0, -s * 1.25);
+  c.bezierCurveTo(s * .9, -s * .4, s * 1, s * .55, 0, s * .95); c.bezierCurveTo(-s * 1, s * .55, -s * .9, -s * .4, 0, -s * 1.25); c.fill();
+  // the level tag on the ring
+  pill(`Lv ${level}`, 0, r * .92, { size: r * .2, fill: RINGS[Math.min(RINGS.length - 1, level - 1)], color: C.ink });
+  c.restore();
+}
+
+// ---- rendering and encoding
+let SCENES = {};
+async function setup() {
+  await loadFace();
+  await document.fonts.load(`900 80px Nunito`); await document.fonts.load(`600 40px Nunito`); await document.fonts.load(`800 40px Nunito`);
+  await document.fonts.load(`500 40px Nunito`); await document.fonts.load(`700 40px Nunito`);
+  await Promise.all([["icon", "/web/icons/icon-192.png"], ...["talk", "first", "goal", "badges", "looks", "knows"].map(n => [n, `/web/img/shot-${n}.webp`])]
+    .map(([n, s]) => loadImg(n, s)));
+  SCENES = (await import("/tools/social/scenes.js")).default;
+}
+function frameAt(scene, t) { c.save(); scene.draw(t); c.restore(); }
+// draws one moment of a scene (for checking frames) and returns it as a PNG data URL
+window.still = async (id, t) => {
+  const s = SCENES[id]; seed = 1; s.init?.(); for (let f = 0; f <= Math.round(t * FPS); f++) frameAt(s, f / FPS);
+  return out.toDataURL("image/png");
+};
+// renders a whole scene to MP4 and returns it as base64
+window.render = async id => {
+  const s = SCENES[id]; if (!s) throw new Error("no scene " + id);
+  seed = 1; s.init?.();
+  const muxer = new Mp4Muxer.Muxer({ target: new Mp4Muxer.ArrayBufferTarget(), video: { codec: "avc", width: W, height: H, frameRate: FPS }, fastStart: "in-memory" });
+  const enc = new VideoEncoder({ output: (ch, meta) => muxer.addVideoChunk(ch, meta), error: e => { throw e; } });
+  enc.configure({ codec: "avc1.640028", width: W, height: H, bitrate: 10_000_000, framerate: FPS, avc: { format: "avc" } });
+  const frames = Math.round(s.dur * FPS);
+  for (let f = 0; f < frames; f++) {
+    frameAt(s, f / FPS);
+    const vf = new VideoFrame(out, { timestamp: Math.round(f * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
+    enc.encode(vf, { keyFrame: f % (FPS * 2) === 0 }); vf.close();
+    if (enc.encodeQueueSize > 8) await new Promise(ok => enc.addEventListener("dequeue", ok, { once: true }));
+  }
+  await enc.flush(); muxer.finalize();
+  const bytes = new Uint8Array(muxer.target.buffer); let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+};
+// the profile picture: Ember, happy, on its glow (1080×1080; the platforms crop it to a circle)
+window.avatar = async () => {
+  seed = 3; const e = makeEmber(1000); e.face("happy", .9);
+  for (let f = 0; f < 90; f++) e.at(f / FPS);
+  const a = document.createElement("canvas"); a.width = a.height = 1080; const x = a.getContext("2d");
+  x.fillStyle = C.bg; x.fillRect(0, 0, 1080, 1080);
+  const g = x.createRadialGradient(540, 560, 40, 540, 560, 620); g.addColorStop(0, "hsla(26,100%,60%,.35)"); g.addColorStop(1, "hsla(20,80%,30%,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 1080, 1080); x.drawImage(e.canvas, 40, 20, 1000, 1000);
+  return a.toDataURL("image/png");
+};
+window.sceneList = () => Object.entries(SCENES).map(([id, s]) => ({ id, dur: s.dur, caption: s.caption, tags: s.tags }));
+window.ready = setup().then(() => {
+  const id = new URLSearchParams(location.search).get("scene");
+  if (!id || !SCENES[id]) return true;
+  seed = 1; SCENES[id].init?.(); const t0 = performance.now();
+  const loop = () => { const t = ((performance.now() - t0) / 1000) % SCENES[id].dur; frameAt(SCENES[id], t); requestAnimationFrame(loop); };
+  loop(); return true;
+});
+Object.assign(window, { W, H, FPS, C, c, makeEmber, clamp, ease, out3, back, fade, appear, bg, rr, say, ember, bubble, chat, pill, phone, lockScreen, tap, endCard, medal, lines });
+</script>
+</body>
+</html>
