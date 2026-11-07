@@ -1,4 +1,4 @@
-// Makes the videos: node tools/social/make.mjs [scene ids...] [--stills DIR] [--avatar (the profile picture only)]
+// Makes the videos: node tools/social/make.mjs [scene ids...] [--stills DIR] [--avatar (the profile picture only)] [--at 1,4.5 (when the stills are)]
 // Needs a Chrome with remote debugging on port 9333, for example:
 //   chrome --headless=new --remote-debugging-port=9333 --user-data-dir=<a scratch folder>
 // Serves the repo on http://localhost:8790 (the studio reads Ember's face from web/index.html), opens
@@ -13,7 +13,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const OUT = join(ROOT, "tools/social/out");
 const args = process.argv.slice(2), si = args.indexOf("--stills");
 const stills = si >= 0 ? resolve(args[si + 1]) : null;
-const only = args.filter((a, i) => !a.startsWith("--") && (si < 0 || i !== si + 1));
+const only = args.filter((a, i) => !a.startsWith("--") && (si < 0 || i !== si + 1) && args[i - 1] !== "--at");
 
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".png": "image/png", ".webp": "image/webp", ".svg": "image/svg+xml" };
 const server = createServer(async (req, res) => {
@@ -48,7 +48,8 @@ try {
   for (const s of list) {
     const t0 = Date.now();
     if (stills) {
-      for (const [name, t] of [["a", .9], ["b", s.dur * .45], ["c", s.dur * .7], ["d", s.dur - .1]]) {
+      const ai = args.indexOf("--at"), at = ai >= 0 ? args[ai + 1].split(",").map(Number) : [.9, s.dur * .45, s.dur * .7, s.dur - .1];
+      for (const [k, t] of at.entries()) { const name = "abcdefghij"[k];
         const url = await js(`still(${JSON.stringify(s.id)}, ${t})`);
         await writeFile(join(stills, `${s.id}-${name}.png`), Buffer.from(url.split(",")[1], "base64"));
       }

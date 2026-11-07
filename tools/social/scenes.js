@@ -4,10 +4,15 @@
 // and captions cover those), and away from the right edge. Every claim must be true of the app (CLAUDE.md).
 const { W, H, C, c, makeEmber, clamp, ease, out3, back, fade, appear, bg, say, ember, bubble, chat, pill, phone, lockScreen, tap, endCard, medal } = window;
 
+import story from "./story.js";
+
 let e;   // this video's Ember
 const fresh = (look = {}, level = { level: 5, stage: "Ember" }) => () => { e = makeEmber(720); e.state.look = look; e.state.level = level; };
 
 export default {
+  // the story, with sound (2026-11-07: the higher-effort style)
+  "15-wont-let-me-quit": story,
+
   // 1. it writes to you first
   "01-checks-up": {
     dur: 12, init: fresh(),
