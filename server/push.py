@@ -69,7 +69,7 @@ class Push:
     def __init__(self, private_key, subject=None):
         self.key = ec.derive_private_key(int.from_bytes(unb64u(private_key), "big"), ec.SECP256R1())
         self.public = b64u(_raw_public(self.key))         # the window subscribes with this (applicationServerKey)
-        self.subject = subject or os.environ.get("RENDER_EXTERNAL_URL") or "https://ember.example"
+        self.subject = subject or "mailto:support@yourember.app"      # who the push services can contact
 
     def _vapid(self, endpoint, now):
         u = urllib.parse.urlsplit(endpoint)

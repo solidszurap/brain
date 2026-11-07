@@ -221,7 +221,7 @@ form.say .btn { border-radius: 999px; height: 42px; padding: 0 18px; }
   color: var(--text); font: inherit; font-size: 16px; text-align: left; text-decoration: none; cursor: pointer; box-sizing: border-box; }
 button.grow:hover, a.grow:hover { background: var(--raised); }
 .grow .gl { flex: 1; min-width: 0; }
-.grow .gv { color: var(--dim); font-size: 15px; text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grow .gv { margin-left: auto; padding-left: 14px; color: var(--dim); font-size: 15px; text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .grow.go::after { content: "\203A"; margin-left: auto; padding-left: 10px; color: var(--faint); font-size: 24px; line-height: 1; }
 .grow.danger { color: var(--danger); }
 .grow.plus { color: var(--accent); font-weight: 600; }
@@ -671,6 +671,7 @@ div.grow { cursor: default; }
       <button class="grow go" data-menu="feedback">Send feedback</button>
       <a class="grow go" href="/privacy">Privacy</a>
       <a class="grow go" id="termsItem" href="/terms">Terms</a>
+      <a class="grow go" href="mailto:support@yourember.app"><span class="gl">Email</span><span class="gv">support@yourember.app</span></a>
     </div>
     <div id="ownerGroup" style="display:none">
       <h2 class="ghead">Owner</h2>
@@ -1322,7 +1323,7 @@ function renderPlan() {
   $("#freehint").textContent = !P.plus && P.free_left > 0 && P.free_left <= 2
     ? `${P.free_left} free message${P.free_left === 1 ? "" : "s"} left today` : "";
   $("#planVal").textContent = P.plus                 // Plus without a subscription: given to you (EMBER_PLUS_EMAILS), nothing to manage
-    ? (P.manage ? "Ember Plus · no daily limit" : "Ember Plus · given to you, nothing to pay") : `Free · ${P.free_left ?? P.free_per_day} of ${P.free_per_day} messages left today`;
+    ? (P.manage ? "Ember Plus · no daily limit" : "Ember Plus · free for you") : `Free · ${P.free_left ?? P.free_per_day} of ${P.free_per_day} messages left today`;
   const item = $("#plusItem");
   item.style.display = P.payments && (!P.plus || P.manage) ? "" : "none";
   item.textContent = P.plus ? "Manage Ember Plus" : `Get Ember Plus · ${P.price}`;
