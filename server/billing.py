@@ -3,8 +3,9 @@ Ember Plus through Stripe. Ember never sees card details: people pay on Stripe's
 own checkout page, manage or cancel on Stripe's own portal, and Stripe tells this
 server what happened through a signed webhook. Standard library only (urllib, hmac).
 
-Settings (Render): STRIPE_SECRET_KEY, STRIPE_PRICE_ID (the monthly Ember Plus price),
-STRIPE_WEBHOOK_SECRET (signs the webhook calls), EMBER_PRICE_LABEL (shown in the window).
+Settings (Render): STRIPE_SECRET_KEY, STRIPE_PRICE_ID (the monthly Ember Plus price), STRIPE_PRICE_YEARLY
+(the yearly one; without it only monthly is offered), STRIPE_WEBHOOK_SECRET (signs the webhook calls).
+The prices shown in the window are MONTHLY_LABEL and YEARLY_LABEL; keep them the same as Stripe's.
 """
 import hashlib
 import hmac
@@ -14,6 +15,7 @@ import urllib.parse
 import urllib.request
 
 PLUS_STATUSES = {"active", "trialing", "past_due"}   # past_due: Stripe is still retrying the card
+MONTHLY_LABEL, YEARLY_LABEL = "$7.99 / month", "$49.99 / year"     # Szilard, 2026-11-07 (was $4.99 a month)
 TOLERANCE = 300                                       # seconds a webhook signature stays valid
 
 
@@ -33,10 +35,13 @@ def branding(base_url):
 
 
 class Billing:
-    def __init__(self, secret_key=None, price_id=None, webhook_secret=None, price_label="$4.99 / month",
-                 api="https://api.stripe.com", terms_url=None):
+    def __init__(self, secret_key=None, price_id=None, webhook_secret=None, price_label=MONTHLY_LABEL,
+                 api="https://api.stripe.com", terms_url=None, yearly_id=None, yearly_label=YEARLY_LABEL):
         self.key, self.price, self.whsec = secret_key, price_id, webhook_secret
         self.price_label, self.api = price_label, api.rstrip("/")
+        self.yearly = (yearly_id or "").strip() or None
+        self.yearly_label = yearly_label if self.yearly else None
+        self.prices = tuple(p for p in (price_id, self.yearly) if p)       # Ember's own prices (the webhook's filter)
         self.terms_url = (terms_url or "").strip() or None      # the ÁSZF; buyers accept it at checkout
         self.enabled = bool(secret_key and price_id and webhook_secret)
         self.live = bool(secret_key and secret_key.startswith(("sk_live_", "rk_live_")))
@@ -61,9 +66,10 @@ class Billing:
         except (urllib.error.URLError, TimeoutError) as e:
             raise BillingError(f"Stripe unreachable: {getattr(e, 'reason', e)}") from None
 
-    def checkout(self, uid, email, customer, base_url):
-        """A Stripe Checkout page for a monthly Ember Plus subscription; returns its address."""
-        fields = {"mode": "subscription", "line_items[0][price]": self.price, "line_items[0][quantity]": "1",
+    def checkout(self, uid, email, customer, base_url, yearly=False):
+        """A Stripe Checkout page for an Ember Plus subscription, monthly or yearly; returns its address."""
+        price = self.yearly if yearly and self.yearly else self.price
+        fields = {"mode": "subscription", "line_items[0][price]": price, "line_items[0][quantity]": "1",
                   "success_url": f"{base_url}/?plus=success", "cancel_url": f"{base_url}/?plus=cancel",
                   "client_reference_id": uid, "subscription_data[metadata][user_id]": uid,
                   # tagged as Ember's: the Stripe account may sell other things too, and their events reach this webhook
@@ -123,7 +129,8 @@ class Billing:
         kind, obj = event.get("type"), (event.get("data") or {}).get("object") or {}
         meta = obj.get("metadata") or {}
         items = ((obj.get("items") or {}).get("data") or [])
-        ours = meta.get("app") == "ember" or bool(price and any((i.get("price") or {}).get("id") == price for i in items))
+        prices = {price} if isinstance(price, str) else set(price or ())
+        ours = meta.get("app") == "ember" or any((i.get("price") or {}).get("id") in prices for i in items)
         if not ours:
             return None
         if kind == "checkout.session.completed" and obj.get("mode") == "subscription":

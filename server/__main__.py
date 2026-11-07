@@ -62,7 +62,7 @@ def run_online():
     store = SupabaseStore(env["SUPABASE_URL"], env["SUPABASE_SERVICE_KEY"])
     auth = SupabaseAuth(env["SUPABASE_URL"], env["SUPABASE_ANON_KEY"], env.get("EMBER_ALLOWED_EMAILS", ""))
     billing = Billing(env.get("STRIPE_SECRET_KEY"), env.get("STRIPE_PRICE_ID"), env.get("STRIPE_WEBHOOK_SECRET"),
-                      env.get("EMBER_PRICE_LABEL", "$4.99 / month"), terms_url=env.get("EMBER_TERMS_URL"))
+                      terms_url=env.get("EMBER_TERMS_URL"), yearly_id=env.get("STRIPE_PRICE_YEARLY"))
     push = Push(env["VAPID_PRIVATE_KEY"], env.get("VAPID_SUBJECT")) if env.get("VAPID_PRIVATE_KEY") else None
     app = create_app(store, auth, cfg, daily_cap=int(env.get("EMBER_DAILY_CAP", "150")),
                      public_config={"supabase_url": env["SUPABASE_URL"],

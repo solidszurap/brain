@@ -478,6 +478,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         plan = users.plan(u) if auth.mode != "local" else None
         s["plan"] = {"plus": is_plus(u), "free_left": free_left(u, now), "free_per_day": free_per_day,
                      "price": billing.price_label if billing else None,
+                     "price_year": billing.yearly_label if billing else None,
                      "payments": bool(billing and billing.selling),
                      # Manage Ember Plus: only for a subscription that's running (an old or test one can't be managed)
                      "manage": bool(billing and billing.enabled and plan and plan.get("customer")
@@ -810,13 +811,14 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         return str(request.base_url).rstrip("/")
 
     @app.post("/plus/checkout")
-    def plus_checkout(request: Request):
+    def plus_checkout(request: Request, body: dict = Body(default={})):
         u = who(request)
+        yearly = bool(isinstance(body, dict) and body.get("yearly"))
         if not (billing and billing.selling):          # a live key without the terms online sells nothing yet
             raise HTTPException(503, "Ember Plus opens soon")
         plan = users.plan(u)
         try:
-            return {"url": billing.checkout(u.uid, u.email, plan and plan.get("customer"), base_url(request))}
+            return {"url": billing.checkout(u.uid, u.email, plan and plan.get("customer"), base_url(request), yearly)}
         except BillingError as e:
             log.error("checkout failed for %s: %s", u.uid, e)
             raise HTTPException(503, "couldn't reach the payment page, try again") from None
@@ -860,7 +862,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         except (BillingError, ValueError) as e:
             log.warning("webhook refused: %s", e)
             raise HTTPException(400, "bad signature") from None
-        found = billing.plan_from_event(event, billing.price)
+        found = billing.plan_from_event(event, billing.prices)
         if found:
             uid, plan = found
             try:

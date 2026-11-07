@@ -62,14 +62,14 @@ In Supabase, go to **Authentication → URL Configuration**:
 - **Site URL**: your Render address from step 4.4.
 - **Redirect URLs**: add the same address.
 
-## 6. Stripe: Ember Plus payments ($4.99 / month)
+## 6. Stripe: Ember Plus payments ($7.99 / month or $49.99 / year)
 
 Taking real money needs a registered business (for example egyéni vállalkozó) and, for a Hungarian online service, terms of service (ÁSZF) with a refund/cancellation section and your contact details on the site. Get those from an accountant or lawyer; Ember's code doesn't write them. You can do everything below in **test mode** first: test mode moves no money.
 
 1. Go to **stripe.com** and sign up, with your business's details when you go live.
 2. **Product catalog → Add product**:
    - Name: `Ember Plus`.
-   - Price: **$4.99 USD**, **Recurring**, **Monthly**. Optional: under the price, **Add another currency** (e.g. EUR 4.99), so people in Europe pay in euros; Stripe picks the currency by where the customer is.
+   - Price: **$7.99 USD**, **Recurring**, **Monthly**; then a second price, **$49.99 USD**, **Recurring**, **Yearly** (its id is `STRIPE_PRICE_YEARLY`). Optional: under the price, **Add another currency** (e.g. EUR 4.99), so people in Europe pay in euros; Stripe picks the currency by where the customer is.
    - Save, then open the price and **copy** its id (`price_...`). That's `STRIPE_PRICE_ID`.
 3. **Developers → API keys**. **Copy** the **Secret key** (`sk_test_...` in test mode, `sk_live_...` later). That's `STRIPE_SECRET_KEY`.
 4. **Developers → Webhooks → Add endpoint**:
@@ -87,17 +87,17 @@ Taking real money needs a registered business (for example egyéni vállalkozó)
       - With an accountant, settle your VAT (e.g. alanyi adómentesség) and how each payment gets an invoice reported to NAV (e.g. Billingo or Számlázz.hu). Stripe's receipts are not Hungarian invoices. Later we can connect the invoicing service to Ember's Stripe webhook so invoices go out by themselves.
    2. **ÁSZF and an updated privacy notice,** from a lawyer or a trusted template service. They cover:
       - who sells (your name, address, tax number, email);
-      - the price ($4.99 a month) and that it renews monthly;
+      - the prices ($7.99 a month, $49.99 a year) and that it renews each month or year;
       - how to cancel (any time, via Manage Ember Plus);
       - the 14-day withdrawal right for digital services;
       - that Stripe processes the payments.
 
       Done for the terms (2026-11-07): they're at `https://yourember.app/terms` (TermsFeed's text plus Ember Plus, cancelling, the 14-day withdrawal right, Stripe and feedback). Have the ÁSZF part checked by a lawyer or accountant before going live.
    3. **Stripe → activate your account:** business details, bank account and identity check.
-   4. **Done 2026-11-07** (product, price, webhook, statement text; the portal and public details were already right). **Switch to live mode** and redo steps 2–5 there: the product Ember Plus at $4.99 monthly; the secret key; the webhook to `/stripe/webhook` with the same 4 events; the customer portal. Live mode has its own product, price, keys and webhook secret.
+   4. **Done 2026-11-07** (product, price, webhook, statement text; the portal and public details were already right). **Switch to live mode** and redo steps 2–5 there: the product Ember Plus at $7.99 monthly and $49.99 yearly (two prices); the secret key; the webhook to `/stripe/webhook` with the same 4 events; the customer portal. Live mode has its own product, price, keys and webhook secret.
    5. **Stripe → Settings → Public details:** your terms URL and a support email. **Settings → Emails:** turn on receipts for successful payments.
    6. **Render → Environment:**
-      - paste the live `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID` and `STRIPE_WEBHOOK_SECRET` (never into a chat);
+      - paste the live `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID` (monthly), `STRIPE_PRICE_YEARLY` (yearly) and `STRIPE_WEBHOOK_SECRET` (never the secrets into a chat; the price ids aren't secret);
       - set `EMBER_TERMS_URL` to `https://yourember.app/terms`;
       - set `EMBER_FREE_PER_DAY` to `10`, or delete it (10 is the default).
 

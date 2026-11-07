@@ -545,7 +545,8 @@ base4, srv4 = serve(create_app(store4, FakeAuth(), FakeCfg(), call=FakeMind(), c
 plan4 = lambda tok="tok-b": call(base4, "/state", tok)[1]["plan"]
 lines4 = lambda tok="tok-b": call(base4, "/state", tok)[1]["talk"]
 check("a new person starts with today's free messages", plan4() == {"plus": False, "free_left": 2, "free_per_day": 2,
-                                                                  "price": "$4.99 / month", "payments": True, "manage": False})
+                                                                  "price": "$4.99 / month", "price_year": None,
+                                                                  "payments": True, "manage": False})
 check("first free message: answered", call(base4, "/talk", "tok-b", {"text": "hello"})[0] == 200
       and wait(lambda: lines4()[-1]["text"] == "I heard: hello"))
 call(base4, "/talk", "tok-b", {"text": "second"})
@@ -682,6 +683,17 @@ FakeStripe.gone = set()
 check("a customer Stripe no longer knows (from test mode) doesn't stop you buying: it starts fresh with your email",
       status_g == 200 and out_g["url"] == "https://pay.test/checkout" and FakeStripe.seen[-1][2].get("customer_email") == "b@x.hu"
       and "customer" not in FakeStripe.seen[-1][2])
+yb = Billing("sk_test_x", "price_plus", "whsec_x", api=f"http://127.0.0.1:{st.server_address[1]}", yearly_id="price_year")
+yb.checkout("user-y", "y@x.hu", None, "https://e.test", yearly=True)
+year_price = FakeStripe.seen[-1][2].get("line_items[0][price]")
+yb.checkout("user-y", "y@x.hu", None, "https://e.test")
+check("the yearly plan: its own price on the payment page; monthly stays the default",
+      year_price == "price_year" and FakeStripe.seen[-1][2].get("line_items[0][price]") == "price_plus"
+      and yb.price_label == "$7.99 / month" and yb.yearly_label == "$49.99 / year")
+year_sub = {"type": "customer.subscription.created", "data": {"object": {"id": "sub_y", "customer": "cus_y", "status": "active",
+            "metadata": {"user_id": "user-y"}, "items": {"data": [{"price": {"id": "price_year"}}]}}}}
+check("...and an untagged subscription at the yearly price is Ember's too",
+      Billing.plan_from_event(year_sub, yb.prices) is not None and Billing.plan_from_event(year_sub, "price_plus") is None)
 hook(paid)
 FakeStripe.gone = {"cus_b"}
 status_m, out_m = call(base4, "/plus/portal", "tok-b", {})

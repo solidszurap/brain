@@ -29,8 +29,6 @@ services:
         sync: false
       - key: EMBER_FREE_PER_DAY
         value: "10"
-      - key: EMBER_PRICE_LABEL
-        value: "$4.99 / month"
       - key: EMBER_PLUS_EMAILS         # Plus for free: Gmails, comma-separated, or * for everyone
         sync: false
       - key: EMBER_UNLOCK_EMAILS       # testers: every look unlocked, XP unchanged
@@ -40,6 +38,8 @@ services:
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_PRICE_ID
+        sync: false
+      - key: STRIPE_PRICE_YEARLY       # the yearly Ember Plus price
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
