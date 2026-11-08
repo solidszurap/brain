@@ -138,7 +138,7 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
    - (A first version also grew traits from how you talk, "Who Ember is becoming"; Szilard had it removed the same day.)
 
 
-**Making money:** 10 free messages a day, then Ember Plus at $7.99 a month or $49.99 a year through Stripe (built; needs a Stripe account and a registered business to take real money). No ads, no selling data.
+**Making money:** 10 free messages a day, then Ember Plus at $7.99 a month or $49.99 a year through Stripe (live: real payments since 2026-11-08). No ads, no selling data.
 
 ## Files
 
