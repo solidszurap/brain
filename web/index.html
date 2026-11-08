@@ -1627,7 +1627,7 @@ function missedHtml(g) {                  // days in a row with no check-in, up 
   const n = g.status === "active" ? g.missed || 0 : 0;
   if (!n) return "";
   return `<div class="gmiss"><span class="mdots" aria-hidden="true">${"<i></i>".repeat(Math.min(n, 7))}${n > 7 ? "<b>+</b>" : ""}</span>`
-    + `Missed ${n} day${n === 1 ? "" : "s"}${g.checked_today ? "" : ". Today counts"}</div>`;
+    + `Missed ${n} day${n === 1 ? "" : "s"}. Today counts</div>`;   // gone once you check in today
 }
 function renderGoalList() {
   const act = GOALS.filter(g => g.status === "active"), past = GOALS.filter(g => g.status !== "active");

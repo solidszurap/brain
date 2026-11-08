@@ -1891,11 +1891,13 @@ class Ember:
         return n
 
     def missed_days(self, x, now):
-        """Days in a row with no check-in on a running goal, up to yesterday (today is still open). A "not today" is
-        a check-in, not a missed day. Goals of hours don't count days."""
+        """Days in a row with no check-in on a running goal, up to yesterday, until you check in again: a check-in
+        today (any, "not today" too) clears it (Szilard, 2026-11-08). Goals of hours don't count days."""
         if x["status"] != "active" or not x.get("started") or by_hours(x):
             return 0
         checked = {e["day"] for e in x.get("log", [])}
+        if self._date(now) in checked:
+            return 0
         first, d, n = self._day(x["started"]), self._day(now) - 1, 0
         while d >= first and time.strftime("%Y-%m-%d", time.gmtime(d * 86400)) not in checked:
             n, d = n + 1, d - 1
