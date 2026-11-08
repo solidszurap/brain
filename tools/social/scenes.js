@@ -16,6 +16,7 @@ import v11 from "./videos/11-three-hobbies.js";
 import v12 from "./videos/12-badges.js";
 import v13 from "./videos/13-the-path.js";
 import v14 from "./videos/14-your-time.js";
+import demo from "./videos/demo.js";        // not a post: the product demo (16:9, about 80 s)
 
 export default {
   "01-wont-let-me-quit": v01,
@@ -32,4 +33,5 @@ export default {
   "12-badges": v12,
   "13-the-path": v13,
   "14-your-time": v14,
+  "ember-demo": demo,
 };

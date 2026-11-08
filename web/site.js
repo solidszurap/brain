@@ -17,6 +17,15 @@
     e.addEventListener("click", () => { e.classList.remove("hop"); void e.offsetWidth; e.classList.add("hop"); });
     e.addEventListener("animationend", ev => { if (ev.animationName === "hop") setTimeout(() => e.classList.remove("hop"), 500); });
   }
+  // the front page's demo video: one big button over its poster; a tap plays it with the player's own controls
+  for (const f of document.querySelectorAll(".filmwrap")) {
+    const v = f.querySelector("video"), b = f.querySelector(".playbtn");
+    if (!v || !b) continue;
+    v.controls = false; b.hidden = false;
+    const play = () => { b.hidden = true; v.controls = true; v.play().catch(() => {}); };
+    b.addEventListener("click", play);
+    v.addEventListener("click", () => { if (!v.controls) play(); });
+  }
   const toggle = $("#billing");
   if (toggle) {
     const show = yearly => {

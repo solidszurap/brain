@@ -163,6 +163,14 @@ check("...and the header marks the page you're on", 'href="/pricing" aria-curren
       and 'aria-current' not in site["/faq"][1].split('href="/pricing"')[1][:20])
 check("the styles, the script and the screenshots are served",
       all(urllib.request.urlopen(base + p).status == 200 for p in ("/site.css", "/site.js", "/img/shot-talk.webp", "/img/og.png")))
+def ranged(path, rng):
+    with urllib.request.urlopen(urllib.request.Request(base + path, headers={"Range": rng})) as r:
+        return r.status, r.headers.get("Content-Range") or "", r.headers.get("Content-Type"), len(r.read())
+st, cr, ct, n = ranged("/img/ember-demo.mp4", "bytes=0-99")
+check("the front page's demo video is served in pieces when asked (iPhones only play video that way)",
+      st == 206 and n == 100 and cr.startswith("bytes 0-99/") and ct == "video/mp4", f"{st} {cr} {ct} {n}")
+check("...and the front page shows it, with its poster",
+      'src="/img/ember-demo.mp4"' in site["/home"][1] and urllib.request.urlopen(base + "/img/ember-demo-poster.webp").status == 200)
 check("a picture that isn't there, or a path outside the folder: not found",
       get_page("/img/nope.webp", "*/*")[0] == 404 and get_page("/img/..%5Cserver%5Capp.py", "*/*")[0] == 404)
 check("a page that isn't there: the website's own page, for a browser", get_page("/nowhere")[0] == 404
@@ -597,8 +605,9 @@ base5, srv5 = serve(create_app(FileStore(os.path.join(tmp, "users5")), FakeAuth(
                                retry_every=0.3, billing=billing, free_per_day=2, plus_emails=("*",),
                                unlock_emails=("b@x.hu",), owner_emails=("A@x.hu ",)))
 p5 = call(base5, "/state", "tok-b")[1]["plan"]
+t5 = call(base5, "/talk", "tok-b", {"text": "past the limit"})
 check("Plus for everyone (EMBER_PLUS_EMAILS=*): no limit, nothing to buy or manage", p5["plus"] and p5["free_left"] is None
-      and not p5["manage"] and call(base5, "/talk", "tok-b", {"text": "past the limit"})[0] == 200, str(p5))
+      and not p5["manage"] and t5[0] == 200, f"{p5} talk: {t5}")
 lk = lambda tok: call(base5, "/looks", tok)[1]
 check("a tester (EMBER_UNLOCK_EMAILS) can wear the highest look at level 1, without any XP",
       lk("tok-b")["all_unlocked"] and call(base5, "/look", "tok-b", {"part": "color", "value": "aurora"})[1]["ok"]
@@ -637,9 +646,10 @@ check("Get Ember Plus opens a Stripe checkout page for this person",
       and sent[2]["payment_method_types[0]"] == "card"
       and sent[3] == "Bearer sk_test_x")
 check("...with no terms set, Stripe isn't asked for consent", "consent_collection[terms_of_service]" not in sent[2])
-gq = call(base4, "/goal/new", "tok-b", {"title": "Run", "days": 14, "steps": ["Walk"]})[1]
-check("progress is free: out of free messages, you can still make a goal and check in on it", gq["ok"]
-      and call(base4, "/goal/check", "tok-b", {"id": gq["id"], "how": "done"})[1]["ok"] and plan4()["free_left"] == 0)
+gq = call(base4, "/goal/new", "tok-b", {"title": "Run", "days": 14, "steps": ["Walk"]})
+gc = call(base4, "/goal/check", "tok-b", {"id": (gq[1] or {}).get("id"), "how": "done"})
+check("progress is free: out of free messages, you can still make a goal and check in on it", (gq[1] or {}).get("ok")
+      and (gc[1] or {}).get("ok") and plan4()["free_left"] == 0, f"new: {gq} check: {gc} plan: {plan4()}")
 
 print("Real money: only once the terms (ÁSZF) are online")
 live = Billing("sk_live_x", "price_live", "whsec_l", "$4.99 / month", api=f"http://127.0.0.1:{st.server_address[1]}")

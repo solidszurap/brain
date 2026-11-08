@@ -14,14 +14,22 @@
 <canvas id="out" width="1080" height="1920"></canvas>
 <p id="info">Open with ?scene=&lt;id&gt; to preview a scene, or let make.mjs drive it.</p>
 <script>
-// Ember's video studio: every video is a scene drawn frame by frame on a 1080×1920 canvas, with Ember drawn by the
-// app's own face code (taken from web/index.html at load, so it always looks exactly like the app), then encoded to MP4
-// with WebCodecs. Time is the frame number, not the clock, so every video comes out the same however slow the machine.
-const W = 1080, H = 1920, FPS = 30;
+// Ember's video studio: every video is a scene drawn frame by frame on a 1080×1920 canvas (or another size: a scene's
+// `size`, e.g. [1920, 1080] for the landscape demo), with Ember drawn by the app's own face code (taken from
+// web/index.html at load, so it always looks exactly like the app), then encoded to MP4 with WebCodecs. Time is the
+// frame number, not the clock, so every video comes out the same however slow the machine.
+let W = 1080, H = 1920;
+const FPS = 30;
 const C = { bg: "#17130f", surface: "#211b16", raised: "#2a231d", edge: "rgba(255,245,235,.12)", text: "#f1e7dc",
   dim: "#a8988a", faint: "#6f6156", btn: "#ffa862", you: "rgba(255,150,80,.18)", youEdge: "rgba(255,190,140,.25)", ink: "#2a140a" };
 const FONT = "Nunito, ui-rounded, system-ui, sans-serif";
 const out = document.getElementById("out"), c = out.getContext("2d");
+function size(s) {          // the canvas takes the scene's size (kit.js reads it from the canvas)
+  [W, H] = s.size || [1080, 1920];
+  if (out.width !== W || out.height !== H) { out.width = W; out.height = H; }
+  out.style.width = W / 3 + "px"; out.style.height = H / 3 + "px";
+  window.W = W; window.H = H;
+}
 
 // ---- a repeatable Math.random (the face's sparks and blinks use it)
 let seed = 1;
@@ -194,26 +202,33 @@ async function setup() {
   await loadFace();
   await document.fonts.load(`900 80px Nunito`); await document.fonts.load(`600 40px Nunito`); await document.fonts.load(`800 40px Nunito`);
   await document.fonts.load(`500 40px Nunito`); await document.fonts.load(`700 40px Nunito`);
-  await Promise.all([["icon", "/web/icons/icon-192.png"], ...["talk", "first", "goal", "badges", "looks", "knows"].map(n => [n, `/web/img/shot-${n}.webp`])]
+  await Promise.all([["icon", "/web/icons/icon-192.png"], ...["talk", "first", "goal", "badges", "looks", "knows"].map(n => [n, `/web/img/shot-${n}.webp`]),
+    // the demo's own screenshots (tools/social/img, from the made-up demo Ember): today's check before and after, the
+    // whole goal page (tall, to scroll), and the check-up settings
+    ...["goal-before", "goal-after", "goal-tall", "checkups"].map(n => [n, `/tools/social/img/shot-${n}.webp`])]
     .map(([n, s]) => loadImg(n, s)));
   SCENES = (await import("/tools/social/scenes.js")).default;
 }
 function frameAt(scene, t) { c.save(); scene.draw(t); c.restore(); }
 // draws one moment of a scene (for checking frames) and returns it as a PNG data URL
 window.still = async (id, t) => {
-  const s = SCENES[id]; seed = 1; s.init?.(); for (let f = 0; f <= Math.round(t * FPS); f++) frameAt(s, f / FPS);
+  const s = SCENES[id]; size(s); seed = 1; s.init?.(); for (let f = 0; f <= Math.round(t * FPS); f++) frameAt(s, f / FPS);
   return out.toDataURL("image/png");
 };
-// renders a whole scene to MP4 and returns it as base64
-window.render = async (id, bitrate) => {   // bitrate: 10 Mb/s for posting, less for a preview page
+// renders a whole scene to MP4 and keeps it for chunk() (a long video is too big to hand over in one piece); returns its size
+let MP4 = null;
+window.render = async (id, bitrate, scale = 1) => {   // bitrate: 10 Mb/s for posting, less for a preview page; scale: e.g. 2/3 for the website's 1280×720 copy
   const s = SCENES[id]; if (!s) throw new Error("no scene " + id);
-  seed = 1; s.init?.();
+  size(s); seed = 1; s.init?.();
+  const EW = Math.round(W * scale / 2) * 2, EH = Math.round(H * scale / 2) * 2;     // H.264 wants even sizes
+  const small = scale === 1 ? null : Object.assign(document.createElement("canvas"), { width: EW, height: EH }), sx = small?.getContext("2d");
+  if (sx) sx.imageSmoothingQuality = "high";
   const AUDIO = { codec: "mp4a.40.2", sampleRate: 48000, numberOfChannels: 2, bitrate: 160000 };
   const withSound = !!s.sounds && (await AudioEncoder.isConfigSupported(AUDIO)).supported;
-  const muxer = new Mp4Muxer.Muxer({ target: new Mp4Muxer.ArrayBufferTarget(), video: { codec: "avc", width: W, height: H, frameRate: FPS },
+  const muxer = new Mp4Muxer.Muxer({ target: new Mp4Muxer.ArrayBufferTarget(), video: { codec: "avc", width: EW, height: EH, frameRate: FPS },
     ...(withSound ? { audio: { codec: "aac", sampleRate: 48000, numberOfChannels: 2 } } : {}), fastStart: "in-memory" });
   if (withSound) {
-    const buf = await synth(s.sounds, s.dur, 48000);
+    const buf = await synth(s.sounds, s.dur, 48000, s.music);
     const aenc = new AudioEncoder({ output: (ch, meta) => muxer.addAudioChunk(ch, meta), error: e => { throw e; } });
     aenc.configure(AUDIO);
     const L = buf.getChannelData(0), Rr = buf.getChannelData(1);
@@ -226,23 +241,44 @@ window.render = async (id, bitrate) => {   // bitrate: 10 Mb/s for posting, less
     await aenc.flush();
   }
   const enc = new VideoEncoder({ output: (ch, meta) => muxer.addVideoChunk(ch, meta), error: e => { throw e; } });
-  enc.configure({ codec: "avc1.640028", width: W, height: H, bitrate: bitrate || 10_000_000, framerate: FPS, avc: { format: "avc" } });
+  enc.configure({ codec: "avc1.640028", width: EW, height: EH, bitrate: bitrate || 10_000_000, framerate: FPS, avc: { format: "avc" } });
   const frames = Math.round(s.dur * FPS);
   for (let f = 0; f < frames; f++) {
     frameAt(s, f / FPS);
-    const vf = new VideoFrame(out, { timestamp: Math.round(f * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
+    if (sx) sx.drawImage(out, 0, 0, EW, EH);
+    const vf = new VideoFrame(small || out, { timestamp: Math.round(f * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
     enc.encode(vf, { keyFrame: f % (FPS * 2) === 0 }); vf.close();
     if (enc.encodeQueueSize > 8) await new Promise(ok => enc.addEventListener("dequeue", ok, { once: true }));
   }
   await enc.flush(); muxer.finalize();
-  const bytes = new Uint8Array(muxer.target.buffer); let bin = "";
+  MP4 = new Uint8Array(muxer.target.buffer);
+  return MP4.length;
+};
+// a piece of the last render as base64 (make.mjs asks for them one after another)
+window.chunk = (from, len) => {
+  const bytes = MP4.subarray(from, from + len); let bin = "";
   for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
   return btoa(bin);
 };
-// sound effects, made from oscillators and noise (no recordings, so nothing to license): [[kind, at seconds], ...]
-async function synth(list, dur, rate) {
+// one moment of a scene as a WebP picture `width` wide (the website's poster for a video)
+window.poster = async (id, t, width = 1280) => {
+  await window.still(id, t);
+  const p = Object.assign(document.createElement("canvas"), { width, height: Math.round(width * H / W) }), x = p.getContext("2d");
+  x.imageSmoothingQuality = "high"; x.drawImage(out, 0, 0, p.width, p.height);
+  return p.toDataURL("image/webp", .86);
+};
+// the loudest moment of a scene's sound (for checking that nothing clips: under 1)
+window.audioPeak = async id => {
+  const s = SCENES[id]; seed = 1; const buf = await synth(s.sounds || [], s.dur, 48000, s.music);
+  let peak = 0; for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i])); }
+  return peak;
+};
+// sound effects, made from oscillators and noise (no recordings, so nothing to license): [[kind, at seconds], ...];
+// music: {bpm, chords: [[bass, ...notes] as MIDI numbers, one per bar], gain}, a soft bed of its own under them
+async function synth(list, dur, rate, music) {
   const ac = new OfflineAudioContext(2, Math.ceil(dur * rate), rate);
   const master = ac.createDynamicsCompressor(); master.connect(ac.destination);
+  if (music) bed(ac, music, dur);
   const noiseBuf = ac.createBuffer(1, rate, rate); const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
   const env = (at, peak, attack, decay) => { const g = ac.createGain(); g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(peak, at + attack); g.gain.exponentialRampToValueAtTime(.0001, at + attack + decay); g.connect(master); return g; };
   const tone = (type, f0, f1, at, peak, attack, decay, pan = 0) => {
@@ -281,6 +317,39 @@ async function synth(list, dur, rate) {
   }
   return ac.startRendering();
 }
+// the music bed: a warm pad, a soft bass and a light plucked arpeggio over a loop of chords (made here, so nothing to
+// license); it fades in and out with the video and goes straight to the output, so the effects' compressor doesn't pump it
+function bed(ac, { bpm = 92, chords, gain = .5 }, dur) {
+  const hz = m => 440 * Math.pow(2, (m - 69) / 12), bar = 240 / bpm, eighth = bar / 8;
+  const bus = ac.createGain(); bus.gain.setValueAtTime(0, 0); bus.gain.linearRampToValueAtTime(gain, 1.5);
+  bus.gain.setValueAtTime(gain, Math.max(1.5, dur - 3)); bus.gain.linearRampToValueAtTime(0, dur);
+  const warm = ac.createBiquadFilter(); warm.type = "lowpass"; warm.frequency.value = 2400; warm.connect(bus); bus.connect(ac.destination);
+  const voice = (type, f, at, len, peak, attack, release, pan = 0, detune = 0, cutoff = 1400) => {
+    const o = ac.createOscillator(); o.type = type; o.frequency.value = f; o.detune.value = detune;
+    const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = cutoff;
+    const g = ac.createGain(); g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(peak, at + attack);
+    g.gain.setValueAtTime(peak, at + Math.max(attack, len - release)); g.gain.linearRampToValueAtTime(0, at + len);
+    const p = ac.createStereoPanner(); p.pan.value = pan;
+    o.connect(lp); lp.connect(g); g.connect(p); p.connect(warm); o.start(at); o.stop(at + len + .05);
+  };
+  const pluck = (f, at, peak, pan) => {
+    const o = ac.createOscillator(); o.type = "sine"; o.frequency.value = f;
+    const o2 = ac.createOscillator(); o2.type = "sine"; o2.frequency.value = f * 2;
+    const g = ac.createGain(); g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(peak, at + .006); g.gain.exponentialRampToValueAtTime(.0001, at + .55);
+    const g2 = ac.createGain(); g2.gain.value = .18;
+    const p = ac.createStereoPanner(); p.pan.value = pan;
+    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(p); p.connect(warm); o.start(at); o2.start(at); o.stop(at + .6); o2.stop(at + .6);
+  };
+  const ARP = [0, 1, 2, 1, 3, 1, 2, 1];
+  for (let b = 0, at = 0; at < dur; b++, at += bar) {
+    const [bass, ...notes] = chords[b % chords.length], len = Math.min(bar + .9, dur - at);
+    for (const n of notes) for (const d of [-5, 5]) voice("triangle", hz(n), at, len, .018, .7, .9, d / 20, d, 1100);
+    voice("sine", hz(bass), at, Math.min(bar, dur - at), .07, .03, .5, 0, 0, 500);
+    if (at < 1.2) continue;                                   // the pad alone at first
+    const tones = [...notes.map(n => n + 12), notes[0] + 24];
+    ARP.forEach((k, i) => { const when = at + i * eighth; if (when < dur - .6) pluck(hz(tones[k]), when, i % 4 === 0 ? .05 : .034, i % 2 ? .25 : -.25); });
+  }
+}
 // the profile picture: Ember, happy, on its glow (1080×1080; the platforms crop it to a circle)
 window.avatar = async () => {
   seed = 3; const e = makeEmber(1000); e.face("happy", .9);
@@ -295,7 +364,7 @@ window.sceneList = () => Object.entries(SCENES).map(([id, s]) => ({ id, dur: s.d
 window.ready = setup().then(() => {
   const id = new URLSearchParams(location.search).get("scene");
   if (!id || !SCENES[id]) return true;
-  seed = 1; SCENES[id].init?.(); const t0 = performance.now();
+  size(SCENES[id]); seed = 1; SCENES[id].init?.(); const t0 = performance.now();
   const loop = () => { const t = ((performance.now() - t0) / 1000) % SCENES[id].dur; frameAt(SCENES[id], t); requestAnimationFrame(loop); };
   loop(); return true;
 });

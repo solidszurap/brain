@@ -2,8 +2,9 @@
 // notifications, Ember's chat with typing and the keyboard, or a real screenshot of the app), a camera that moves the
 // phone, captions that pop in word by word, title cards, film grain, and the sound effects that go with them.
 // One video renders at a time, so the phone's screen is one shared canvas (`scr`, drawn with `s`).
-const { C, clamp, ease, out3, back, appear, lines, W, H } = window;
+const { C, clamp, ease, out3, back, appear, lines } = window;
 const c = window.c;
+const dims = () => [c.canvas.width, c.canvas.height];     // the video's size (1080×1920, or a scene's own, e.g. the landscape demo)
 export const SW = 780, SH = 1688, F = "Nunito, ui-rounded, system-ui, sans-serif";
 export const scr = document.createElement("canvas"); scr.width = SW; scr.height = SH;
 export const s = scr.getContext("2d");
@@ -73,7 +74,7 @@ const CHIPS = ["Did it", "Partly", "Not today"];
 function msgSize(m) {
   if (m.who === "dots") return { w: 130, h: 72 };
   if (m.who === "chips") return { w: SW, h: 84 };
-  if (m.who === "check") { s.font = `600 29px ${F}`; return { w: Math.min(560, s.measureText(m.step).width + 250), h: 84 }; }
+  if (m.who === "check") { s.font = `600 29px ${F}`; return { w: Math.min(m.maxW || 560, s.measureText(m.step).width + 250), h: 84 }; }
   if (m.who === "card") { const ls = (m.lines || []).flatMap(l => wrap(l, 540, `600 28px ${F}`)); return { ls, w: 620, h: 70 + ls.length * 38 + (m.button ? 104 : 24) }; }
   const font = `600 31px ${F}`, ls = wrap(m.text, 470, font); s.font = font;
   return { ls, w: Math.max(...ls.map(l => s.measureText(l).width)) + 56, h: ls.length * 42 + 34 };
@@ -107,9 +108,11 @@ function drawMsg(m, sz, y, t, alpha) {
     sz.ls.forEach((l, i) => txt(l, 62, y + 94 + i * 38, 28, 600, C.dim));
     if (m.button) {
       const by = y + sz.h - 62, pressed = m.tap != null && t > m.tap, k = m.tap != null ? 1 - .08 * Math.max(0, Math.sin(clamp((t - m.tap + .1) / .25) * Math.PI)) : 1;
-      s.save(); s.translate(62 + 120, by); s.scale(k, k); rr(-120, -34, 240, 68, 34); s.fillStyle = C.btn; s.fill();
-      txt(pressed ? "Started ✓" : m.button, 0, 2, 29, 900, C.ink, "center"); s.restore();
-      m._tap = [62 + 120, by];
+      const label = pressed ? (m.pressed || "Started ✓") : m.button; s.font = `900 29px ${F}`;
+      const bw = Math.max(240, s.measureText(m.button).width + 72, s.measureText(label).width + 72);
+      s.save(); s.translate(62 + bw / 2, by); s.scale(k, k); rr(-bw / 2, -34, bw, 68, 34); s.fillStyle = C.btn; s.fill();
+      txt(label, 0, 2, 29, 900, C.ink, "center"); s.restore();
+      m._tap = [62 + bw / 2, by];
     }
   } else {
     const you = m.who === "you", x = you ? SW - 30 - sz.w : 30;
@@ -147,8 +150,10 @@ function kbAmount(t, windows) {
   }
   return k;
 }
-// cfg: {title, clock(t), face(t) → [expression, glow], level(t) → {level, stage}, look(t), msgs, typing [{from, to, text,
-// send}], keyboard [[up, down]], fresh (from then on only newer lines, under Ember), xp [{at, text, until}], extra(t)}
+// cfg: {title (or title(t)), clock(t), face(t) → [expression, glow], level(t) → {level, stage}, look(t), msgs, typing
+// [{from, to, text, send}], keyboard [[up, down]], fresh (from then on only newer lines, under Ember), xp [{at, text,
+// until}], extra(t)}; app: true draws it as the app is today (the tab bar, hidden while typing, and a Send pill);
+// bar (or bar(t)): {title, phase, today, k} is the goal bar above the input (k: 0..1 while it appears)
 export function chatScreen(t, cfg, e, step) {
   const fresh = cfg.fresh != null && t >= cfg.fresh;
   s.fillStyle = C.bg; s.fillRect(0, 0, SW, SH);
@@ -157,7 +162,7 @@ export function chatScreen(t, cfg, e, step) {
   statusBar(cfg.clock ? cfg.clock(t) : "18:01");
   s.strokeStyle = C.text; s.lineWidth = 4; s.lineCap = "round";
   for (let i = 0; i < 3; i++) { s.beginPath(); s.moveTo(40, 104 + i * 13); s.lineTo(72, 104 + i * 13); s.stroke(); }
-  txt(cfg.title || "Our first chat", SW / 2, 118, 30, 800, C.text, "center");
+  txt((typeof cfg.title === "function" ? cfg.title(t) : cfg.title) || "Our first chat", SW / 2, 118, 30, 800, C.text, "center");
   s.beginPath(); s.moveTo(SW - 56, 102); s.lineTo(SW - 56, 134); s.moveTo(SW - 72, 118); s.lineTo(SW - 40, 118); s.stroke();
   // Ember
   const [ex, gl] = cfg.face ? cfg.face(t) : ["calm", .7]; e.face(ex, gl);
@@ -165,22 +170,37 @@ export function chatScreen(t, cfg, e, step) {
   if (cfg.look) e.state.look = cfg.look(t);
   if (step) e.at(t);
   s.drawImage(e.canvas, SW / 2 - 240, 150, 480, 480);
-  const label = `${cfg.name || "Ember"} · Lv ${lv.level}`; s.font = `800 26px ${F}`; const lw = s.measureText(label).width + 56;
-  rr(SW / 2 - lw / 2, 598, lw, 46, 23); s.fillStyle = C.raised; s.fill();
-  txt(label, SW / 2, 622, 26, 800, cfg.levelAt && t > cfg.levelAt && t < cfg.levelAt + 1.6 ? C.btn : C.text, "center");
-  // the input and the keyboard
-  const kb = kbAmount(t, cfg.keyboard || []), kbTop = SH - 540 * kb, inTop = kbTop - 128;
+  const glowLv = cfg.levelAt && t > cfg.levelAt && t < cfg.levelAt + 1.6;
+  if (cfg.app) {       // as in the app: its name (tap to rename) and its level with the bar to the next one
+    const name = cfg.name || "Ember", lvText = `Lv ${lv.level} · ${lv.stage}`;
+    s.font = `800 26px ${F}`; const w1 = s.measureText(name).width + 86; s.font = `600 26px ${F}`; const w2 = s.measureText(lvText).width + 150;
+    const x1 = SW / 2 - (w1 + 14 + w2) / 2, x2 = x1 + w1 + 14;
+    for (const [x, w] of [[x1, w1], [x2, w2]]) { rr(x, 596, w, 50, 25); s.fillStyle = C.surface; s.fill(); s.strokeStyle = "rgba(255,245,235,.14)"; s.lineWidth = 2; s.stroke(); }
+    txt(name, x1 + 26, 622, 26, 800);
+    s.save(); s.translate(x1 + w1 - 40, 622); s.rotate(-Math.PI / 4); s.fillStyle = C.dim; s.fillRect(-11, -3.5, 18, 7); s.beginPath(); s.moveTo(7, -3.5); s.lineTo(13, 0); s.lineTo(7, 3.5); s.fill(); s.restore();
+    txt(lvText, x2 + 26, 622, 26, 600, glowLv ? C.btn : C.dim);
+    const bx = x2 + w2 - 104; rr(bx, 616, 80, 10, 5); s.fillStyle = "rgba(255,245,235,.14)"; s.fill();
+    rr(bx, 616, Math.max(10, 80 * clamp(lv.progress ?? .2)), 10, 5); s.fillStyle = C.btn; s.fill();
+  } else {
+    const label = `${cfg.name || "Ember"} · Lv ${lv.level}`; s.font = `800 26px ${F}`; const lw = s.measureText(label).width + 56;
+    rr(SW / 2 - lw / 2, 598, lw, 46, 23); s.fillStyle = C.raised; s.fill();
+    txt(label, SW / 2, 622, 26, 800, glowLv ? C.btn : C.text, "center");
+  }
+  // the input and the keyboard (and in the app, the tab bar under them, which hides while you type)
+  const kb = kbAmount(t, cfg.keyboard || []), tabH = cfg.app ? 116 * (1 - kb) : 0;
+  const kbTop = SH - 540 * kb - tabH, inTop = kbTop - 128;
+  const bar = typeof cfg.bar === "function" ? cfg.bar(t) : cfg.bar, barH = bar ? 116 * (bar.k ?? 1) : 0, msgBottom = inTop - barH;
   const typing = (cfg.typing || []).find(w => t >= w.from - .3 && t < w.send);
   // the conversation: newest at the bottom, each line growing in and pushing the others up
-  s.save(); s.beginPath(); s.rect(0, 666, SW, inTop - 666); s.clip();
+  s.save(); s.beginPath(); s.rect(0, 666, SW, msgBottom - 666); s.clip();
   const shown = cfg.msgs.filter(m => t >= m.at && !(m.end && t >= m.end + .15) && (!fresh || m.at >= cfg.fresh));
   // after a cut the new lines start under Ember, until they no longer fit; then they scroll like any chat
-  const fits = fresh && shown.reduce((h, m) => h + (msgSize(m).h + 20) * out3((t - m.at) / .3), 676) <= inTop - 10;
+  const fits = fresh && shown.reduce((h, m) => h + (msgSize(m).h + 20) * out3((t - m.at) / .3), 676) <= msgBottom - 10;
   if (fits) {
     let y = 676;
     for (const m of shown) { const sz = msgSize(m), grow = out3((t - m.at) / .3); drawMsg(m, sz, y, t, grow); y += (sz.h + 20) * grow; }
   } else {
-    let y = inTop - 16;
+    let y = msgBottom - 16;
     for (let i = shown.length - 1; i >= 0 && y > 600; i--) {
       const m = shown[i], sz = msgSize(m), grow = m.at <= 0 ? 1 : out3((t - m.at) / .3), gone = m.end ? 1 - clamp((t - m.end) / .15) : 1;
       y -= (sz.h + 20) * grow * gone;
@@ -188,23 +208,36 @@ export function chatScreen(t, cfg, e, step) {
     }
   }
   s.restore();
+  if (bar) {           // the goal bar: the goal, its phase and today's step, as in the app
+    const by = msgBottom + 6; s.save(); s.globalAlpha = bar.k ?? 1;
+    rr(26, by, SW - 52, 102, 30); s.fillStyle = C.surface; s.fill(); s.strokeStyle = "rgba(255,245,235,.12)"; s.lineWidth = 2; s.stroke();
+    s.font = `800 26px ${F}`; const tw = s.measureText(bar.title).width; s.font = `600 26px ${F}`; const pw = s.measureText(" · " + bar.phase).width;
+    const x0 = SW / 2 - (tw + pw) / 2;
+    txt(bar.title, x0, by + 34, 26, 800); txt(" · " + bar.phase, x0 + tw, by + 34, 26, 600, C.dim);
+    txt(bar.today, SW / 2, by + 72, 25, 600, C.dim, "center"); s.restore();
+  }
   s.fillStyle = C.bg; s.fillRect(0, inTop, SW, kbTop - inTop);
-  rr(26, inTop + 24, SW - 140, 82, 41); s.fillStyle = C.surface; s.fill(); s.strokeStyle = "rgba(255,245,235,.12)"; s.lineWidth = 2; s.stroke();
+  const pillSend = !!cfg.app, sendX = pillSend ? SW - 106 : SW - 66;
+  rr(26, inTop + 24, SW - (pillSend ? 52 : 140), 82, 41); s.fillStyle = C.surface; s.fill(); s.strokeStyle = "rgba(255,245,235,.12)"; s.lineWidth = 2; s.stroke();
   if (typing && t >= typing.from) {
     const p = clamp((t - typing.from) / (typing.to - typing.from)), shownTxt = typing.text.slice(0, Math.round(typing.text.length * p));
-    s.font = `600 31px ${F}`; let shownLine = shownTxt; while (s.measureText(shownLine).width > SW - 220) shownLine = shownLine.slice(1);
+    s.font = `600 31px ${F}`; let shownLine = shownTxt; while (s.measureText(shownLine).width > SW - (pillSend ? 290 : 220)) shownLine = shownLine.slice(1);
     txt(shownLine, 58, inTop + 66, 31, 600);
     if ((t * 2.2) % 1 < .6) { s.fillStyle = C.btn; s.fillRect(60 + s.measureText(shownLine).width + 4, inTop + 46, 3, 40); }
     typing.p = p;
   } else txt(cfg.placeholder || "Message Ember…", 58, inTop + 66, 31, 600, C.faint);
-  s.fillStyle = C.btn; s.beginPath(); s.arc(SW - 66, inTop + 65, 41, 0, Math.PI * 2); s.fill();
-  s.strokeStyle = C.ink; s.lineWidth = 6; s.beginPath(); s.moveTo(SW - 66, inTop + 84); s.lineTo(SW - 66, inTop + 46); s.moveTo(SW - 82, inTop + 61); s.lineTo(SW - 66, inTop + 46); s.lineTo(SW - 50, inTop + 61); s.stroke();
+  if (pillSend) { rr(SW - 176, inTop + 31, 140, 68, 34); s.fillStyle = C.btn; s.fill(); txt("Send", sendX, inTop + 66, 30, 800, C.ink, "center"); }
+  else {
+    s.fillStyle = C.btn; s.beginPath(); s.arc(SW - 66, inTop + 65, 41, 0, Math.PI * 2); s.fill();
+    s.strokeStyle = C.ink; s.lineWidth = 6; s.beginPath(); s.moveTo(SW - 66, inTop + 84); s.lineTo(SW - 66, inTop + 46); s.moveTo(SW - 82, inTop + 61); s.lineTo(SW - 66, inTop + 46); s.lineTo(SW - 50, inTop + 61); s.stroke();
+  }
   if (kb > 0) keyboard(kbTop, typing);
-  for (const w of cfg.typing || []) ring(t, w.send - .15, SW - 66, inTop + 65);
+  if (tabH > 0 && window.IMGS?.talk) s.drawImage(window.IMGS.talk, 0, SH - 116, SW, 116, 0, SH - tabH, SW, 116);   // the app's own tab bar (Talk open)
+  for (const w of cfg.typing || []) ring(t, w.send - .15, sendX, inTop + 65);
   for (const m of shown) if (m.tap != null && m._tap) ring(t, m.tap - .1, m._tap[0], m._tap[1]);
   for (const x of cfg.xp || []) {
     const a = clamp(Math.min((t - x.at) / .15, ((x.until ?? x.at + 1.4) - t) / .25)); if (a <= 0) continue;
-    s.save(); s.globalAlpha = a; s.translate(SW / 2 + 220, 470 - out3((t - x.at) / 1.2) * 70); const k = back((t - x.at) / .35); s.scale(k, k);
+    s.save(); s.globalAlpha = a; s.translate(x.x ?? SW / 2 + 220, (x.y ?? 470) - out3((t - x.at) / 1.2) * 70); const k = back((t - x.at) / .35); s.scale(k, k);
     s.font = `900 36px ${F}`; const w = s.measureText(x.text).width + 60;
     rr(-w / 2, -38, w, 76, 38); s.fillStyle = C.btn; s.fill(); txt(x.text, 0, 2, 36, 900, C.ink, "center"); s.restore();
   }
@@ -235,6 +268,7 @@ export function camera(t, keys, shakes = []) {
   return cam;
 }
 export function room(cam, hue = 26, strength = .3) {
+  const [W, H] = dims();
   c.fillStyle = "#0d0907"; c.fillRect(0, 0, W, H);
   const g = c.createRadialGradient(cam.x, cam.y - 200, 50, cam.x, cam.y, 1300);
   g.addColorStop(0, `hsla(${hue}, 100%, 62%, ${strength})`); g.addColorStop(.5, `hsla(${hue - 6}, 70%, 36%, ${strength / 3})`); g.addColorStop(1, "rgba(0,0,0,0)");
@@ -255,6 +289,7 @@ export function phone(cam, alpha = 1) {
 // ---- words over the video
 // captions [[from, to, text, y]]: TikTok style, white boxes that grow as each word pops in
 export function captions(t, list) {
+  const [W] = dims();
   for (const [a, b, text, y0 = 200] of list) {
     if (t < a || t > b) continue;
     const font = `900 62px ${F}`, ls = lines(text, 860, font), out = clamp((b - t) / .18);
@@ -273,6 +308,7 @@ export function captions(t, list) {
 }
 // a black card with a line on it ("45 minutes later"), centred on `at`
 export function titleCard(t, at, text, half = .3) {
+  const [W, H] = dims();
   const k = Math.min(clamp((t - (at - half)) / .12), clamp((at + half - t) / .12)); if (k <= 0) return;
   c.fillStyle = `rgba(8,6,5,${k})`; c.fillRect(0, 0, W, H);
   c.save(); c.globalAlpha = k; c.font = `900 84px ${F}`; c.fillStyle = "#fff4e8"; c.textAlign = "center"; c.textBaseline = "middle";
@@ -280,21 +316,25 @@ export function titleCard(t, at, text, half = .3) {
 }
 // a white flash (a level-up, a reveal)
 export function flash(t, at, len = .35, max = .7) {
+  const [W, H] = dims();
   const k = (t - at) / len; if (k < 0 || k > 1) return;
   c.save(); c.globalAlpha = (1 - k) * max; c.fillStyle = "#fff3e0"; c.fillRect(0, 0, W, H); c.restore();
 }
 let noise;
-export function grain() {
+export function grain(amount = .05) {
+  const [W, H] = dims(), R = Math.max(W, H);
   if (!noise) {
     noise = document.createElement("canvas"); noise.width = noise.height = 256; const n = noise.getContext("2d"), d = n.createImageData(256, 256);
     for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
     n.putImageData(d, 0, 0);
   }
-  c.save(); c.globalAlpha = .05; c.globalCompositeOperation = "overlay";
-  const ox = Math.floor(Math.random() * 256), oy = Math.floor(Math.random() * 256);
-  for (let x = -ox; x < W; x += 256) for (let y = -oy; y < H; y += 256) c.drawImage(noise, x, y);
-  c.restore();
-  const v = c.createRadialGradient(W / 2, H / 2, H * .3, W / 2, H / 2, H * .75);
+  if (amount > 0) {
+    c.save(); c.globalAlpha = amount; c.globalCompositeOperation = "overlay";
+    const ox = Math.floor(Math.random() * 256), oy = Math.floor(Math.random() * 256);
+    for (let x = -ox; x < W; x += 256) for (let y = -oy; y < H; y += 256) c.drawImage(noise, x, y);
+    c.restore();
+  }
+  const v = c.createRadialGradient(W / 2, H / 2, R * .3, W / 2, H / 2, R * .75);
   v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.5)"); c.fillStyle = v; c.fillRect(0, 0, W, H);
 }
 

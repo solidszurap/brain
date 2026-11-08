@@ -1,9 +1,11 @@
 // Makes the videos: node tools/social/make.mjs [scene ids...] [--stills DIR] [--avatar (the profile picture only)] [--at 1,4.5 (when the stills are)]
-//   [--out DIR --bitrate 4500000 (lighter copies somewhere else, e.g. for a preview page)]
+//   [--out DIR --bitrate 4500000 (lighter copies somewhere else, e.g. for a preview page)] [--scale 0.6667 (smaller, e.g. 1280×720)]
+//   [--poster 3 (only <id>-poster.webp: that moment, 1280 wide)]
+// The website's demo: node tools/social/make.mjs ember-demo --scale 0.6667 --bitrate 1600000 --out web/img, then --poster 3 --out web/img
 // Needs a Chrome with remote debugging on port 9333, for example:
 //   chrome --headless=new --remote-debugging-port=9333 --user-data-dir=<a scratch folder>
 // Serves the repo on http://localhost:8790 (the studio reads Ember's face from web/index.html), opens
-// tools/social/studio.html, and writes tools/social/out/<id>.mp4 (1080×1920, 30 fps, no sound).
+// tools/social/studio.html, and writes tools/social/out/<id>.mp4 (1080×1920, or the scene's own size; 30 fps, with its sound).
 // With --stills DIR it writes PNGs at the start, middle and end of each video instead, for checking.
 import { createServer } from "node:http";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
@@ -14,9 +16,11 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const flag = name => { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : null; };
 const OUT = flag("--out") ? resolve(flag("--out")) : join(ROOT, "tools/social/out");
 const BITRATE = +(flag("--bitrate") || 0) || null;       // e.g. --bitrate 4500000 for lighter preview copies
+const SCALE = +(flag("--scale") || 0) || 1;               // e.g. --scale 0.6667: the demo's 1280×720 copy for the website
+const POSTER = flag("--poster");                          // e.g. --poster 3: only <id>-poster.webp, that moment, 1280 wide
 const args = process.argv.slice(2), si = args.indexOf("--stills");
 const stills = si >= 0 ? resolve(args[si + 1]) : null;
-const only = args.filter((a, i) => !a.startsWith("--") && !["--stills", "--at", "--out", "--bitrate"].includes(args[i - 1]));
+const only = args.filter((a, i) => !a.startsWith("--") && !["--stills", "--at", "--out", "--bitrate", "--scale", "--poster"].includes(args[i - 1]));
 
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".png": "image/png", ".webp": "image/webp", ".svg": "image/svg+xml" };
 const server = createServer(async (req, res) => {
@@ -50,15 +54,19 @@ try {
   await mkdir(stills || OUT, { recursive: true });
   for (const s of list) {
     const t0 = Date.now();
-    if (stills) {
+    if (POSTER) {
+      const url = await js(`poster(${JSON.stringify(s.id)}, ${+POSTER}, 1280)`);
+      await writeFile(join(OUT, `${s.id}-poster.webp`), Buffer.from(url.split(",")[1], "base64"));
+    } else if (stills) {
       const ai = args.indexOf("--at"), at = ai >= 0 ? args[ai + 1].split(",").map(Number) : [.9, s.dur * .45, s.dur * .7, s.dur - .1];
       for (const [k, t] of at.entries()) { const name = "abcdefghij"[k];
         const url = await js(`still(${JSON.stringify(s.id)}, ${t})`);
         await writeFile(join(stills, `${s.id}-${name}.png`), Buffer.from(url.split(",")[1], "base64"));
       }
     } else {
-      const b64 = await js(`render(${JSON.stringify(s.id)}, ${BITRATE})`);
-      await writeFile(join(OUT, `${s.id}.mp4`), Buffer.from(b64, "base64"));
+      const bytes = await js(`render(${JSON.stringify(s.id)}, ${BITRATE}, ${SCALE})`), parts = [];
+      for (let at = 0; at < bytes; at += 6_000_000) parts.push(Buffer.from(await js(`chunk(${at}, 6000000)`), "base64"));   // in pieces: a long video is too big for one message
+      await writeFile(join(OUT, `${s.id}.mp4`), Buffer.concat(parts));
     }
     console.log(s.id, `${((Date.now() - t0) / 1000).toFixed(1)}s`);
   }

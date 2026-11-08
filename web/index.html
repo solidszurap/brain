@@ -1210,7 +1210,7 @@ document.addEventListener("click", e => {
 const CK_NOTE = {
   off: "Ember won't check up on you.",
   when: "Only about things you mentioned, and a goal that's gone quiet.",
-  daily: "On your days, at your time, if you haven't talked that day. Plus things you mentioned.",
+  daily: "On your days, at your time, even if you didn't answer the last one. Plus things you mentioned.",
 };
 // a name of your own for it (kept in Ember, so its mind and your notifications use it)
 let naming = false;
@@ -1263,8 +1263,9 @@ function renderCheckups() {
   const regular = c.every !== "off" && c.every !== "when";
   $("#ckTime").style.display = regular ? "" : "none";
   $("#ckDays").style.display = regular ? "" : "none";
+  // the regular one comes on each chosen day, answered or not (2026-11-07); the others wait for an answer, never at night
   $("#ckNote").textContent = CK_NOTE[c.every] + (c.every === "off" ? ""
-    : (regular ? " Things you mentioned never come at night." : " Never at night.") + " It won't ask again until you answer.");
+    : regular ? " Things you mentioned never come at night, or before you've answered." : " Never at night. It won't ask again until you answer.");
 }
 async function saveCheckups(days) {
   const every = $("#ckEvery").value, at = $("#ckTime").value || (S && S.checkups.at) || "18:00";

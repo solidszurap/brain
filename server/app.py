@@ -38,7 +38,8 @@ SAVE_EVERY = 60.0
 SITE = {"/home": "home.html", "/features": "features.html", "/pricing": "pricing.html", "/faq": "faq.html",
         "/about": "about.html", "/privacy": "privacy.html", "/terms": "terms.html"}
 PAGES = ("/", *SITE, "/manifest.webmanifest", "/sitemap.xml", "/robots.txt")   # what moves to Ember's own address
-IMAGES = {".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg", ".svg": "image/svg+xml"}
+IMAGES = {".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg", ".svg": "image/svg+xml",
+          ".mp4": "video/mp4"}     # the front page's demo video (served in pieces when asked: iPhones only play video that way)
 IDLE_FOR = 3600.0            # an Ember nobody has used for an hour leaves memory (saved; it loads again when needed)
 MAX_TEXT = 2000
 MAX_BODY = 16384
