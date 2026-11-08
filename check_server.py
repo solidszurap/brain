@@ -236,6 +236,28 @@ TM[0] += 12 * 3600
 call(basem, "/state?v=1", "tok-a")
 check("...once", len(call(basem, "/memory", "tok-a")[1]["months"]) == 1)
 
+print("Deleting a chat or a goal")
+dstore = FileStore(os.path.join(tmp, "deleting"))
+based, _ = serve(create_app(dstore, FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock, plus_emails=("a@x.hu",)))
+ng = call(based, "/goal/new", "tok-a", {"title": "Swim", "days": 14, "steps": ["Find a pool"]})[1]
+call(based, "/talk", "tok-a", {"text": "the pool opens at 7", "chat": ng["chat"]})
+wait(lambda: any(l.get("chat") == ng["chat"] and l["who"] == "ember" for l in dstore.lines("user-a")))
+check("(the goal's chat has lines in the store)", any(l.get("chat") == ng["chat"] for l in dstore.lines("user-a")))
+ng2 = call(based, "/goal/new", "tok-a", {"title": "Read", "days": 14, "steps": ["One page"]})[1]
+check("deleting a goal: it's gone, its chat stays", call(based, "/goal/delete", "tok-a", {"id": ng2["id"]})[1]["ok"]
+      and not any(g["id"] == ng2["id"] for g in call(based, "/goals", "tok-a")[1]["goals"])
+      and any(c["id"] == ng2["chat"] for c in call(based, "/state?v=0", "tok-a")[1]["chats"]))
+dr = call(based, "/chat/delete", "tok-a", {"id": ng["chat"]})
+check("deleting a chat: gone from the window, its goal too, and its lines from the store",
+      dr[0] == 200 and dr[1]["ok"] and dr[1]["chat"] != ng["chat"]
+      and not any(c["id"] == ng["chat"] for c in call(based, "/state?v=0", "tok-a")[1]["chats"])
+      and not any(g["id"] == ng["id"] for g in call(based, "/goals", "tok-a")[1]["goals"])
+      and not any(l.get("chat") == ng["chat"] for l in dstore.lines("user-a")))
+check("...on this computer they're kept in archive/ (never destroy a life)",
+      any("deleted_chat_" in n for n in os.listdir(os.path.join(tmp, "deleting", "user-a", "archive"))))
+check("...an unknown chat is a 404", call(based, "/chat/delete", "tok-a", {"id": "c999"})[0] == 404)
+check("...and only with Ember's header", call(based, "/chat/delete", "tok-a", {"id": "c1"}, header=False)[0] == 403)
+
 print("When the mind is busy or down")
 mind.fail, mind.retryable = 3, True
 call(base, "/talk", "tok-a", {"text": "are you there"})
@@ -513,8 +535,14 @@ class Fake(BaseHTTPRequestHandler):
         return u.path, q
 
     def _match(self, rows, q):
+        def get(r, k):                             # a JSON field too: extra->>chat
+            if "->>" in k:
+                col, sub = k.split("->>")
+                return (r.get(col) or {}).get(sub)
+            return r.get(k)
         f = {k: v[3:] for k, v in q.items() if v.startswith("eq.")}
-        return [r for r in rows if all(str(r.get(k)) == v for k, v in f.items())]
+        nulls = [k for k, v in q.items() if v == "is.null"]
+        return [r for r in rows if all(str(get(r, k)) == v for k, v in f.items()) and all(get(r, k) is None for k in nulls)]
 
     def do_GET(self):
         path, q = self._parse()
@@ -791,6 +819,14 @@ check("saving twice updates the one row", sb.load_self("u1") == {"memories": [1,
 sb.append_lines("u1", [{"t": 2.0, "who": "ember", "text": "b", "exps": ["x1"]}, {"t": 1.0, "who": "you", "text": "a"}])
 check("lines come back in order, extras intact",
       sb.lines("u1") == [{"t": 1.0, "who": "you", "text": "a"}, {"t": 2.0, "who": "ember", "text": "b", "exps": ["x1"]}])
+sb.append_lines("u1", [{"t": 3.0, "who": "you", "text": "c", "chat": "c2"}])
+sb.delete_lines("u1", "c2")
+check("deleting a chat deletes only its lines", [l["text"] for l in sb.lines("u1")] == ["a", "b"])
+sb.append_lines("u1", [{"t": 4.0, "who": "you", "text": "d", "chat": "c2"}])
+sb.delete_lines("u1", "c1")
+check("...the first chat's lines carry no chat", [l["text"] for l in sb.lines("u1")] == ["d"])
+sb.delete_lines("u1", "c2")
+sb.append_lines("u1", [{"t": 2.0, "who": "ember", "text": "b", "exps": ["x1"]}, {"t": 1.0, "who": "you", "text": "a"}])
 sb.add_call("u1", "2026-11-03", 3000, 200)
 sb.add_call("u1", "2026-11-03", 1000, 100)
 check("usage adds up per day", sb.calls_today("u1", "2026-11-03") == 2 and Fake.tables["usage"][0]["tokens_in"] == 4000)

@@ -77,6 +77,28 @@ class FileStore:
                 for line in lines:
                     f.write(json.dumps(line, ensure_ascii=False) + "\n")
 
+    def delete_lines(self, uid, chat):
+        """A chat you deleted. On this computer nothing is destroyed: its lines move to archive/."""
+        path = os.path.join(self._dir(uid), "conversation.jsonl")
+        if not os.path.exists(path):
+            return
+        lines = self.lines(uid)
+        keep = [l for l in lines if (l.get("chat") or "c1") != chat]
+        if len(keep) == len(lines):
+            return
+        dest = os.path.join(self._dir(uid), "archive")
+        os.makedirs(dest, exist_ok=True)
+        with open(os.path.join(dest, time.strftime("%Y-%m-%d_%H%M%S") + f"_deleted_chat_{chat}.jsonl"), "w",
+                  encoding="utf-8") as f:
+            for l in lines:
+                if (l.get("chat") or "c1") == chat:
+                    f.write(json.dumps(l, ensure_ascii=False) + "\n")
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            for l in keep:
+                f.write(json.dumps(l, ensure_ascii=False) + "\n")
+        os.replace(tmp, path)
+
     def lines(self, uid):
         path = os.path.join(self._dir(uid), "conversation.jsonl")
         if not os.path.exists(path):
@@ -224,6 +246,12 @@ class SupabaseStore:
     def append_lines(self, uid, lines):
         if lines:
             self._req("POST", "/rest/v1/lines", [_line_row(uid, l) for l in lines], prefer="return=minimal")
+
+    def delete_lines(self, uid, chat):
+        """A chat you deleted: its lines are deleted (lines of the first chat carry no chat)."""
+        which = "is.null" if chat == "c1" else f"eq.{chat}"
+        self._req("DELETE", "/rest/v1/lines" + self._q(**{"user_id": f"eq.{uid}", "extra->>chat": which}),
+                  prefer="return=minimal")
 
     def lines(self, uid):
         out, start = [], 0

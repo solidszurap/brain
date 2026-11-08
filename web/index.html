@@ -275,6 +275,10 @@ div.grow { cursor: default; }
 /* badges: a grid on the Ember tab, a sheet to show one (and celebrate a new one), and a picture to share */
 /* its story with you: notes on your months, and its moments (a little timeline); each scrolls inside once it's long */
 .scrolls { max-height: 360px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+/* phones hide scrollbars: while there's more below (or above), that edge fades, so it's clear the box scrolls */
+.scrolls.more-b { -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent); mask-image: linear-gradient(to bottom, #000 78%, transparent); }
+.scrolls.more-t { -webkit-mask-image: linear-gradient(to top, #000 78%, transparent); mask-image: linear-gradient(to top, #000 78%, transparent); }
+.scrolls.more-t.more-b { -webkit-mask-image: linear-gradient(transparent, #000 18%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 18%, #000 78%, transparent); }
 .months .month { padding: 14px 16px; }
 .months .month h3 { margin: 0 0 4px; font: 700 16px var(--round); }
 .months .month p { margin: 0; font-size: 15px; line-height: 1.5; white-space: pre-wrap; }
@@ -403,7 +407,19 @@ div.grow { cursor: default; }
 .goalitem:hover { border-color: var(--edge2); background: var(--raised); }
 .goalitem .gt { font-weight: 700; font-size: 17px; display: flex; justify-content: space-between; gap: 8px; }
 .goalitem .gt i { font-style: normal; color: var(--accent); }
+/* the same thing the Goals tab's dot counts: a running goal with no check-in today */
+.goalitem .gt .due { flex: none; align-self: center; display: inline-flex; align-items: center; gap: 6px; font: 700 12px/1 var(--round); font-style: normal;
+  color: var(--accent); white-space: nowrap; }
+.goalitem .gt .due::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
 .goalitem .gm { color: var(--dim); font-size: 13px; margin-top: 2px; }
+.gmiss { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: var(--danger); font: 650 13px/1.3 var(--round); }
+.gpcard .gmiss { margin: -2px 0 8px; }
+.gmiss .mdots { display: inline-flex; gap: 3px; align-items: center; }
+.gmiss .mdots i { width: 8px; height: 8px; border-radius: 50%; border: 1.6px solid currentColor; box-sizing: border-box; }
+.gmiss .mdots b { font-size: 12px; line-height: 1; }
+.gpdelete { margin: 28px 0 8px; text-align: center; }
+.gpdelete small { display: block; margin-top: 8px; color: var(--faint); font-size: 12.5px; line-height: 1.4; }
+.btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
 .goalitem .glv { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--btn); color: #2a1406; font: 800 11.5px/1.5 var(--round); margin-right: 4px; }
 .goalitem .gs { font-size: 15px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--edge); }
 .goalitem.past { opacity: .6; background: none; }
@@ -468,6 +484,9 @@ div.grow { cursor: default; }
 .gpphases li.now { color: var(--text); font-weight: 600; }
 .gpphases li small { display: block; font-weight: 400; color: var(--dim); margin-top: 2px; }
 .gpactions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.gpmain { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.gpmain .btn { width: 100%; min-height: 46px; padding: 10px 12px; text-align: center; line-height: 1.2; }
+.gpmain .wide { grid-column: 1 / -1; }
 .gpform label { display: block; margin-top: 12px; color: var(--dim); font-size: 14px; }
 .gpform label > * { margin-top: 5px; }
 .gpform textarea { min-height: 80px; resize: vertical; }
@@ -523,6 +542,9 @@ div.grow { cursor: default; }
 .chatrow .chatitem { flex: 1; min-width: 0; }
 .chatrow .ren { flex: none; background: none; border: 0; color: var(--faint); font-size: 15px; padding: 8px; cursor: pointer; border-radius: 10px; }
 .chatrow .ren:hover { color: var(--text); background: var(--surface); }
+.chatrow .ren.del { display: grid; place-items: center; min-width: 34px; min-height: 34px; }
+.chatrow .ren.del:hover { color: var(--danger); }
+.chatrow .ren.del.armed { background: none; border: 1px solid; font: 700 13px var(--round); padding: 7px 10px; }   /* red text and edge: .armed */
 /* asking once whether Ember may send its check-ups as notifications */
 #notifyAsk { display: none; width: min(760px, calc(100% - 24px)); margin: 8px auto 0; background: var(--raised); border: 1px solid rgba(255, 179, 107, .45);
   border-radius: 20px; padding: 12px 14px; box-shadow: var(--lift); }
@@ -540,9 +562,20 @@ div.grow { cursor: default; }
 .panel .why2 { margin-top: 6px; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
 .steps { list-style: none; padding: 0; margin: 10px 0 0; }
-.steps li { display: flex; gap: 8px; align-items: flex-start; padding: 3px 0; cursor: pointer; }
-.steps li.done span { color: var(--faint); text-decoration: line-through; }
-.steps input { margin-top: 4px; accent-color: var(--accent); pointer-events: none; }
+.steps li { display: flex; gap: 12px; align-items: flex-start; padding: 9px 2px; cursor: pointer; line-height: 1.4; }
+.steps li + li { border-top: 1px solid var(--edge); }
+.steps li span { padding-top: 1px; }
+.steps li.done span { color: var(--faint); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--faint) 60%, transparent); }
+/* round checks in Ember's colours instead of the browser's white squares (Szilard, 2026-11-08) */
+.steps input { appearance: none; -webkit-appearance: none; flex: none; width: 22px; height: 22px; margin: 0; border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--text) 38%, transparent); background: var(--bg); display: grid; place-items: center; pointer-events: none;
+  transition: background .15s, border-color .15s, transform .15s; }
+.steps input::after { content: ""; width: 6px; height: 11px; margin-top: -2px; border: solid #2a1406; border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg) scale(0); transition: transform .15s; }
+.steps input:checked { background: var(--btn); border-color: transparent; }
+.steps input:checked::after { transform: rotate(45deg) scale(1); }
+.steps li:hover input:not(:checked) { border-color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .steps input, .steps input::after { transition: none; } }
 .timer { font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 650; color: var(--ember2); }
 .rate button { width: 38px; }
 .rate button.on { background: var(--accent); color: #2a1a0c; }
@@ -1244,12 +1277,21 @@ const dayShort = t => new Date(t * 1000).toLocaleDateString([], {day: "numeric",
 let MONTHS = null, monthsKey;
 let monthSeen = null;                      // the newest month note this device has shown
 try { monthSeen = localStorage.getItem("ember.monthSeen"); } catch (e) {}
+function scrollEdges(el) {
+  el.classList.toggle("more-t", el.scrollTop > 4);
+  el.classList.toggle("more-b", el.scrollHeight - el.scrollTop - el.clientHeight > 4);
+}
+for (const el of document.querySelectorAll(".scrolls")) {
+  el.addEventListener("scroll", () => scrollEdges(el), {passive: true});
+  new MutationObserver(() => requestAnimationFrame(() => scrollEdges(el))).observe(el, {childList: true, subtree: true});
+}
 function renderBecoming() {
   if (!S || !S.moments) return;
   const ms = [...S.moments].reverse();
   const html = `<div class="moments">` + ms.map(m => `<div class="moment"><time>${m.t ? esc(dayShort(m.t))
     : m.before ? "Before " + esc(dayShort(m.before)) : ""}</time><span>${esc(m.text)}</span></div>`).join("") + `</div>`;
   if ($("#becoming").dataset.html !== html) { $("#becoming").dataset.html = html; $("#becoming").innerHTML = html; }
+  if (view === "ember") document.querySelectorAll(".scrolls").forEach(scrollEdges);   // sizes are only real while it shows
   renderMonths();
 }
 async function renderMonths() {
@@ -1461,10 +1503,32 @@ function renderChats() {
   }
   const html = S.chats.map(c => `<div class="chatrow"><button class="chatitem${c.id === S.chat ? " on" : ""}${isNew(c) ? " new" : ""}" data-chat="${esc(c.id)}">
     <div class="ct">${esc(c.title)}</div><div class="cs">${c.goal ? `<b>${c.goal.kind === "goal" ? "Goal" : "Experiment"}</b> · ` : ""}${esc(fmtWhen(c.last))}</div></button>
-    <button class="ren" data-rename="${esc(c.id)}" title="Rename">✎</button></div>`).join("");
-  if ($("#chatlist").dataset.html !== html) { $("#chatlist").dataset.html = html; $("#chatlist").innerHTML = html; }
+    <button class="ren" data-rename="${esc(c.id)}" title="Rename">✎</button><button class="ren del" data-delchat="${esc(c.id)}" title="Delete" aria-label="Delete this chat">${TRASH}</button></div>`).join("");
+  if ($("#chatlist").dataset.html !== html && !$("#chatlist [data-armed]")) { $("#chatlist").dataset.html = html; $("#chatlist").innerHTML = html; }
+}
+const TRASH = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+function armed(btn, ask) {                 // like sure(), for a button that holds an icon: first tap asks, second does it
+  if (btn.dataset.armed) return true;
+  const old = btn.innerHTML;
+  btn.dataset.armed = "1"; btn.classList.add("armed"); btn.textContent = ask;
+  setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.classList.remove("armed"); btn.innerHTML = old; } }, 3500);
+  return false;
+}
+async function deleteChat(btn, id) {
+  const res = await api("/chat/delete", {method: "POST", headers: {"Content-Type": "application/json", "X-Ember": "1"},
+    body: JSON.stringify({id})}).catch(() => null);
+  if (res && res.ok) {
+    const r = await res.json();
+    toast("Chat deleted.");
+    if (id === (S && S.chat)) openChat(r.chat); else poll();
+  } else {
+    delete btn.dataset.armed;
+    toast(res && res.status === 409 ? "Ember is still answering in that chat. Try again in a moment." : "Couldn't delete it right now. Try again in a moment.");
+  }
 }
 $("#chatlist").addEventListener("click", e => {
+  const d = e.target.closest("[data-delchat]");
+  if (d) { if (armed(d, "Delete?")) deleteChat(d, d.dataset.delchat); return; }
   const r = e.target.closest("[data-rename]");
   if (r) { const id = r.dataset.rename; if (id !== S.chat) openChat(id); else closeDrawers(); startRename(); return; }
   const b = e.target.closest("[data-chat]");
@@ -1559,11 +1623,17 @@ function goalMeta(g) {
   const ph = g.phase_info && g.phase_info.count > 1 ? ` · phase ${g.phase_info.index + 1} of ${g.phase_info.count}` : "";
   return g.status === "active" ? `${kind}${ph} · ${goalWhen(g)}` : `${kind} · ${g.status === "done" ? "finished" : "dropped"}`;
 }
+function missedHtml(g) {                  // days in a row with no check-in, up to yesterday: one hollow dot for each
+  const n = g.status === "active" ? g.missed || 0 : 0;
+  if (!n) return "";
+  return `<div class="gmiss"><span class="mdots" aria-hidden="true">${"<i></i>".repeat(Math.min(n, 7))}${n > 7 ? "<b>+</b>" : ""}</span>`
+    + `Missed ${n} day${n === 1 ? "" : "s"}${g.checked_today ? "" : ". Today counts"}</div>`;
+}
 function renderGoalList() {
   const act = GOALS.filter(g => g.status === "active"), past = GOALS.filter(g => g.status !== "active");
   const item = g => `<button class="goalitem${g.status === "active" ? "" : " past"}" data-goal="${esc(g.id)}">
-    <div class="gt"><span>${esc(g.title)}</span>${g.checked_today ? "<i>✓</i>" : ""}</div><div class="gm">${g.glevel ? `<span class="glv">Lv ${g.glevel.level}</span> ` : ""}${esc(goalMeta(g))}</div>
-    ${g.status === "active" ? `<div class="gs">${g.today_step ? "Today: " + esc(g.today_step.text) : "No step yet"}</div>` : ""}</button>`;
+    <div class="gt"><span>${esc(g.title)}</span>${g.checked_today ? "<i>✓</i>" : g.status === "active" ? `<em class="due">Check in today</em>` : ""}</div><div class="gm">${g.glevel ? `<span class="glv">Lv ${g.glevel.level}</span> ` : ""}${esc(goalMeta(g))}</div>
+    ${g.status === "active" ? `<div class="gs">${g.today_step ? "Today: " + esc(g.today_step.text) : "No step yet"}</div>` : ""}${missedHtml(g)}</button>`;
   $("#goallist").innerHTML = (act.length ? act.map(item).join("")
     : `<div class="gpnote">No goals yet. Make one yourself, or tell Ember what you want and it'll help you plan it.</div>`)
     + (past.length ? `<div class="golabel">Finished</div>` + past.map(item).join("") : "");
@@ -1607,7 +1677,7 @@ function renderGoalPage() {
     + (g.question ? `<div class="gpdw">${isGoal(g) ? "You'll know you're there when: " : ""}${esc(g.question)}</div>` : "")
     + (g.why ? `<div class="gpwhy">${esc(g.why)}</div>` : "");
   if (active) {
-    h += `<div class="gpcard"><h3>Today ${g.streak ? `<small>${g.streak} day${g.streak === 1 ? "" : "s"} in a row</small>` : ""}</h3>`
+    h += `<div class="gpcard"><h3>Today ${g.streak ? `<small>${g.streak} day${g.streak === 1 ? "" : "s"} in a row</small>` : ""}</h3>` + missedHtml(g)
       + (g.today_step ? `<div class="gpstep">${esc(g.today_step.text)}</div>`
                       : `<div class="gpstep none">No step for today yet: add one below, or plan the next steps with Ember.</div>`)
       + `<div class="gpchecks">` + [["done", "✔ Did it"], ["partly", "◐ Partly"], ["skip", "✕ Not today"]].map(([k, l]) =>
@@ -1628,9 +1698,14 @@ function renderGoalPage() {
   }
   if (g.plan) h += `<div class="gpcard"><h3>The plan</h3><div>${esc(g.plan)}</div></div>`;
   if (g.review) h += `<div class="gpcard"><h3>Looking back</h3><div>${esc(g.review)}</div></div>`;
-  h += `<div class="gpactions"><button class="btn" data-gplan>Plan details with Ember</button><button class="btn ghost" data-gtalk>Talk about it</button>`
-    + (active ? `<button class="btn ghost" id="gpMore">${moreText(g)}</button><button class="btn ghost" id="gpFinish">Finish and look back</button>`
-       + `<button class="btn ghost" id="gpDrop">Drop it</button>` : "") + `</div>`;
+  // the main way forward first, then two equal choices; more time only when its time is nearly up (Szilard, 2026-11-08)
+  const ending = active && (g.time_up || (g.left != null && g.left < (g.hourly || g.days < 1 ? 3600 : 3 * 86400)));
+  h += `<div class="gpmain"><button class="btn wide" data-gplan>Plan details with Ember</button>`
+    + `<button class="btn ghost${active ? "" : " wide"}" data-gtalk>Talk about it</button>`
+    + (active ? `<button class="btn ghost" id="gpFinish">Finish ${isGoal(g) ? "goal" : "experiment"}</button>` : "")
+    + (ending ? `<button class="btn ghost wide" id="gpMore">${moreText(g)}</button>` : "") + `</div>`;
+  h += `<div class="gpdelete"><button class="btn ghost danger" id="gpDelete">Delete ${isGoal(g) ? "goal" : "experiment"}</button>`
+    + `<small>Deletes its plan, steps and check-ins. Its chat stays, and so does what Ember knows about you.</small></div>`;
   $("#gpBody").innerHTML = h;
 }
 // the path: a goal's level, then its days winding down in its phases. Finished phases fold into a trophy and
@@ -1772,11 +1847,13 @@ $("#gpBody").addEventListener("click", async e => {
     const xp0 = xpNow(), r = await post("/goal/phase", {id: g.id});
     if (r && r.ok) { say("Ember is looking back on this phase and planning the next. It'll answer in the goal's chat."); goToChat(g); xpWatch = xp0 == null ? null : {x0: xp0, until: Date.now() + 240000}; }
   } else if (b.id === "gpMore") { b.disabled = true; await post("/experiment/extend", {id: g.id}); loadGoals(); poll(); }
-  else if (b.id === "gpFinish" && sure(b, "Click again to finish")) {
+  else if (b.id === "gpFinish" && sure(b, "Tap again to finish and look back")) {
     const xp0 = xpNow();
     await post("/experiment/end", {id: g.id, how: "done"}); goToChat(g); xpAfter(xp0);
-  } else if (b.id === "gpDrop" && sure(b, "Click again to drop it")) {
-    await post("/experiment/end", {id: g.id, how: "dropped"}); goToChat(g);
+  } else if (b.id === "gpDelete" && sure(b, "Tap again to delete it for good")) {
+    const r = await post("/goal/delete", {id: g.id});
+    if (r && r.ok) { toast(`"${g.title}" deleted.`); goalOpen = null; GOALS = GOALS.filter(x => x.id !== g.id); go("goals"); loadGoals(); poll(); }
+    else toast("Couldn't delete it right now. Try again in a moment.");
   }
 });
 $("#gpBody").addEventListener("submit", async e => {
@@ -2029,14 +2106,13 @@ function renderExpCard() {
     ${x.plan ? `<div class="plan">${esc(x.plan)}</div>` : ""}
     ${steps ? `<ul class="steps">${steps}</ul>` : ""}
     <div class="meta" style="margin-top:8px">${fmtTotal(st.seconds)} in ${st.sessions} session${st.sessions === 1 ? "" : "s"}${st.avg_rating ? ` · felt ${st.avg_rating}/5 on average` : ""}</div>
-    <div class="row"><button class="btn ghost" id="enddone">Finish it</button><button class="btn ghost" id="enddrop">Drop it</button></div></div>`;
+    <div class="row"><button class="btn ghost" id="enddone">Finish it</button></div></div>`;
 }
 $("#expcard").addEventListener("click", async e => {
   const t = e.target, x = S && S.experiment;
   if (!x) return;
   const act = async (path, data) => { t.disabled = true; await post(path, data); expKey = ""; poll(); };
   if (t.id === "enddone" && sure(t, "Click again to finish")) act("/experiment/end", {id: x.id, how: "done"});
-  else if (t.id === "enddrop" && sure(t, "Click again to drop")) act("/experiment/end", {id: x.id, how: "dropped"});
   else {
     const li = t.closest("li[data-step]");
     if (li) act("/experiment/step", {id: x.id, index: +li.dataset.step, done: !x.steps[+li.dataset.step].done});

@@ -1054,6 +1054,55 @@ check("an Ember saved before month notes starts with the next month (nothing old
       oo.month_last == "2027-01" and oo.month_due(feb1 + 4 * D) is None)
 check("months step over the year", month_step("2026-12", 1) == "2027-01" and month_step("2027-01", -1) == "2026-12")
 
+print("Deleting a chat or a goal")
+dl = Ember(now=t)
+dl.hear(t + 10, "I love to paint, it's my thing")
+dl.respond({"type": "talk", "text": "I love to paint, it's my thing", "chat": "c1"},
+           mind_says(reply="Nice.", remember=[{"kind": "enjoys", "note": "loves painting", "quote": "I love to paint"}]), t + 11)
+g = dl.new_goal("Paint 10 pictures", "", 30, ["Buy paper"], t + 20)
+dl.daily_check(g["id"], "done", "", t + 30)
+gc = g["chat"]
+check("a goal you started is one of your moments, with its name", any("Paint 10 pictures" in m["text"] for m in dl.moments))
+dl.followups.append({"chat": gc, "at": t + 99999, "about": "paper", "set": t})
+check("deleting a goal's chat deletes the chat, its lines, its goal and the check-ups planned there",
+      dl.delete_chat(gc, t + 40) and not any(c["id"] == gc for c in dl.chats) and not dl.find_exp(g["id"])
+      and not any(l.get("chat") == gc for l in dl.talk) and not any(f["chat"] == gc for f in dl.followups))
+check("...what Ember learned about you stays (only Forget deletes a memory)", len(dl.memories) == 1)
+check("...and the moment stays, without the goal's name", any(m["id"] == "first_goal" for m in dl.moments)
+      and not any("Paint 10" in m["text"] for m in dl.moments))
+check("an answer still on its way to a deleted chat is dropped, never said elsewhere",
+      dl.respond({"type": "daily", "id": g["id"], "how": "done", "chat": gc}, mind_says(reply="Well done!"), t + 50)["skipped"]
+      and not any(l["text"] == "Well done!" for l in dl.talk) and dl.gone({"type": "talk", "text": "x", "chat": gc}))
+g2 = dl.new_goal("Read more", "", 14, ["One page"], t + 60)
+check("deleting a goal keeps its chat", dl.delete_goal(g2["id"], t + 61) and not dl.find_exp(g2["id"])
+      and any(c["id"] == g2["chat"] for c in dl.chats))
+check("...and an unknown one is refused", not dl.delete_goal("x99", t + 62) and not dl.delete_chat("c99", t + 62))
+for c in [c["id"] for c in dl.chats]:
+    dl.delete_chat(c, t + 70)
+check("deleting every chat leaves one fresh chat", len(dl.chats) == 1 and dl.chats[0]["title"] == "New chat" and not dl.talk)
+
+print("A level-up goes where you were, never into an empty new chat")
+lu = Ember(now=t)
+lu.hear(t + 10, "hi")
+lu.respond({"type": "talk", "text": "hi", "chat": "c1"}, mind_says(reply="Hi!"), t + 11)
+fresh = lu.new_chat(t + 20)                       # you tapped +, and haven't written there yet
+lu.gain("test", 100, t + 21)
+lu.update(t + 22, present=True)
+check("a new level from the day's progress is told in the chat you talked in", any(l.get("levelup") for l in lu.talk if l.get("chat", "c1") == "c1")
+      and not any(l.get("chat") == fresh for l in lu.talk))
+check("...so the new chat stays empty", next(c for c in lu.chat_list() if c["id"] == fresh)["empty"])
+
+print("Missed days on a goal")
+md = Ember(now=t)
+mg = md.new_goal("Stretch", "", 30, ["5 minutes"], t + 10)
+check("a goal started today has missed nothing", md.goal_view(mg, t + 60)["missed"] == 0)
+check("two days later with no check-in: 2 missed (today is still open)", md.goal_view(mg, t + 2 * D + 60)["missed"] == 2)
+md.daily_check(mg["id"], "skip", "", t + 2 * D + 70)
+check("\"Not today\" is a check-in, not a missed day", md.goal_view(mg, t + 3 * D + 60)["missed"] == 0)
+check("then 4 quiet days: 4 missed", md.goal_view(mg, t + 7 * D + 60)["missed"] == 4)
+md.end_experiment(mg["id"], "done", t + 7 * D + 70)
+check("a finished goal misses nothing", md.goal_view(mg, t + 9 * D)["missed"] == 0)
+
 print()
 print("All checks passed." if not failed else f"{len(failed)} FAILED: {failed}")
 raise SystemExit(1 if failed else 0)

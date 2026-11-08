@@ -215,6 +215,8 @@ class MindWorker:
     def _think(self, u, event):
         store, day = self.users.store, time.strftime("%Y-%m-%d", time.gmtime(self.clock()))
         with u.lock:
+            if u.ember.gone(event):
+                return                              # its chat or goal was deleted meanwhile: nothing to answer
             chat = u.ember.event_chat(event)
         raw = None
 
@@ -583,6 +585,30 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
             worker.put(u.uid, {"type": "talk", "text": text, "chat": chat})
             return True
         return act(request, f)
+
+    @app.post("/chat/delete")
+    def chat_delete(request: Request, body: dict = Body(default={})):
+        """You deleted a chat: its lines (in the store too), its goals and its planned check-ups."""
+        u = who(request)
+        cid = str(body.get("id") or "")
+        with u.lock:
+            if not any(c["id"] == cid for c in u.ember.chats):
+                raise HTTPException(404, "no such chat")
+            if u.jobs > 0 and u.thinking_in == cid:
+                raise HTTPException(409, "Ember is still answering there")
+            try:
+                store.delete_lines(u.uid, cid)
+            except StoreError as e:
+                log.error("deleting a chat failed for %s: %s", u.uid, e)
+                raise HTTPException(503, "couldn't delete it right now")
+            u.ember.delete_chat(cid, clock())
+            users.save(u)
+            log.info("chat deleted for %s", u.uid)
+            return {"ok": True, "chat": u.ember.latest_chat()["id"]}
+
+    @app.post("/goal/delete")
+    def goal_delete(request: Request, body: dict = Body(default={})):
+        return act(request, lambda u, now: u.ember.delete_goal(body.get("id"), now))
 
     @app.post("/chat/rename")
     def chat_rename(request: Request, body: dict = Body(default={})):

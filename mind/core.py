@@ -629,12 +629,14 @@ class Ember:
             step["xp"] = True                    # once per step, however often it's ticked
             self.gain("a step done", XP["step"], now)
 
-    def _announce_levelup(self, now):
-        """It reached a new level: it says so once, in your latest chat (no mind needed)."""
+    def _announce_levelup(self, now, chat=None):
+        """It reached a new level: it says so once (no mind needed), in the chat where it happened, or the chat you
+        last talked in: never in a chat you've just opened and not written in yet."""
         due = self.levelup_due
         if not due:
             return False
-        last = self.last_line(self.latest_chat()["id"])
+        chat = self.find_chat(chat)["id"] if chat and any(c["id"] == chat for c in self.chats) else self.talked_chat()["id"]
+        last = self.last_line(chat)
         if last and last["who"] == "you":
             return False                         # it's about to answer you: after that
         self.levelup_due = None
@@ -646,7 +648,7 @@ class Ember:
         said += " Thanks for keeping at it with me."
         if unlocked:
             said += " New for me: " + ", ".join(unlocked) + ". (Tap my level, or the Ember tab → Customize Ember)"
-        self._say(now, "ember", said, "eager", self.latest_chat()["id"], levelup=new)
+        self._say(now, "ember", said, "eager", chat, levelup=new)
         self.expr, self.expr_until = "eager", now + EXPR_SECONDS
         self.bump = min(1.0, self.bump + 0.3)
         return True
@@ -1092,6 +1094,11 @@ class Ember:
         """The chat with this id, or your latest one."""
         return next((c for c in self.chats if c["id"] == cid), None) or self.latest_chat()
 
+    def talked_chat(self):
+        """The chat with the latest words in it (yours or Ember's): where Ember's own news goes. A new chat you've
+        opened but not written in never gets them (it would stop being empty)."""
+        return self.find_chat(chat_of(self.talk[-1])) if self.talk else self.latest_chat()
+
     def latest_chat(self):
         """The chat you wrote in or opened most recently."""
         last = {c["id"]: c["created"] for c in self.chats}
@@ -1170,7 +1177,7 @@ class Ember:
         if now - last_you < CHECKUP_WAIT:
             return None              # you're talking with it right now: a little later
         act = [x for x in self.experiments if x["status"] == "active"]
-        latest = self.latest_chat()["id"]
+        latest = self.talked_chat()["id"]
         x = next((x for x in act if chat_of(x) == latest), None) or (act[-1] if act else None)
         return {"type": "followup", "regular": True, "chat": chat_of(x) if x else latest,
                 "about": "how they are and how their day is going" + (f", and their {kind_of(x)} \"{x['title']}\"" if x else "")}
@@ -1202,6 +1209,49 @@ class Ember:
         if fu:
             out.append(f"You plan to check up on them in this chat in {ago(fu['at'] - now)}, about: {fu['about']}.")
         return out
+
+    def _unname_moments(self, ids):
+        """Goals you deleted: the moments about them stay, without their names."""
+        for m in self.moments:
+            if m.get("x") in ids:
+                m["text"] = MOMENTS[m["id"]].replace(', "{title}"', "").format(title="", name=self.name)
+                m.pop("x")
+
+    def delete_goal(self, eid, now):
+        """You deleted a goal or experiment: it's gone, with its plan, steps and checks. Its chat stays, and so does
+        what Ember learned about you (memories go only by Forget)."""
+        if not self.find_exp(eid):
+            return False
+        self.experiments = [x for x in self.experiments if x["id"] != eid]
+        if self.session and self.session["exp"] == eid:
+            self.session, self.checkin_due = None, False
+        self._unname_moments([eid])
+        return True
+
+    def delete_chat(self, cid, now):
+        """You deleted a chat: its lines, its goals and experiments, and the check-ups planned there. What Ember
+        learned about you stays (memories go only by Forget). The last chat is never left empty-handed: a new one."""
+        if not any(c["id"] == cid for c in self.chats):
+            return False
+        gone = [x["id"] for x in self.experiments if chat_of(x) == cid]
+        self.experiments = [x for x in self.experiments if chat_of(x) != cid]
+        self.talk = [l for l in self.talk if chat_of(l) != cid]
+        self.outbox = [l for l in self.outbox if chat_of(l) != cid]
+        self.followups = [f for f in self.followups if f["chat"] != cid]
+        if self.session and self.session["exp"] in gone:
+            self.session, self.checkin_due = None, False
+        self.chats = [c for c in self.chats if c["id"] != cid]
+        self._unname_moments(gone)
+        if not self.chats:
+            self.chats.append({"id": f"c{self.next_chat}", "title": NEW_CHAT, "created": now})
+            self.next_chat += 1
+        return True
+
+    def gone(self, event):
+        """An event about a chat or goal you've deleted since: nothing to answer (and never in another chat)."""
+        if event.get("chat") and not any(c["id"] == event["chat"] for c in self.chats):
+            return True
+        return event["type"] in ("review", "phase", "daily") and not self.find_exp(event.get("id"))
 
     def rename_chat(self, cid, title):
         """You named a chat yourself."""
@@ -1429,6 +1479,9 @@ class Ember:
         """Apply what its mind answered (raw JSON text), or the template mind if raw is None/unusable.
         Returns what changed: {"reply", "face", "remembered": [...], "updated": [...], "dropped": [...]}."""
         from .llm import parse_json
+        if self.gone(event):
+            return {"reply": "", "face": "calm", "remembered": [], "updated": [], "dropped": [], "by": "mind",
+                    "skipped": True}
         d = parse_json(raw) if raw else None
         if event["type"] == "month":
             return self._take_month(event, d, now)
@@ -1522,7 +1575,7 @@ class Ember:
         self._say(now, "ember", result["reply"], result["face"], chat, **extra)
         self.expr, self.expr_until = result["face"], now + EXPR_SECONDS
         if self.levelup_due:
-            self._announce_levelup(now)
+            self._announce_levelup(now, chat)
         self.check_badges(now)
         self.check_moments(now)
         return result
@@ -1837,6 +1890,17 @@ class Ember:
             n, d = n + 1, d - 1
         return n
 
+    def missed_days(self, x, now):
+        """Days in a row with no check-in on a running goal, up to yesterday (today is still open). A "not today" is
+        a check-in, not a missed day. Goals of hours don't count days."""
+        if x["status"] != "active" or not x.get("started") or by_hours(x):
+            return 0
+        checked = {e["day"] for e in x.get("log", [])}
+        first, d, n = self._day(x["started"]), self._day(now) - 1, 0
+        while d >= first and time.strftime("%Y-%m-%d", time.gmtime(d * 86400)) not in checked:
+            n, d = n + 1, d - 1
+        return n
+
     def daily_check(self, eid, how, words, now):
         """How today's step went: did it, partly, or not today. Returns the event for its mind, or None."""
         x = self.find_exp(eid)
@@ -1934,6 +1998,7 @@ class Ember:
         today = self._date(now)
         v["checked_today"] = next((e["how"] for e in x.get("log", []) if e["day"] == today), None)
         v["streak"] = self.streak(x, now)
+        v["missed"] = self.missed_days(x, now)
         by_day = {e["day"]: e["how"] for e in x.get("log", [])}
         d = self._day(now)
         v["recent"] = [{"day": time.strftime("%Y-%m-%d", time.gmtime(k * 86400)),
