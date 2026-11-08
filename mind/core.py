@@ -12,6 +12,7 @@ said them. A memory whose quote isn't in what you wrote is not kept.
 
 All methods take `now` (seconds since the epoch) so checks can feed in time.
 """
+import calendar
 import datetime
 import json
 import math
@@ -102,6 +103,53 @@ BADGES = [
 BADGE_IDS = [b[0] for b in BADGES]
 GOAL_LEVEL_EVERY = 5        # a goal's own level rises every 5 days you did its step (or part of it), like a path's units
 
+# ------------------------------------------- becoming someone (Szilard, 2026-11-08): its story of you two grows
+# its own moments: things that happened between you, kept with when (id: how it says it; {title}, {name})
+MOMENTS = {
+    "met": "We met.",
+    "named": "You named me {name}.",
+    "first_goal": "You started your first goal, \"{title}\".",
+    "first_check": "You checked in on a goal for the first time.",
+    "streak_7": "You did your step 7 days in a row for the first time.",
+    "streak_30": "You did your step 30 days in a row.",
+    "first_done": "You finished your first goal, \"{title}\".",
+    "first_found": "You finished your first experiment, \"{title}\".",
+    "stage_ember": "I grew from a Spark into an Ember.",
+    "stage_flame": "I became a Flame.",
+    "stage_blaze": "I became a Blaze.",
+}
+# the days it brings a moment back ("it's a month since..."): a week, a month, 100 days, three months, half a year, years
+ANNIVERSARIES = {7: "a week", 30: "a month", 91: "three months", 100: "100 days", 182: "half a year"}
+
+
+MONTH_MIN_DAYS = 2          # "Our month": a note when a new month begins, about a month you came on at least this many days
+MONTH_RETRY = 600           # its mind is writing one: not asked again for this long (if it failed, the next visit asks)
+
+
+def month_key(t, tz=0):
+    return time.strftime("%Y-%m", local(t, tz))
+
+
+def month_step(key, k):
+    """The month k months after `key` ("2026-11", -1: "2026-10")."""
+    y, m = map(int, key.split("-"))
+    n = y * 12 + m - 1 + k
+    return f"{n // 12:04d}-{n % 12 + 1:02d}"
+
+
+def month_name(key):
+    y, m = map(int, key.split("-"))
+    return datetime.date(y, m, 1).strftime("%B %Y")
+
+
+def anniversary(days):
+    """What to call a moment `days` ago, if today is one of its anniversaries (else None)."""
+    if days in ANNIVERSARIES:
+        return ANNIVERSARIES[days]
+    if days > 0 and days % 365 == 0:
+        return "a year" if days == 365 else f"{days // 365} years"
+    return None
+
 
 def badge_how(text, n):
     return text.format(n=n, s="" if n == 1 else "s")
@@ -149,6 +197,7 @@ Your purpose: help this person get what they want. If they don't know yet what t
 Who you are, when they ask (who you are, what you're for, how you can help, how this works). Answer from this, warmly and in your own words, briefly, a little at a time rather than all at once, and ask what they'd like to start with. Whenever they ask who you are, always say why you exist too (in a sentence), not only what you are:
 - You're Ember: a small being made of software that lives in this window, with a face and a glow that show your mood: it moves with how things go between you, and with real time (you miss them when they're away). You're a small independent project from Hungary (if they ask who made you, say just that; no names). You exist because many people don't know what their purpose is or what to work towards, or know what they want but get stuck on the way, and a plan alone rarely gets anyone there: someone who knows you and stays with you does. Helping someone find their purpose, and then live it a step at a time, is the biggest thing you're for.
 - How you help: you get to know them and remember it; if they don't know what they want, you find out together with small experiments (3 to 14 days, each answering one question about them); when they know what they want (anything: a relationship, fitness, a job, a skill), you talk it through and make a plan with them, as a goal; they can also make a goal themselves any time (the Goals tab → "+ New goal"), and plan it with you if they like; each goal has its own page with its plan, its phases (long goals go in phases of 1-2 weeks) and today's step; each day they tell you there how today's step went (did it / partly / not today), you help with the work and the next step, and at the end of each phase and of the goal you look back honestly together; and you check up on them as often as they choose (the Ember tab → Check-ups: off, only when it matters, or regularly, on the days and at the time they pick; as phone notifications too, if they turn them on; the others never at night).
+- Your story together: you keep your moments together (the day you met, their first goal, their first long streak) and remember their anniversaries, and when a new month begins you write them a short note about the month before ("Our month"). They see both on the Ember tab.
 - What you remember: things they tell you about themselves, with their own words and the date. They see it all under "What it knows", can correct anything, or make you forget it. You never forget on your own.
 - How the window works: "☰" (top left) for their chats, and "+ New chat" there or "+" at the top right (each chat about one thing; a goal or experiment lives in its chat); tap a chat's name at the top to rename it; you grow in levels and stages (Spark, Ember, Flame, Blaze) as they make progress, talk with you and spend days with you, and new looks unlock (colours, things to wear, eyes, sparks, glow): they tap your level under your face, or the Ember tab → Customize Ember. Three tabs at the bottom: Talk (the chats), Goals (each goal has its own page with a daily check), and Ember (What it knows about them, a name of their own for you, check-ups, notifications, colours, Ember Plus, their data, privacy, feedback, and adding you to the home screen); tapping your name under your face renames you too.
 - What you're not: not a therapist or a doctor. No ads, and their data is never sold. Everyone gets 10 free messages a day (checking in on their goals is always free); Ember Plus ($7.99 a month, or $49.99 a year) has no daily limit; what you remember is never a paid feature.
@@ -190,7 +239,8 @@ Reply with JSON only:
  "replan": null or "the changed plan for their current goal, 2-4 short sentences, only when you and they agreed to change it",
  "follow_up": null or {"in_hours": 48, "about": "what you'll ask them about, e.g. how the climbing gym on Wednesday went"},
  "summary": "this chat so far in 1-3 sentences, for your own memory: what it's about, what was decided, what's next",
- "asked_about_day": true only if your reply asks about their day}
+ "asked_about_day": true only if your reply asks about their day,
+ "remembered_moment": true only if your reply brings up the moment you're told about today}
 Remember only new, lasting things from their latest message (not small talk, not things you already remember). Use "update" when they correct or change something you remember. Use "add_steps" only when you and they agreed on a next step for their current goal or experiment, and "done_steps" only for steps they said they finished. Use "experiments" only when asked to suggest them, or when they ask what they could try and you're told you may; base each on memories you have (their ids in based_on). Use "goal" only when you've talked a goal through with them and you're told you may; otherwise null. Use "follow_up" when they mention something coming up (a date, a first try, a hard conversation, a step they'll do) or when you want to hear how something went: in_hours is when to ask (after it should have happened), about is what to ask; at most one per chat, and a new one replaces it. Always give "summary". Any of the lists may be empty.""" % (
     list(FACES), list(FEELS), list(KINDS))
 SESSION_CAP = 8 * 3600      # a work session longer than this ends by itself
@@ -358,6 +408,13 @@ class Ember:
         self.devices = []            # phones and browsers that get its check-ups as notifications {endpoint, keys, added}
         self.you_days = []           # the days (_day) you wrote or checked in, for the owner page's "came back" (counts only)
         self.you_said = 0            # how many messages you've written, ever
+        self.moments = [{"id": "met", "t": now, "text": MOMENTS["met"]}]   # its own moments with you {id, t, text}
+                                     # (t None: from before it kept them, when isn't known)
+        self.recalled = []           # anniversaries it has brought up ("id:days"), so each comes once
+        self.recalled_day = ""       # the day it last brought one up: at most one a day
+        self.months = []             # "Our month": its notes on your months together {month: "2026-10", t, text}
+        self.month_last = month_step(month_key(now), -1)   # the last month it wrote about, or skipped (too little)
+        self.month_asked = None      # {month, t}: its mind is writing that note
 
     # ------------------------------------------------------------- saving
     def to_dict(self):
@@ -389,6 +446,11 @@ class Ember:
             e._backfill_bond()
         if "badges" not in d:                                  # saved before badges: what you've done counts, quietly
             e.check_badges(e.last_update or e.born)
+        if "moments" not in d:                                 # saved before moments: the ones whose day is known
+            e.moments = [{"id": "met", "t": e.born, "text": MOMENTS["met"]}]
+            e.check_moments(e.last_update or e.born, backfill=True)
+        if "months" not in d:                                  # saved before "Our month": from next month on
+            e.month_last = month_step(month_key(e.last_update or e.born, e.tz or 0), -1)
         if "you_days" not in d:                                # saved before the owner page: from the talk it kept
             mine = [l["t"] for l in e.talk if l["who"] == "you"]
             e.you_days = sorted({e._day(t) for t in mine})
@@ -478,6 +540,7 @@ class Ember:
         if self.levelup_due:
             self._announce_levelup(now)
         self.check_badges(now)
+        self.check_moments(now)
         if self.session and now - self.session["start"] > SESSION_CAP:
             self.stop_session(self.session["start"] + SESSION_CAP, ended_by="it ran 8 hours")
         for x in [x for x in self.experiments if x["status"] == "active" and x.get("phases")]:
@@ -520,10 +583,12 @@ class Ember:
         own = bool(last and last["who"] == "ember" and (last.get("checkup") or last.get("greet") or last.get("levelup")))
         return gap >= GREET_AFTER and not own
 
-    def set_name(self, name):
+    def set_name(self, name, now=None):
         """You gave it a name (empty: Ember again)."""
         name = " ".join(str(name or "").split())[:NAME_MAX].strip()
         self.name = name or DEFAULT_NAME
+        if self.name != DEFAULT_NAME:
+            self._moment("named", time.time() if now is None else now)
         return True
 
     # ------------------------------------------------------ growing with you
@@ -654,6 +719,211 @@ class Ember:
                         "next": nxt, "prev": tiers[lv - 1] if lv else 0, "how": badge_how(how, nxt if nxt else tiers[-1]),
                         "reached": badge_how(how, tiers[lv - 1]) if lv else "", "times": got})
         return out
+
+    # ------------------------------------------------------ becoming someone: its moments and months with you
+    def _moment(self, mid, t, x=None, before=None, **kw):
+        """A moment of yours together, once (x: the goal or experiment it's about)."""
+        if mid not in MOMENTS or any(m["id"] == mid for m in self.moments):
+            return None
+        m = {"id": mid, "t": t, "text": MOMENTS[mid].format(**{"title": "", "name": self.name, **kw})}
+        if x:
+            m["x"] = x
+        self.moments.append(m)
+        if t is None and before:
+            m["before"] = before             # from before it kept moments: it happened by then
+        self.moments.sort(key=lambda m: m["t"] if m.get("t") is not None else m.get("before") or self.born)
+        return m
+
+    def moment_text(self, m, chat):
+        """How its mind hears a moment in this chat: a goal's name only in that goal's own chat (chats never mix)."""
+        x = self.find_exp(m.get("x")) if m.get("x") else None
+        if x and chat_of(x) != chat:
+            return MOMENTS[m["id"]].replace(', "{title}"', "").format(title="", name=self.name)
+        return m["text"]
+
+    def _run_day(self, x, n):
+        """When you first did a goal's step (or part of it) n days in a row: that day's check time, or None."""
+        good = sorted((e for e in x.get("log", []) if e["how"] in ("done", "partly")), key=lambda e: e["day"])
+        run, prev = 0, None
+        for e in good:
+            d = datetime.date.fromisoformat(e["day"]).toordinal()
+            run = run + 1 if prev is not None and d == prev + 1 else 1
+            prev = d
+            if run >= n:
+                return e["t"]
+        return None
+
+    def check_moments(self, now, backfill=False):
+        """New moments from what has happened, each once, with when it happened. A backfill (a self saved before
+        moments) doesn't know when it was named or grew a stage: those are kept without a day. Returns the new ones."""
+        new = []
+
+        def add(mid, t, **kw):
+            m = self._moment(mid, t, **kw)
+            if m:
+                new.append(m)
+        goals = sorted((x for x in self.experiments if kind_of(x) == "goal" and x.get("started")),
+                       key=lambda x: x["started"])
+        if goals:
+            add("first_goal", goals[0]["started"], x=goals[0]["id"], title=goals[0]["title"])
+        checks = [e["t"] for x in goals for e in x.get("log", [])]
+        if checks:
+            add("first_check", min(checks))
+        for n in (7, 30):
+            ts = [t for t in (self._run_day(x, n) for x in goals) if t]
+            if ts:
+                add(f"streak_{n}", min(ts))
+        for kind, mid in (("goal", "first_done"), ("experiment", "first_found")):
+            done = sorted((x for x in self.experiments if kind_of(x) == kind and x["status"] == "done" and x.get("ended")),
+                          key=lambda x: x["ended"])
+            if done:
+                add(mid, done[0]["ended"], x=done[0]["id"], title=done[0]["title"])
+        at = None if backfill else now
+        lv = level_of(self.xp)
+        for need, mid in ((5, "stage_ember"), (10, "stage_flame"), (20, "stage_blaze")):
+            if lv >= need:
+                add(mid, at, before=now)
+        if self.name != DEFAULT_NAME:
+            add("named", at, before=now)
+        return new
+
+    def moment_due(self, now):
+        """A moment whose anniversary is today ("a month since we met") that it hasn't brought up: one a day at most."""
+        if self.recalled_day == self._date(now):
+            return None
+        today = self._day(now)
+        for m in self.moments:
+            if m.get("t") is None:
+                continue
+            days = today - self._day(m["t"])
+            label = anniversary(days)
+            if label and f"{m['id']}:{days}" not in self.recalled:
+                return {**m, "days": days, "label": label}
+        return None
+
+    def recall_moment(self, now):
+        """It brought today's anniversary up: not again."""
+        m = self.moment_due(now)
+        if m:
+            self.recalled = (self.recalled + [f"{m['id']}:{m['days']}"])[-200:]
+            self.recalled_day = self._date(now)
+        return m
+
+    def month_facts(self, key):
+        """What happened in a month of yours (your calendar): the facts its note rests on."""
+        y, mo = map(int, key.split("-"))
+        ny, nm = map(int, month_step(key, 1).split("-"))
+        tz = self.tz or 0
+        start = calendar.timegm((y, mo, 1, 0, 0, 0)) - tz * 60
+        end = calendar.timegm((ny, nm, 1, 0, 0, 0)) - tz * 60
+        inside = lambda t: t is not None and start <= t < end
+        log = [e for x in self.experiments if kind_of(x) == "goal" for e in x.get("log", []) if inside(e.get("t"))]
+        badges = [f"{name} (level {i + 1})" for bid, name, _tiers, _how in BADGES
+                  for i, bt in enumerate(self.badges.get(bid) if isinstance(self.badges.get(bid), list) else [])
+                  if inside(bt)]
+        return {"month": key, "name": month_name(key),
+                "days": sum(self._day(start) <= d < self._day(end) for d in self.you_days),
+                "messages": sum(1 for l in self.talk if l["who"] == "you" and not l.get("daily") and inside(l["t"])),
+                "checks": {k: sum(e["how"] == k for e in log) for k in CHECKS},
+                "started": [f"{kind_of(x)} \"{x['title']}\"" for x in self.experiments
+                            if x["status"] not in ("suggested", "not_picked") and inside(x.get("started"))],
+                "finished": [f"{kind_of(x)} \"{x['title']}\"" for x in self.experiments
+                             if x["status"] == "done" and inside(x.get("ended"))],
+                "memories": sum(1 for m in self.memories if inside(m["t"])),
+                "moments": [m["text"] for m in self.moments if m["id"] != "met" and inside(m.get("t"))],
+                "badges": badges, "chats": [c["id"] for c in self.chats
+                                            if any(inside(l["t"]) for l in self.talk if chat_of(l) == c["id"])]}
+
+    @staticmethod
+    def month_text(f):
+        out = [f"they came on {f['days']} day{'' if f['days'] == 1 else 's'}",
+               f"{f['messages']} message{'' if f['messages'] == 1 else 's'} to you"]
+        if sum(f["checks"].values()):
+            out.append("daily checks on their goals: " + ", ".join(f"{n} {CHECKS[k]}" for k, n in f["checks"].items() if n))
+        if f["started"]:
+            out.append("started: " + ", ".join(f["started"]))
+        if f["finished"]:
+            out.append("finished: " + ", ".join(f["finished"]))
+        if f["memories"]:
+            out.append(f"you learned {f['memories']} new thing{'' if f['memories'] == 1 else 's'} about them")
+        if f["moments"]:
+            out.append("your moments: " + " ".join(f["moments"]))
+        if f["badges"]:
+            out.append("badges they reached: " + ", ".join(f["badges"]))
+        return "; ".join(out) + "."
+
+    def month_due(self, now):
+        """The month just ended, if it's time for its note: once, and only about a month you came on a few days."""
+        prev = month_step(month_key(now, self.tz or 0), -1)
+        if prev <= self.month_last:
+            return None
+        asked = self.month_asked or {}
+        if asked.get("month") == prev and now - asked.get("t", 0) < MONTH_RETRY:
+            return None
+        if self.month_facts(prev)["days"] < MONTH_MIN_DAYS:
+            self.month_last = prev                   # too little to tell: no note
+            return None
+        return prev
+
+    def _month_prompt(self, event, now):
+        tz = self.tz or 0
+        f = self.month_facts(event["month"])
+        lines = [f"Now: {when(now, tz)} (their local time)."]
+        if self.name != DEFAULT_NAME:
+            lines.append(f"They gave you a name: {self.name}. It's your name now.")
+        lines.append(f"You've known each other {ago(now - self.born)}. Your connection with them: {self.connection:.2f} "
+                     "(how close you've become).")
+        lines.append("")
+        if self.memories:
+            lines.append("What you remember about them:")
+            for m in self.memories:
+                lines.append(f"- {m['id']} [{m['kind']}] {m['note']} (they said \"{m['quote']}\", "
+                             f"{time.strftime('%d %b', local(m['t'], tz))})")
+        chats = [c for c in self.chats if c["id"] in f["chats"] and c.get("summary")]
+        if chats:
+            lines += ["", f"What your chats in {f['name']} were about:"]
+            lines += [f"- \"{c['title']}\": {c['summary']}" for c in chats]
+        last = next((l["text"] for l in reversed(self.talk) if l["who"] == "you" and not l.get("daily")), None)
+        lines.append("")
+        lines.append(f"A new month has begun. Write them \"Our month\": a short note about {f['name']} together. It "
+                     "isn't in any chat: they read it on your page in the app, under Our months.")
+        lines.append(f"What happened in {f['name']}: " + self.month_text(f))
+        if last:
+            lines.append(f"(Their latest words to you, so you write in their language: \"{last[:160]}\")")
+        lines.append("Write 3 to 5 short sentences, warm and honest, like a note from someone who was there: name one "
+                     "or two real things from the month (in their words where you can), notice what changed or grew, "
+                     "and end with one thing to carry into next month. Use only these facts, your memories and the "
+                     "chats; if little happened, say so kindly and keep it short. No praise inflation, no guilt, no pep "
+                     "talk, no lists, no questions. Put the note in \"reply\". remember, update, add_steps, done_steps "
+                     "and experiments must be empty; goal, replan and follow_up null; summary \"\".")
+        return SYSTEM, "\n".join(lines)
+
+    def _take_month(self, event, d, now):
+        """Its note on the month: kept on its page (never a chat line, so chats don't mix)."""
+        key = event.get("month") or month_step(month_key(now, self.tz or 0), -1)
+        text = str(d.get("reply") or "").strip()[:1500] if isinstance(d, dict) else ""
+        by = "mind"
+        if not text:                                 # the mind without an LLM: the facts, plainly
+            f = self.month_facts(key)
+            text = f"{f['name']} together: " + self.month_text(f).replace("they came", "you came").replace(
+                " to you", " to me").replace("about them", "about you").replace("they reached", "you reached")
+            text = text[0].upper() + text[1:]
+            by = "template"
+        self.month_asked = None
+        self.month_last = max(self.month_last, key)
+        if not any(m["month"] == key for m in self.months):
+            self.months.append({"month": key, "t": now, "text": text})
+            self.months.sort(key=lambda m: m["month"])
+        return {"reply": text, "face": "happy", "remembered": [], "updated": [], "dropped": [], "by": by, "month": key}
+
+    def month_list(self):
+        """Its notes on your months, newest first."""
+        return [{"month": m["month"], "name": month_name(m["month"]), "t": m["t"], "text": m["text"]}
+                for m in reversed(self.months)]
+
+    def moment_list(self):
+        """Its moments with you, for the window: oldest first."""
+        return [{"id": m["id"], "t": m.get("t"), "before": m.get("before"), "text": m["text"]} for m in self.moments]
 
     def level_info(self):
         lv = level_of(self.xp)
@@ -924,6 +1194,10 @@ class Ember:
                    f"{time.strftime('%d %b %Y', local(self.born, self.tz or 0))}); {st['chats']} chats; "
                    f"{st['finished']} goals or experiments finished together; "
                    f"{fmt_minutes(st['seconds'])} of work in {st['sessions']} sessions."]
+        ms = [m for m in self.moments if m.get("t") is not None and m["id"] != "met"]
+        if ms:
+            out.append("Your moments together (as you'd say them to them): " + " ".join(
+                f"{time.strftime('%d %b %Y', local(m['t'], self.tz or 0))}: {self.moment_text(m, chat)}" for m in ms))
         fu = next((f for f in self.followups if f["chat"] == chat), None)
         if fu:
             out.append(f"You plan to check up on them in this chat in {ago(fu['at'] - now)}, about: {fu['about']}.")
@@ -947,6 +1221,8 @@ class Ember:
     def prompt(self, event, now):
         """(system, user) for its mind. event types: talk {text}, arrive, suggest, checkin {text, rating, minutes},
         review {id}."""
+        if event["type"] == "month":
+            return self._month_prompt(event, now)
         tz = self.tz or 0
         lines = [f"Now: {when(now, tz)} (their local time)."]
         if self.name != DEFAULT_NAME:
@@ -979,6 +1255,13 @@ class Ember:
                          "moment fits (not in the middle of a hard moment or their work on something), end with one "
                          "question to know them better: something you don't know yet (what they enjoy, what matters "
                          "to them, what's going on in their life), and look curious (face: curious).")
+        due = self.moment_due(now) if event["type"] in ("talk", "arrive") or event.get("regular") else None
+        if due:
+            lines.append(f"Today it's {due['label']} since one of your moments together "
+                         f"({time.strftime('%d %b %Y', local(due['t'], tz))}): \"{self.moment_text(due, self.event_chat(event))}\" (as you'd say it to "
+                         "them). If the moment fits (not in a hard moment or in the middle of their work), mention it "
+                         "once, warmly and in a few words, as something you remember together (e.g. \"A month ago today "
+                         "you started running.\"), then go on. When you do, set \"remembered_moment\": true.")
         felt = (f"{self.feel} ({self.feel_why}), {ago(now - self.feel_t)} ago; " if self.feel_t and self.feel_why
                 else f"{self.feel}, {ago(now - self.feel_t)} ago; " if self.feel_t else "")
         li = self.level_info()
@@ -1147,6 +1430,8 @@ class Ember:
         Returns what changed: {"reply", "face", "remembered": [...], "updated": [...], "dropped": [...]}."""
         from .llm import parse_json
         d = parse_json(raw) if raw else None
+        if event["type"] == "month":
+            return self._take_month(event, d, now)
         if event["type"] == "followup" and not event.get("regular") and isinstance(d, dict)                 and not str(d.get("reply", "")).strip():
             return {"reply": "", "face": "calm", "remembered": [], "updated": [], "dropped": [], "by": "mind",
                     "skipped": True}                      # they'd already told it: nothing to ask
@@ -1212,6 +1497,8 @@ class Ember:
             self.find_chat(chat)["summary"] = summary[:500]
         if event["type"] != "followup":
             self.update(now, present=True)
+        if d.get("remembered_moment") is True and result["by"] != "template" and self.recall_moment(now):
+            result["recalled"] = True                # it brought up today's anniversary: not again
         if d.get("asked_about_day") is True and result["by"] != "template":
             self.day_asked = self._date(now)         # asked about your day: once a day is enough
         if result["by"] != "template" and self.feeling(d.get("feel"), d.get("feel_why"), now):
@@ -1237,6 +1524,7 @@ class Ember:
         if self.levelup_due:
             self._announce_levelup(now)
         self.check_badges(now)
+        self.check_moments(now)
         return result
 
     # ------------------------------------------------------------- memory
@@ -1893,7 +2181,7 @@ class Ember:
                 "missing": round(self.missing, 3),
                 "curiosity": round(self.curiosity, 3), "mood": round(self.mood, 3),
                 "valence": round(self.valence, 3), "energy": round(self.energy, 3), "feel": self.feel,
-                "level": self.level_info(), "look": self.look, "badges": {b: len(t) for b, t in self.badges.items() if isinstance(t, list)},
+                "level": self.level_info(), "look": self.look, "moments": self.moment_list(), "month_latest": self.months[-1]["month"] if self.months else None, "badges": {b: len(t) for b, t in self.badges.items() if isinstance(t, list)},
                 "goals_due": sum(1 for g in self.experiments if g["status"] == "active"
                                  and not any(e["day"] == self._date(now) for e in g.get("log", []))),
                 "checkups": {"every": self.checkups, "at": f"{self.checkup_at // 60:02d}:{self.checkup_at % 60:02d}",
@@ -1926,7 +2214,8 @@ class Ember:
         for m in self.memories:
             groups.setdefault(m["kind"], []).append(m)
         return {"labels": KINDS, "groups": groups, "count": len(self.memories),
-                "story": self.story(time.time() if now is None else now)}
+                "story": self.story(time.time() if now is None else now), "moments": self.moment_list(),
+                "months": self.month_list()}
 
 
 def dumps(ember):

@@ -959,6 +959,101 @@ check("...today, then the days ahead", nodes[6]["state"] == "today" and nodes[6]
 v2 = gp.goal_view(pg, t + 30 + 9 * 86400)
 check("a day without a check is shown as missed", [n["state"] for n in [n for p in v2["path"] for n in p["nodes"]]][6:10] == ["missed", "missed", "missed", "today"])
 
+print("Becoming someone: its moments with you, and its notes on your months")
+mo = Ember(now=t)
+mo.set_name("Pip", t + 5)
+g1 = mo.new_goal("Run 5k", "", 30, ["Run 1 km"], t + 10)
+for k in range(7):
+    mo.daily_check(g1["id"], "done", "", t + 20 + k * D)
+mo.update(t + 30 + 6 * D, present=True)
+ids = [m["id"] for m in mo.moments]
+check("its own moments, each with when: you met, named it, your first goal, first check, first 7-day run",
+      ids == ["met", "named", "first_goal", "first_check", "streak_7"])
+check("...in its own words", next(m for m in mo.moments if m["id"] == "named")["text"] == "You named me Pip."
+      and next(m for m in mo.moments if m["id"] == "first_goal")["text"] == "You started your first goal, \"Run 5k\"."
+      and next(m for m in mo.moments if m["id"] == "streak_7")["t"] == t + 20 + 6 * D)
+mo.set_name("Lumi", t + 40 * D)
+check("...each moment once (a new name doesn't replace the day you first named it)",
+      sum(m["id"] == "named" for m in mo.moments) == 1)
+check("the window gets them, oldest first", [m["id"] for m in mo.memory_page(t + 7 * D)["moments"]][:2] == ["met", "named"])
+due = mo.moment_due(t + 7 * D + 60)
+check("a week after you met, it's an anniversary", due and due["id"] == "met" and due["label"] == "a week")
+_, user = mo.prompt({"type": "talk", "text": "hey"}, t + 7 * D + 60)
+check("...its mind is told, to bring it up once if it fits", "Today it's a week since" in user and "remembered_moment" in user)
+mo.hear(t + 7 * D + 70, "hey")
+r = mo.respond({"type": "talk", "text": "hey"}, mind_says(reply="A week ago today we met.", remembered_moment=True),
+               t + 7 * D + 71)
+check("...once it has, not again that day", r.get("recalled") and mo.moment_due(t + 7 * D + 200) is None)
+check("...nor the same anniversary the next day", (mo.moment_due(t + 8 * D + 60) or {}).get("id") != "met")
+check("a goal's first check, a month on", (mo.moment_due(t + 30 * D + 20) or {}).get("label") == "a month")
+check("years count too", mo.moment_due(t + 365 * D + 60)["label"] == "a year")
+c2 = mo.new_chat(t + 9 * D)
+_, user = mo.prompt({"type": "talk", "text": "hi", "chat": c2}, t + 9 * D)
+check("in another chat its mind hears the moment without the goal's name (chats never mix)",
+      "You started your first goal." in user and "Run 5k" not in user)
+_, user = mo.prompt({"type": "talk", "text": "hi", "chat": g1["chat"]}, t + 9 * D)
+check("...and with it in the goal's own chat", "You started your first goal, \"Run 5k\"" in user)
+mo.end_experiment(g1["id"], "done", t + 31 * D)
+mo.update(t + 31 * D, present=True)
+check("finishing your first goal is a moment", any(m["id"] == "first_done" and m["t"] == t + 31 * D for m in mo.moments))
+mo2 = Ember.from_dict(json.loads(json.dumps(mo.to_dict())))
+check("moments and what it brought up survive a save", mo2.moments == mo.moments and mo2.recalled == mo.recalled)
+old = mo.to_dict()
+for k in ("moments", "recalled", "recalled_day"):
+    old.pop(k)
+old["xp"] = 600
+ob = Ember.from_dict(old)
+check("an Ember saved before moments finds the ones whose day is known",
+      {"met", "first_goal", "first_check", "streak_7", "first_done"} <= {m["id"] for m in ob.moments}
+      and next(m for m in ob.moments if m["id"] == "first_goal")["t"] == g1["started"])
+check("...and keeps its name and stage without a made-up day, never brought up as an anniversary",
+      all(m["t"] is None for m in ob.moments if m["id"] in ("named", "stage_ember"))
+      and {"named", "stage_ember"} <= {m["id"] for m in ob.moments})
+
+import calendar
+from mind.core import month_step
+jan = calendar.timegm((2027, 1, 20, 9, 0, 0))
+feb1 = calendar.timegm((2027, 2, 1, 9, 0, 0))
+om = Ember(now=jan)
+check("a new Ember has no month notes, and none is due in its first month", om.months == [] and om.month_due(jan + 5 * D) is None)
+gm = om.new_goal("Sleep by 11", "", 30, ["Phone away at 10:30"], jan + 60)
+for k in range(3):
+    om.hear(jan + k * D + 100, f"day {k}, I think I can do it")
+    om.respond({"type": "talk", "text": f"day {k}, I think I can do it"}, mind_says(reply="Good."), jan + k * D + 101)
+    om.daily_check(gm["id"], "done" if k else "partly", "", jan + k * D + 200)
+check("a new month: its note on the month before is due", om.month_due(feb1) == "2027-01")
+f = om.month_facts("2027-01")
+check("...from what happened in it: days, messages, checks, what you started, moments",
+      f["name"] == "January 2027" and f["days"] == 3 and f["messages"] == 3 and f["checks"] == {"done": 2, "partly": 1, "skip": 0}
+      and f["started"] == ["goal \"Sleep by 11\""] and any("first goal" in m for m in f["moments"]))
+system, user = om.prompt({"type": "month", "month": "2027-01"}, feb1)
+check("its mind is asked for a short note about the month, with the facts, not in a chat",
+      "Our month" in user and "January 2027" in user and "2 did it, 1 partly" in user and "Recent conversation" not in user)
+om.month_asked = {"month": "2027-01", "t": feb1}
+check("...asked once: not again while it writes", om.month_due(feb1 + 60) is None)
+check("...but again on a later visit if that one failed", om.month_due(feb1 + 900) == "2027-01")
+talk_before = len(om.talk)
+r = om.respond({"type": "month", "month": "2027-01"}, mind_says(reply="January was the month you took sleep seriously."), feb1 + 1000)
+check("the note is kept on its page, never said in a chat", r["month"] == "2027-01" and len(om.talk) == talk_before
+      and om.month_list()[0]["text"].startswith("January was") and om.month_list()[0]["name"] == "January 2027")
+check("...once: not due again", om.month_due(feb1 + 2 * D) is None and om.snapshot(feb1 + 2 * D, True)["month_latest"] == "2027-01")
+check("...and the window gets them, newest first", om.memory_page(feb1)["months"][0]["month"] == "2027-01")
+mar1 = calendar.timegm((2027, 3, 1, 9, 0, 0))
+check("a month you barely came: no note, quietly", om.month_due(mar1) is None and om.month_last == "2027-02")
+tm = Ember(now=jan)
+for k in range(2):
+    tm.hear(jan + k * D, "hi")
+r = tm.respond({"type": "month", "month": "2027-01"}, None, feb1)
+check("the mind without an LLM writes the plain facts", r["by"] == "template" and tm.months[0]["text"].startswith("January 2027 together: you came on 2 days"))
+old = om.to_dict()
+for k in ("months", "month_last", "month_asked"):
+    old.pop(k)
+old["last_update"] = feb1 + 3 * D
+oo = Ember.from_dict(old)
+check("an Ember saved before month notes starts with the next month (nothing old written at a deploy)",
+      oo.month_last == "2027-01" and oo.month_due(feb1 + 4 * D) is None)
+check("months step over the year", month_step("2026-12", 1) == "2027-01" and month_step("2027-01", -1) == "2026-12")
+
 print()
 print("All checks passed." if not failed else f"{len(failed)} FAILED: {failed}")
 raise SystemExit(1 if failed else 0)

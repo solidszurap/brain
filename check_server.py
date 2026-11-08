@@ -6,6 +6,7 @@ SupabaseAuth. Run after changing server/ or web/:
 
     python check_server.py
 """
+import calendar
 import json
 import logging
 import os
@@ -116,6 +117,8 @@ class FakeMind:
         cfg.last_usage = (3000, 200)
         if "Look back on it honestly" in user:
             return json.dumps({"reply": "Looking back: " + re.search(r"What actually happened: (.*)", user).group(1)[:80]})
+        if "Our month" in user:
+            return json.dumps({"reply": "A month of small steps."})
         m = re.search(r'Their latest message: "(.*)"', user)
         if not m:
             return json.dumps({"reply": "Hello again.", "face": "happy"})
@@ -211,6 +214,27 @@ check("two hours away, then back: it lights up, but doesn't write", (state("tok-
 T[0] += 8 * 3600
 check("ten hours away, then back: it greets you", (state("tok-a") or True) and wait(lambda: len(ember_lines("tok-a")) == n + 1))
 check("a poll a second later is no new greeting", (state("tok-a") or True) and not wait(lambda: len(ember_lines("tok-a")) > n + 1, 0.5))
+
+print("Our month: a note when a new month begins")
+TM = [calendar.timegm((2027, 1, 20, 9, 0, 0))]
+basem, _ = serve(create_app(FileStore(os.path.join(tmp, "months")), FakeAuth(), FakeCfg(), call=FakeMind(),
+                            clock=lambda: TM[0], plus_emails=("a@x.hu",)))
+mlines = lambda: [l["text"] for l in call(basem, "/state?v=0", "tok-a")[1]["talk"] if l["who"] == "ember"]
+for k in range(2):                                   # two days you talked with it in January
+    TM[0] += k * 86400
+    call(basem, "/talk", "tok-a", {"text": f"day {k}"})
+    wait(lambda: any(f"day {k}" in x for x in mlines()))
+n_lines = len(mlines())
+TM[0] = calendar.timegm((2027, 2, 1, 10, 0, 0))
+st = call(basem, "/state?v=1", "tok-a")[1]
+check("the first visit in February brings its note on January, kept on its page",
+      wait(lambda: (call(basem, "/memory", "tok-a")[1].get("months") or [{}])[0].get("text") == "A month of small steps.")
+      and call(basem, "/memory", "tok-a")[1]["months"][0]["name"] == "January 2027")
+check("...instead of a greeting, and never as a chat line", not wait(lambda: len(mlines()) > n_lines, 0.5))
+check("...and the window hears it's there", call(basem, "/state?v=0", "tok-a")[1]["month_latest"] == "2027-01")
+TM[0] += 12 * 3600
+call(basem, "/state?v=1", "tok-a")
+check("...once", len(call(basem, "/memory", "tok-a")[1]["months"]) == 1)
 
 print("When the mind is busy or down")
 mind.fail, mind.retryable = 3, True
@@ -397,6 +421,10 @@ check("a check-up goes to the phone as a notification", wait(lambda: fp.sent and
       and fp.sent[-1][1]["body"] == "Hello again." and fp.sent[-1][1]["title"] == "Ember sent you a message"))
 check("you can name it, and its notifications say so", call(base6, "/name", "tok-a", {"name": "Lumi"})[1]["ok"]
       and call(base6, "/state?v=0", "tok-a")[1]["name"] == "Lumi")
+st6 = call(base6, "/state?v=0", "tok-a")[1]
+check("/state has its moments: naming it is one",
+      any(m["id"] == "named" and m["text"] == "You named me Lumi." for m in st6.get("moments", [])),
+      st6.get("moments"))
 with u6.lock:
     u6.ember.talk.append({"t": T[0], "who": "you", "text": "ok"})
     u6.ember.followups.append({"chat": "c1", "at": T[0] - 1, "about": "the run", "set": T[0] - 3600})

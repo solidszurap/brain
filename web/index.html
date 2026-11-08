@@ -273,6 +273,18 @@ div.grow { cursor: default; }
 .colours button { width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 2px solid var(--edge2); cursor: pointer; flex: none; }
 .colours button.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--bg), 0 0 10px rgba(255, 150, 70, .5); }
 /* badges: a grid on the Ember tab, a sheet to show one (and celebrate a new one), and a picture to share */
+/* its story with you: notes on your months, and its moments (a little timeline); each scrolls inside once it's long */
+.scrolls { max-height: 360px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.months .month { padding: 14px 16px; }
+.months .month h3 { margin: 0 0 4px; font: 700 16px var(--round); }
+.months .month p { margin: 0; font-size: 15px; line-height: 1.5; white-space: pre-wrap; }
+.months .month.new h3::after { content: "New"; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--btn); color: #2a1406; font: 800 11px/1.6 var(--round); vertical-align: 2px; }
+.becoming small { display: block; color: var(--dim); font-size: 13px; line-height: 1.4; }
+.becoming .moments { padding: 8px 16px; }
+.becoming .moment { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 7px 0 7px 16px; font-size: 15px; line-height: 1.35; }
+.becoming .moment::before { content: ""; position: absolute; left: 0; top: 13px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.becoming .moment:not(:last-child)::after { content: ""; position: absolute; left: 3px; top: 20px; bottom: -13px; border-left: 1px solid var(--edge2); }
+.becoming .moment time { color: var(--dim); font: 600 13px/1.6 var(--round); }
 .badgegrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 @media (min-width: 560px) { .badgegrid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 .badge { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; padding: 12px 4px 10px; min-height: 92px;
@@ -650,6 +662,12 @@ div.grow { cursor: default; }
     </div>
     <h2 class="ghead" id="badgeHead">Badges</h2>
     <div class="badgegrid" id="badgeGrid"></div>
+    <div id="monthsWrap" hidden>
+      <h2 class="ghead">Our months</h2>
+      <div class="group months scrolls" id="months"></div>
+    </div>
+    <h2 class="ghead">Your moments</h2>
+    <div class="group becoming scrolls" id="becoming"></div>
     <h2 class="ghead">Your Ember</h2>
     <div class="group">
       <button class="grow go" data-menu="knows">What it knows about you</button>
@@ -901,7 +919,7 @@ function renderLevel() {
   const L = S && S.level;
   if (!L) return;
   $("#lvBadge").style.display = "";
-  renderName();
+  renderName(); renderBecoming();
   const txt = `Lv ${L.level} · ${L.stage}`;
   if ($("#lvText").textContent !== txt) $("#lvText").textContent = txt;
   $("#lvBar").style.width = Math.round(L.progress * 100) + "%";
@@ -1221,6 +1239,37 @@ function renderName() {
   if (!S || !S.name || document.activeElement === $("#emberName")) return;
   $("#emberName").value = S.name === "Ember" ? "" : S.name;
 }
+// its story with you on the Ember tab: its notes on your months ("Our month") and its moments, newest first
+const dayShort = t => new Date(t * 1000).toLocaleDateString([], {day: "numeric", month: "short", year: "numeric"});
+let MONTHS = null, monthsKey;
+let monthSeen = null;                      // the newest month note this device has shown
+try { monthSeen = localStorage.getItem("ember.monthSeen"); } catch (e) {}
+function renderBecoming() {
+  if (!S || !S.moments) return;
+  const ms = [...S.moments].reverse();
+  const html = `<div class="moments">` + ms.map(m => `<div class="moment"><time>${m.t ? esc(dayShort(m.t))
+    : m.before ? "Before " + esc(dayShort(m.before)) : ""}</time><span>${esc(m.text)}</span></div>`).join("") + `</div>`;
+  if ($("#becoming").dataset.html !== html) { $("#becoming").dataset.html = html; $("#becoming").innerHTML = html; }
+  renderMonths();
+}
+async function renderMonths() {
+  const key = S.month_latest || "";
+  if (key && monthSeen !== key) {          // a new note on your month: say so once, wherever you are
+    monthSeen = key;
+    try { localStorage.setItem("ember.monthSeen", key); } catch (e) {}
+    toast(`${S.name || "Ember"} wrote about your month together. It's on the ${S.name || "Ember"} tab, under Our months.`, 6000);
+    $("#months").dataset.fresh = key;
+  }
+  if (monthsKey === key) return;
+  monthsKey = key;
+  if (!key) { $("#monthsWrap").hidden = true; return; }
+  const r = await api("/memory").catch(() => null);
+  if (!r || !r.ok) { monthsKey = undefined; return; }
+  MONTHS = (await r.json()).months || [];
+  $("#monthsWrap").hidden = !MONTHS.length;
+  $("#months").innerHTML = MONTHS.map(m => `<div class="month${m.month === $("#months").dataset.fresh ? " new" : ""}">`
+    + `<h3>${esc(m.name)}</h3><p>${esc(m.text)}</p></div>`).join("");
+}
 async function saveName() {
   const name = $("#emberName").value.trim();
   const r = await post("/name", {name});
@@ -1254,7 +1303,7 @@ $("#nameBtn").onclick = e => {
 };
 $("#emberName").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); saveName(); } });
 function renderCheckups() {
-  renderName();
+  renderName(); renderBecoming();
   const c = S && S.checkups;
   if (!c || (document.activeElement && document.activeElement.closest(".checkups"))) return;
   $("#ckEvery").value = c.every;

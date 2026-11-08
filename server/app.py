@@ -55,7 +55,7 @@ CAPPED = ("I've reached today's limit for thinking (it keeps Ember affordable). 
 LAST_FREE = ("That was your last free message for today. With Ember Plus we can keep going without a daily "
              "limit; otherwise I'll be here tomorrow.")
 COUNTED = ("talk", "suggest", "checkin")      # what you send that makes Ember think; its greetings are free
-OWN = ("arrive", "followup")                  # what Ember says on its own: free, and nothing said if it can't
+OWN = ("arrive", "followup", "month")         # what Ember says on its own: free, and nothing said if it can't
 PLUS_ON = "Ember Plus is on. Thank you! There's no daily limit now."
 PLUS_ENDED = ("Your Ember Plus has ended, so there's a daily limit of free messages again. "
               "I still remember everything, as always.")
@@ -532,8 +532,14 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
                 e.tz = max(-840, min(840, tz))     # your clock: Ember's sense of your day, and its quiet nights
             chat = e.find_chat(chat)["id"]          # the chat you have open (none: your latest)
             if v == 1:
-                if now - u.seen_at >= PRESENT_FOR and e.arrive(now, chat):
-                    worker.put(u.uid, {"type": "arrive", "chat": chat})
+                if now - u.seen_at >= PRESENT_FOR:             # you've come back
+                    greet = e.arrive(now, chat)
+                    month = e.month_due(now)                 # a new month: its note on the last one (instead of a
+                    if month:                                # greeting; on its page, never a notification)
+                        e.month_asked = {"month": month, "t": now}
+                        worker.put(u.uid, {"type": "month", "month": month})
+                    elif greet:
+                        worker.put(u.uid, {"type": "arrive", "chat": chat})
                 u.seen_at = now
             present = now - u.seen_at < PRESENT_FOR
             e.update(now, present)
@@ -600,7 +606,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
 
     @app.post("/name")
     def name_set(request: Request, body: dict = Body(default={})):
-        return act(request, lambda u, now: u.ember.set_name(body.get("name", "")))
+        return act(request, lambda u, now: u.ember.set_name(body.get("name", ""), now))
 
     @app.post("/checkups")
     def checkups_set(request: Request, body: dict = Body(default={})):
