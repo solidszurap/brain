@@ -29,7 +29,8 @@
 15. **Saved selves must keep loading.** `Ember.from_dict` only copies known fields, so new fields get defaults; any backfill is quiet.
 16. **No long runs.** Verify with `check_ember.py`, `check_server.py` and the browser (375 px and desktop) on a scratch Ember. Be honest about what only a real iPhone can show.
 17. **Commits:** small, straight to main, only when Szilard asks (never ask him whether to commit). Push when he says "commit push". Update README.md and this file in the same change.
-18. **Removed on purpose; don't bring back without asking:** traits that grew from how you talk ("Who Ember is becoming", built and removed 2026-11-08); the grid-world Ember (git tag `grid-ember-final`; `git show grid-ember-final:README.md` is its full record); work sessions as a way to start work (old data still loads); weekly / few-times-a-week check-up options.
+18. **Start in step with GitHub** (2026-11-09, Szilard: cloud chats push to main too, so his PC's copy falls behind). At the start of every chat, local or cloud, and again before changing anything: `git fetch origin main` and compare. Behind: `git pull --ff-only origin main` and say what came in. Uncommitted changes, or local commits GitHub doesn't have: don't pull over them; tell Szilard what differs and ask.
+19. **Removed on purpose; don't bring back without asking:** traits that grew from how you talk ("Who Ember is becoming", built and removed 2026-11-08); the grid-world Ember (git tag `grid-ember-final`; `git show grid-ember-final:README.md` is its full record); work sessions as a way to start work (old data still loads); weekly / few-times-a-week check-up options.
 
 ## Run
 
