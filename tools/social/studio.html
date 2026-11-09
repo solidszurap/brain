@@ -196,6 +196,36 @@ function medal(x, y, r, level, alpha = 1, scale = 1) {
   c.restore();
 }
 
+// ---- filmed clips (2026-11-09): a scene may open on real footage (tools/social/clips/*.mp4, made with Higgsfield)
+// under its captions. A scene lists them as clips: {name: "file.mp4"} and says in prep(t) which moment of which clip
+// this frame shows (await clipSeek(name, seconds)); draw(t) then paints it with clipDraw(name, {...}). The clip is
+// stepped by seeking, never played, so a video still comes out the same on any machine.
+const CLIPS = {};
+async function loadClips(s) {
+  for (const [name, file] of Object.entries(s.clips || {})) {
+    if (CLIPS[name]) continue;
+    const blob = await (await fetch("/tools/social/clips/" + file)).blob();
+    const v = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "auto";
+    v.src = URL.createObjectURL(new Blob([blob], { type: "video/mp4" }));
+    await new Promise((ok, no) => { v.onloadeddata = ok; v.onerror = () => no(new Error("can't read clip " + file)); });
+    CLIPS[name] = { v, at: -1, frame: null, dur: v.duration, w: v.videoWidth, h: v.videoHeight };
+  }
+}
+window.clipSeek = async (name, time) => {
+  const k = CLIPS[name]; time = Math.max(0, Math.min(k.dur - .04, time));
+  if (Math.abs(k.at - time) < 1e-4 && k.frame) return;
+  if (Math.abs(k.v.currentTime - time) > 1e-4) { const done = new Promise(ok => k.v.addEventListener("seeked", ok, { once: true })); k.v.currentTime = time; await done; }
+  k.frame?.close?.(); k.frame = await createImageBitmap(k.v); k.at = time;
+};
+// paints the clip's current frame over the whole canvas (cover), zoomed about (fx, fy) (0..1 of the canvas) and moved by dx, dy
+window.clipDraw = (name, { zoom = 1, fx = .5, fy = .5, dx = 0, dy = 0, alpha = 1 } = {}) => {
+  const k = CLIPS[name]; if (!k?.frame || alpha <= 0) return;
+  const sc = Math.max(W / k.w, H / k.h), w = k.w * sc, h = k.h * sc, x0 = (W - w) / 2, y0 = (H - h) / 2;
+  c.save(); c.globalAlpha = alpha; c.translate(W * fx + dx, H * fy + dy); c.scale(zoom, zoom); c.translate(-W * fx, -H * fy);
+  c.imageSmoothingQuality = "high"; c.drawImage(k.frame, x0, y0, w, h); c.restore();
+};
+window.clipInfo = name => ({ dur: CLIPS[name].dur, w: CLIPS[name].w, h: CLIPS[name].h });
+
 // ---- rendering and encoding
 let SCENES = {};
 async function setup() {
@@ -212,14 +242,15 @@ async function setup() {
 function frameAt(scene, t) { c.save(); scene.draw(t); c.restore(); }
 // draws one moment of a scene (for checking frames) and returns it as a PNG data URL
 window.still = async (id, t) => {
-  const s = SCENES[id]; size(s); seed = 1; s.init?.(); for (let f = 0; f <= Math.round(t * FPS); f++) frameAt(s, f / FPS);
+  const s = SCENES[id]; size(s); seed = 1; await loadClips(s); s.init?.();
+  for (let f = 0, n = Math.round(t * FPS); f <= n; f++) { if (s.prep && f === n) await s.prep(f / FPS); frameAt(s, f / FPS); }
   return out.toDataURL("image/png");
 };
 // renders a whole scene to MP4 and keeps it for chunk() (a long video is too big to hand over in one piece); returns its size
 let MP4 = null;
 window.render = async (id, bitrate, scale = 1) => {   // bitrate: 10 Mb/s for posting, less for a preview page; scale: e.g. 2/3 for the website's 1280×720 copy
   const s = SCENES[id]; if (!s) throw new Error("no scene " + id);
-  size(s); seed = 1; s.init?.();
+  size(s); seed = 1; await loadClips(s); s.init?.();
   const EW = Math.round(W * scale / 2) * 2, EH = Math.round(H * scale / 2) * 2;     // H.264 wants even sizes
   const small = scale === 1 ? null : Object.assign(document.createElement("canvas"), { width: EW, height: EH }), sx = small?.getContext("2d");
   if (sx) sx.imageSmoothingQuality = "high";
@@ -244,6 +275,7 @@ window.render = async (id, bitrate, scale = 1) => {   // bitrate: 10 Mb/s for po
   enc.configure({ codec: "avc1.640028", width: EW, height: EH, bitrate: bitrate || 10_000_000, framerate: FPS, avc: { format: "avc" } });
   const frames = Math.round(s.dur * FPS);
   for (let f = 0; f < frames; f++) {
+    if (s.prep) await s.prep(f / FPS);
     frameAt(s, f / FPS);
     if (sx) sx.drawImage(out, 0, 0, EW, EH);
     const vf = new VideoFrame(small || out, { timestamp: Math.round(f * 1e6 / FPS), duration: Math.round(1e6 / FPS) });

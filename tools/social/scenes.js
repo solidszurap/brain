@@ -16,6 +16,12 @@ import v11 from "./videos/11-three-hobbies.js";
 import v12 from "./videos/12-badges.js";
 import v13 from "./videos/13-the-path.js";
 import v14 from "./videos/14-your-time.js";
+// hook tests (2026-11-09): four reels that each open on filmed footage (clips/, made with Higgsfield) with a different
+// kind of hook, then carry on in the app, drawn here as always
+import v15 from "./videos/15-2am-plan.js";
+import v16 from "./videos/16-two-inches.js";
+import v17 from "./videos/17-lose-track.js";
+import v18 from "./videos/18-the-moment.js";
 import demo from "./videos/demo.js";        // not a post: the product demo (16:9, about 80 s)
 
 export default {
@@ -33,5 +39,9 @@ export default {
   "12-badges": v12,
   "13-the-path": v13,
   "14-your-time": v14,
+  "15-2am-plan": v15,
+  "16-two-inches": v16,
+  "17-lose-track": v17,
+  "18-the-moment": v18,
   "ember-demo": demo,
 };

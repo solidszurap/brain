@@ -22,7 +22,7 @@ const args = process.argv.slice(2), si = args.indexOf("--stills");
 const stills = si >= 0 ? resolve(args[si + 1]) : null;
 const only = args.filter((a, i) => !a.startsWith("--") && !["--stills", "--at", "--out", "--bitrate", "--scale", "--poster"].includes(args[i - 1]));
 
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".png": "image/png", ".webp": "image/webp", ".svg": "image/svg+xml" };
+const TYPES = { ".html": "text/html", ".js": "text/javascript", ".png": "image/png", ".webp": "image/webp", ".svg": "image/svg+xml", ".mp4": "video/mp4" };
 const server = createServer(async (req, res) => {
   const path = join(ROOT, decodeURIComponent(new URL(req.url, "http://x").pathname));
   if (!path.startsWith(ROOT)) { res.writeHead(403).end(); return; }
