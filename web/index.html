@@ -929,6 +929,8 @@ document.addEventListener("click", async e => {
 function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 }
+// a phone or tablet (a touch screen as the main pointer), not a computer
+const onPhone = () => /android/i.test(navigator.userAgent) || matchMedia("(pointer: coarse)").matches;
 // Android's own one-tap install: the browser offers it (beforeinstallprompt) and we keep the offer for our buttons
 let installOffer = null;
 window.addEventListener("beforeinstallprompt", e => {
@@ -2612,7 +2614,7 @@ function askNotify(off) {
   let ask = null;
   if (isIOS() && !onHomeScreen()) ask = off && CFG.vapid_public ? "ios" : null;
   else if (off && CFG.vapid_public && canPush() && Notification.permission === "default" && !askLater(ASKS.notify.key)) ask = "notify";
-  else if (installOffer && !onHomeScreen()) ask = "app";
+  else if (installOffer && !onHomeScreen() && onPhone()) ask = "app";   // a computer's Chrome offers it too: not asked there
   if (ask && askLater(ASKS[ask].key)) ask = null;
   const card = $("#notifyAsk");
   card.dataset.ask = ask || "";
