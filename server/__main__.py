@@ -7,7 +7,7 @@ Online (Render):   python -m server
     Notifications: VAPID_PRIVATE_KEY (tools/make_vapid.py), VAPID_SUBJECT (optional).
     Ember Plus: STRIPE_SECRET_KEY, STRIPE_PRICE_ID, STRIPE_WEBHOOK_SECRET (without them the paywall
     says Plus is coming soon), EMBER_FREE_PER_DAY (10), EMBER_PLUS_EMAILS (Plus for free, comma-separated, or * for everyone),
-    EMBER_UNLOCK_EMAILS (testers: every look unlocked, XP unchanged), EMBER_OWNER_EMAILS (who can open the owner page), EMBER_MIND_THREADS (how many answers are thought up at once; default 4), EMBER_PUBLIC_URL (Ember's address; pages opened at …onrender.com move there; default https://yourember.app), EMBER_PRICE_LABEL ("$4.99 / month"), EMBER_TERMS_URL (your ÁSZF page; with a live Stripe key, Plus is only sold once it's set).
+    EMBER_UNLOCK_EMAILS (testers: every look unlocked, XP unchanged), EMBER_OWNER_EMAILS (who can open the owner page), EMBER_MIND_THREADS (how many answers are thought up at once; default 4), EMBER_PUBLIC_URL (Ember's address; pages opened at …onrender.com move there; default https://yourember.app), EMBER_PRICE_LABEL ("$4.99 / month"), EMBER_TERMS_URL (your ÁSZF page; with a live Stripe key, Plus is only sold once it's set), EMBER_ANALYTICS_TOKEN (Cloudflare Web Analytics; default: yourember.app's; empty switches it off).
 Local (your PC):   python ember.py   (one Ember, yours, in ember_state/, no login)
 """
 import logging
@@ -26,6 +26,7 @@ from .push import Push
 from .store import FileStore, SupabaseStore
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ANALYTICS_TOKEN = "68c2f801192443c3beacd59c5ae32b26"   # Cloudflare Web Analytics for yourember.app (not a secret: it's in every page)
 
 
 def run_local(state_dir, port):
@@ -72,7 +73,8 @@ def run_online():
                      unlock_emails=env.get("EMBER_UNLOCK_EMAILS", "").split(","),
                      owner_emails=env.get("EMBER_OWNER_EMAILS", "").split(","),
                      mind_threads=int(env.get("EMBER_MIND_THREADS", "4")),
-                     public_url=env.get("EMBER_PUBLIC_URL", "https://yourember.app"))
+                     public_url=env.get("EMBER_PUBLIC_URL", "https://yourember.app"),
+                     analytics_token=env.get("EMBER_ANALYTICS_TOKEN", ANALYTICS_TOKEN) or None)
     plus = [e.strip() for e in env.get("EMBER_PLUS_EMAILS", "").split(",") if e.strip()]
     logging.getLogger("ember").info("mind: %s; invite list: %s; Plus for free: %s; payments: %s; notifications: %s",
                                     cfg.describe(), "everyone" if auth.everyone else f"{len(auth.allowed)} people",

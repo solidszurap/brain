@@ -191,6 +191,15 @@ basel, _ = serve(create_app(FileStore(local_dir, fixed=local_dir), LocalAuth(), 
 local_page = urllib.request.urlopen(basel + "/").read().decode()
 check("...but Ember on this computer has no front page: its window isn't marked",
       '<html lang="en">' in local_page and 'data-mode="online">' not in local_page)
+check("...nor Cloudflare's visit counter: nothing from this computer is counted",
+      "cloudflareinsights" not in local_page and "cloudflareinsights" not in urllib.request.urlopen(base + "/home").read().decode())
+basea, _ = serve(create_app(FileStore(os.path.join(tmp, "analytics")), FakeAuth(), FakeCfg(), call=FakeMind(), clock=clock,
+                            analytics_token="tok123"))
+pages = {p: urllib.request.urlopen(basea + p).read().decode() for p in ("/", "/home", "/pricing", "/privacy")}
+check("online, every page (the app and the website) counts visits with Cloudflare Web Analytics, once",
+      all(h.count('data-cf-beacon=\'{"token": "tok123"}\'') == 1 and h.index("cloudflareinsights") < h.index("</body>")
+          for h in pages.values()), [p for p, h in pages.items() if "tok123" not in h])
+check("...and the privacy page says so", "Cloudflare Web Analytics" in pages["/privacy"])
 
 print("Each person has their own Ember")
 state("tok-a")

@@ -270,7 +270,7 @@ class MindWorker:
 def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=150,
                retry_delay=10.0, retry_every=60.0, public_config=None, web_dir=WEB,
                billing=None, free_per_day=10, plus_emails=(), checkup_every=300.0, push=None, unlock_emails=(),
-               owner_emails=(), mind_threads=4, public_url=None):
+               owner_emails=(), mind_threads=4, public_url=None, analytics_token=None):
     users = Users(store, clock)
     plus_emails = {e.strip().lower() for e in plus_emails if e.strip()}
     plus_everyone = "*" in plus_emails             # Plus for everyone, for now (Szilard, 2026-11-06)
@@ -440,6 +440,15 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         with open(os.path.join(web_dir, name), encoding="utf-8") as f:
             return f.read()
 
+    # Cloudflare Web Analytics (2026-11-09, Szilard: who visits the site): visits per page, where people came from,
+    # country and device; no cookies, no personal data. Only online (never this computer's Ember or the checks), on
+    # every page the server sends: the website and the app. The token isn't secret: it's in every page anyway.
+    beacon = (f"<script type=\"module\" src=\"https://static.cloudflareinsights.com/beacon.min.js\" "
+              f"data-cf-beacon='{{\"token\": \"{analytics_token}\"}}'></script>") if analytics_token else ""
+
+    def counted(html):
+        return html.replace("</body>", beacon + "</body>", 1) if beacon else html
+
     @app.get("/")
     def index():
         # online, the window knows it from its first line, so a stranger goes straight to the front page (/home)
@@ -447,7 +456,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         html = read("index.html")
         if auth.mode == "online":
             html = html.replace('<html lang="en">', '<html lang="en" data-mode="online">', 1)
-        return HTMLResponse(html)
+        return HTMLResponse(counted(html))
 
     def site_page(name, path=None, status=200):
         """A page of the website with its header (this page's link marked) and footer put in."""
@@ -455,7 +464,7 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
         if path:
             header = header.replace(f'<a href="{path}">', f'<a href="{path}" aria-current="page">')
         html = read(name).replace("<!--#header-->", header).replace("<!--#footer-->", read("_footer.html"))
-        return HTMLResponse(html, status_code=status)
+        return HTMLResponse(counted(html), status_code=status)
 
     def site_route(path, name):
         app.add_api_route(path, lambda: site_page(name, path), methods=["GET"], include_in_schema=False)

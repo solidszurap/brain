@@ -139,6 +139,8 @@ Local mode reads its mind from `.env` (`EMBER_VOICE=anthropic` and `ANTHROPIC_AP
    - (A first version also grew traits from how you talk, "Who Ember is becoming"; Szilard had it removed the same day.)
 
 
+**Who visits:** the website and the app count visits with Cloudflare Web Analytics (online only; no cookies, nothing that identifies you; 2026-11-09): visitors per day, pages, where they came from (TikTok, Instagram, YouTube, Google…), country and device, in Szilard's Cloudflare dashboard. People who use the app are counted on the owner page.
+
 **Making money:** 10 free messages a day, then Ember Plus at $7.99 a month or $49.99 a year through Stripe (live: real payments since 2026-11-08). No ads, no selling data.
 
 ## Files
