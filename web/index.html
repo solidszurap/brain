@@ -622,7 +622,7 @@ div.grow { cursor: default; }
   <div class="dock"><div id="expcard"></div><div id="sessionbar"></div></div>
 </main>
 <div id="notifyAsk">
-  <p>Want Ember's check-ups on your phone?<small>It asks how things went, now and then. Never at night.</small></p>
+  <p><span id="notifyTitle">Want Ember's check-ups on your phone?</span><small id="notifyWhy">It asks how things went, now and then. Never at night.</small></p>
   <div class="row"><button class="btn" id="notifyYes">Turn on</button><button class="btn ghost" id="notifyNo">Not now</button></div>
 </div>
 <form class="say" id="form">
@@ -925,8 +925,28 @@ document.addEventListener("click", async e => {
     if (r && r.ok) { if (sb) await sb.auth.signOut(); location.reload(); }
   }
 });
+// iPhone or iPad (an iPad says it's a Mac, but a Mac has no touch screen): only the home-screen app gets notifications
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+}
+// Android's own one-tap install: the browser offers it (beforeinstallprompt) and we keep the offer for our buttons
+let installOffer = null;
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault(); installOffer = e;
+  if (started) renderNotify();               // the window is up: ask now; else start() asks
+});
+window.addEventListener("appinstalled", () => { installOffer = null; renderNotify(); });
+async function installApp() {
+  const offer = installOffer;
+  installOffer = null;                                  // an offer can be used once; the browser sends a new one if needed
+  offer.prompt();
+  const choice = await offer.userChoice.catch(() => null);
+  if (choice && choice.outcome === "accepted") toast("Ember is on your home screen.", 5000);
+  renderNotify();
+}
 function openInstall() {
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (installOffer) return installApp();
+  const ios = isIOS();
   $("#installSteps").innerHTML = ios
     ? "<li>Open Ember in <b>Safari</b>.</li><li>Tap the <b>Share</b> button (the square with an arrow).</li><li>Tap <b>Add to Home Screen</b>, then <b>Add</b>. Don't see it? Tap <b>View More</b> in that menu first.</li><li>Open Ember from your home screen and turn notifications on there.</li>"
     : "<li>Open the browser's menu (⋮).</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li>";
@@ -2572,18 +2592,51 @@ async function subscribePush() {
   const r = await post("/push/subscribe", {subscription: sub.toJSON()});
   return r && r.ok ? sub : null;
 }
-// when you open Ember: a card asking once (iPhone allows the question only after a tap); "Not now" waits a week
-function askNotify(off) {
-  let later = 0;
-  try { later = +(localStorage.getItem("ember.notifyAskAfter") || 0); } catch (e) {}
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const show = off && CFG.vapid_public && canPush() && Notification.permission === "default" && (!ios || onHomeScreen())
-    && Date.now() > later;
-  $("#notifyAsk").classList.toggle("on", !!show);
+// when you open Ember: a card asking once (iPhone allows the question only after a tap); "Not now" waits a week.
+// One card, three asks, most important first:
+// - "ios": on an iPhone or iPad outside the home-screen app notifications can't work at all, so it says so and shows
+//   how to add it (2026-11-09, Szilard: tell people to add Ember to the home screen to get notifications);
+// - "notify": notifications not asked yet;
+// - "app": Android (Chrome, Edge, Samsung) offers to install Ember in one tap (2026-11-09, Szilard: "add for the android").
+const ASKS = {
+  ios: {title: "Want Ember's check-ups on your phone?", yes: "Show me how", key: "ember.notifyAskAfter"},
+  notify: {title: "Want Ember's check-ups on your phone?", why: "It asks how things went, now and then. Never at night.",
+           yes: "Turn on", key: "ember.notifyAskAfter"},
+  app: {title: "Put Ember on your home screen?", why: "It opens like an app, one tap away.", yes: "Add it",
+        key: "ember.appAskAfter"},
+};
+function askLater(key) {
+  try { return Date.now() <= +(localStorage.getItem(key) || 0); } catch (e) { return false; }
 }
-$("#notifyYes").onclick = async () => { $("#notifyAsk").classList.remove("on"); await toggleNotify($("#notifyItem")); };
+function askNotify(off) {
+  let ask = null;
+  if (isIOS() && !onHomeScreen()) ask = off && CFG.vapid_public ? "ios" : null;
+  else if (off && CFG.vapid_public && canPush() && Notification.permission === "default" && !askLater(ASKS.notify.key)) ask = "notify";
+  else if (installOffer && !onHomeScreen()) ask = "app";
+  if (ask && askLater(ASKS[ask].key)) ask = null;
+  const card = $("#notifyAsk");
+  card.dataset.ask = ask || "";
+  if (ask) {
+    const a = ASKS[ask];
+    $("#notifyTitle").textContent = a.title;
+    $("#notifyWhy").textContent = a.why
+      || `On ${/iphone|ipod/i.test(navigator.userAgent) ? "iPhone" : "iPad"}, add Ember to your home screen first. It takes a few seconds.`;
+    $("#notifyYes").textContent = a.yes;
+  }
+  card.classList.toggle("on", !!ask);
+}
+const askAgainIn = (key, days) => { try { localStorage.setItem(key, String(Date.now() + days * 86400 * 1000)); } catch (e) {} };
+$("#notifyYes").onclick = async () => {
+  const ask = $("#notifyAsk").dataset.ask;
+  $("#notifyAsk").classList.remove("on");
+  if (ask === "notify") return toggleNotify($("#notifyItem"));
+  if (ask === "ios") askAgainIn(ASKS.ios.key, 1);       // again tomorrow, until it's on the home screen
+  if (ask === "app") askAgainIn(ASKS.app.key, 7);       // if they cancel Android's own question
+  openInstall();
+};
 $("#notifyNo").onclick = () => {
-  try { localStorage.setItem("ember.notifyAskAfter", String(Date.now() + 7 * 86400 * 1000)); } catch (e) {}
+  const ask = $("#notifyAsk").dataset.ask;
+  if (ask) askAgainIn(ASKS[ask].key, 7);
   $("#notifyAsk").classList.remove("on");
 };
 // a short note from the window: in the conversation on the Talk tab, and at the bottom of the screen anywhere else
@@ -2595,7 +2648,7 @@ function say(html) {
 }
 const notifyNote = text => toast(text, 6500);
 async function toggleNotify(item) {
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const ios = isIOS();
   item.disabled = true;
   try {
     if (item.dataset.on) {
