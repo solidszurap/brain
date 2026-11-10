@@ -22,6 +22,12 @@ import v15 from "./videos/15-2am-plan.js";
 import v16 from "./videos/16-two-inches.js";
 import v17 from "./videos/17-lose-track.js";
 import v18 from "./videos/18-the-moment.js";
+// the series (2026-11-10): "my accountability partner is 2 inches tall", one opening, a new situation each time (series.js;
+// 16-two-inches was its pilot), and photo slideshows (slides.js: `--stills` writes the slides as PNGs)
+import v19 from "./videos/19-two-inches-bedtime.js";
+import v20 from "./videos/20-two-inches-morning.js";
+import v21 from "./videos/21-two-inches-couch.js";
+import { s1, s2, s3, s4, s5 } from "./slides.js";
 import demo from "./videos/demo.js";        // not a post: the product demo (16:9, about 80 s)
 
 export default {
@@ -43,5 +49,13 @@ export default {
   "16-two-inches": v16,
   "17-lose-track": v17,
   "18-the-moment": v18,
+  "19-two-inches-bedtime": v19,
+  "20-two-inches-morning": v20,
+  "21-two-inches-couch": v21,
+  "s1-questions": s1,
+  "s2-day-three": s2,
+  "s3-it-said": s3,
+  "s4-no-purpose": s4,
+  "s5-check-on-you": s5,
   "ember-demo": demo,
 };
