@@ -19,20 +19,6 @@ img { max-width: 100%; display: block; }
 .skip { position: absolute; left: -999px; top: 8px; background: var(--btn); color: #2a1a0c; padding: 8px 14px; border-radius: 10px; z-index: 50; }
 .skip:focus { left: 12px; }
 
-/* ---------------------------------------------------------------- inside TikTok's or Instagram's own browser (site.js) */
-.inapp { position: fixed; inset: 0; z-index: 60; background: #0d0806cc; display: grid; align-items: end; justify-items: center;
-  padding: 16px max(16px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
-.inapp[hidden] { display: none; }
-.inappcard { width: 100%; max-width: 28rem; background: var(--char); border: 1px solid var(--edge2); border-radius: 26px; padding: 26px 24px 20px;
-  display: flex; flex-direction: column; gap: 14px; box-shadow: 0 -20px 60px #00000080; }
-.inappcard h2 { margin: 0; font: 800 26px/1.15 var(--round); text-wrap: balance; outline: none; }
-.inappcard p { margin: 0; color: var(--ash); font-size: 16px; }
-.inappcard ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
-.inappcard .go { justify-content: center; }
-.inapplink span { display: block; margin-top: 6px; color: var(--cream); font-weight: 650; user-select: all; -webkit-user-select: all; overflow-wrap: anywhere; }
-.inapprow { display: flex; gap: 10px; }
-.inappbtn { flex: 1; font: 700 16px var(--round); color: var(--cream); background: var(--char2); border: 1px solid var(--edge2); border-radius: 999px; padding: 13px 10px; cursor: pointer; }
-
 /* ---------------------------------------------------------------- the header */
 .nav { position: sticky; top: 0; z-index: 20; background: #1b120ce6; border-bottom: 1px solid transparent; transition: border-color .2s;
   padding-top: env(safe-area-inset-top); }
