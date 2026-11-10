@@ -670,6 +670,9 @@ base5, srv5 = serve(create_app(FileStore(os.path.join(tmp, "users5")), FakeAuth(
                                retry_every=0.3, billing=billing, free_per_day=2, plus_emails=("*",),
                                unlock_emails=("b@x.hu",), owner_emails=("A@x.hu ",)))
 p5 = call(base5, "/state", "tok-b")[1]["plan"]
+call(base5, "/state?src=tt", "tok-a")                    # came from TikTok
+call(base5, "/state?src=ig", "tok-a")                    # ...and later opened an Instagram link: still TikTok
+call(base5, "/state?src=<b>", "tok-b")                   # nonsense is ignored
 t5 = call(base5, "/talk", "tok-b", {"text": "past the limit"})
 check("Plus for everyone (EMBER_PLUS_EMAILS=*): no limit, nothing to buy or manage", p5["plus"] and p5["free_left"] is None
       and not p5["manage"] and t5[0] == 200, f"{p5} talk: {t5}")
@@ -698,6 +701,8 @@ check("...whether they come back (nobody is a week old yet)", own["retention"] =
 check("...feedback with the email, newest first", [f["text"] for f in own["feedback"]] == ["a weekly summary", "the button is stuck"]
       and own["feedback"][1]["email"] == "b@x.hu" and own["feedback"][1]["kind"] == "problem")
 check("...and the cost", own["cost"]["today"]["calls"] >= 1 and own["cost"]["month"]["usd"] >= 0)
+check("...where people came from: the first source counts, nonsense doesn't (counts only)", own["sources"] == {"tt": 1, "": 1}
+      and pb.get("source") == "", str(own.get("sources")))
 check("...but never what anyone said to Ember", "past the limit" not in json.dumps(own) and "I heard" not in json.dumps(own))
 srv5.should_exit = True
 T[0] += 86400

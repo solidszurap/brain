@@ -534,11 +534,13 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
 
     # ------------------------------------------------------------ Ember
     @app.get("/state")
-    def state(request: Request, v: int = 0, chat: str = "", tz: int = None):
+    def state(request: Request, v: int = 0, chat: str = "", tz: int = None, src: str = ""):
         u = who(request)
         now = clock()
         with u.lock:
             e = u.ember
+            if src and e.came_from(src, now):       # where a new person came from (the website's ?from=, or the app it
+                users.save(u)                       # was opened in); counts only, on the owner page
             if tz is not None:
                 e.tz = max(-840, min(840, tz))     # your clock: Ember's sense of your day, and its quiet nights
             chat = e.find_chat(chat)["id"]          # the chat you have open (none: your latest)
@@ -862,7 +864,10 @@ def create_app(store, auth, cfg, call=llm.call_llm, clock=time.time, daily_cap=1
             return t
         feedback = [{"t": f.get("t"), "kind": f.get("kind"), "text": f.get("text"),
                      "email": f.get("email") or emails.get(f.get("user_id"))} for f in store.all_feedback(50)]
-        return {"at": now, "people": len(people), "today": sum(p["today"] for p in people),
+        sources = {}
+        for p in people:
+            sources[p.get("source") or ""] = sources.get(p.get("source") or "", 0) + 1
+        return {"at": now, "people": len(people), "today": sum(p["today"] for p in people), "sources": sources,
                 "week": sum(1 for p in people if p["last"] and p["last"] >= now - 7 * 86400),
                 "new_week": sum(1 for p in people if p["joined"] >= now - 7 * 86400),
                 "retention": {"joined_before": len(old), "back_day2": sum(p["back_day2"] for p in old),

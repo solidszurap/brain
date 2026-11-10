@@ -54,6 +54,7 @@ NEW_CHAT = "New chat"       # a chat's title until you write in it
 CONTEXT_LINES = 24          # conversation lines its mind sees
 GREET_AFTER = 8 * 3600.0    # it writes first when you open it after this long away (unless its own words are unanswered)
 LIGHT_UP_AFTER = 3600.0     # its face lights up when you come back after this long
+SOURCE_NEW_FOR = 86400.0    # where you came from is kept only within your first day (came_from)
 BOND_DAY, BOND_TALK, BOND_SHARE, BOND_CHECK = 0.06, 0.006, 0.015, 0.01   # how much closer: a day you talk, a message
                             # (the first few a day), something personal it learns, a daily check on a goal
 BOND_KEEP = 3 * 86400       # the bond stays as it is for this long without talking...
@@ -405,6 +406,7 @@ class Ember:
         self.checkup_days = list(range(7))   # the days check-ups may come: 0 = Monday ... 6 = Sunday
         self.last_regular = 0.0      # when it last handed out a regular check-up
         self.tz = None               # your clock's offset from UTC in minutes, as your window last said (None: UTC)
+        self.source = ""             # where you first came from (2026-11-10: "tt" TikTok, "ig" Instagram, ...; "" unknown)
         self.devices = []            # phones and browsers that get its check-ups as notifications {endpoint, keys, added}
         self.you_days = []           # the days (_day) you wrote or checked in, for the owner page's "came back" (counts only)
         self.you_said = 0            # how many messages you've written, ever
@@ -472,7 +474,16 @@ class Ember:
                 "back_day2": any(d > first for d in self.you_days), "back_week2": any(d >= first + 7 for d in self.you_days),
                 "level": self.level_info()["level"], "goals": len(active),
                 "streak": max([self.streak(x, now) for x in active] or [0]),
-                "memories": len(self.memories), "notify": bool(self.devices)}
+                "memories": len(self.memories), "notify": bool(self.devices), "source": self.source}
+
+    def came_from(self, src, now):
+        """Where you first came from, as the website saw it (?from=tt, or TikTok's or Instagram's own browser): kept once,
+        and only for a new Ember, so an old friend opening a link later doesn't count as a sign-up from it."""
+        src = (src or "").lower()
+        if self.source or not re.fullmatch(r"[a-z0-9_-]{1,16}", src) or now - self.born > SOURCE_NEW_FOR:
+            return False
+        self.source = src
+        return True
 
     def _backfill_bond(self):
         """How close you've become, from your history: the days you talked, the messages, what it learned."""
@@ -1468,8 +1479,10 @@ class Ember:
                              "conversation since shows they already told you, reply with \"\" (nothing to ask).")
             lines.append("remember, update, add_steps and experiments must be empty; goal must be null.")
         elif not self.memories and len(self.talk) == 0:
-            lines.append("They just opened your window for the very first time. Introduce yourself in one or two "
-                         "sentences and ask one first question to get to know them. remember and update must be empty.")
+            lines.append("They just opened your window for the very first time. Introduce yourself in one short sentence, "
+                         "then ask what's one thing they keep meaning to start (Szilard, 2026-11-10: most people arrive "
+                         "from a video about goals and check-ups, so meet them there, not with small talk). Warm and "
+                         "simple, no list of features. remember and update must be empty.")
         else:
             lines.append("They just opened your window again. Greet them in one or two sentences; you may pick up a "
                          "thread from your memories or the conversation. remember and update must be empty.")
@@ -1646,8 +1659,8 @@ class Ember:
         """A simple mind with no LLM: it keeps what you say about yourself and asks questions."""
         if event["type"] == "arrive":
             if not self.memories and len(self.talk) == 0:
-                return {"reply": f"Hi. I'm {self.name}. I live here, in this window, and I want to get to know you. "
-                                 + self._next_question(), "face": "happy"}
+                return {"reply": f"Hi, I'm {self.name}. I'm here to help you get to the things you care about. "
+                                 "What's one thing you keep meaning to start?", "face": "happy"}
             return {"reply": f"You're back. It's been {ago(self.gap_before)}. " + self._next_question(),
                     "face": "happy"}
         if event["type"] == "suggest":

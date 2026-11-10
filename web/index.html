@@ -18,6 +18,16 @@
 // (/home) from here, before anything is drawn or asked of the server, so no logo or login screen flashes by
 // (Szilard, 2026-11-07). Staying: a login kept on this device, or a visit that's part of a login, a notification,
 // a payment's return or a chat link.
+// Inside TikTok's or Instagram's own browser Google won't sign anyone in (2026-11-10): there the login screen says how to
+// open Ember in Safari or Chrome instead. Which app's browser this is (or, once in Safari, the from= its link carried) is
+// kept here and sent once with /state, for the owner page's sign-ups by source. The same list is in web/site.js.
+const IN_APP = (ua => /Instagram/i.test(ua) ? "ig" : /musical_ly|Bytedance|TikTok/i.test(ua) ? "tt" : /FBAN|FBAV|FB_IAB/.test(ua) ? "fb"
+  : /Snapchat/i.test(ua) ? "sc" : /LinkedInApp/i.test(ua) ? "li" : "")(navigator.userAgent);
+let FROM = "";
+try {
+  FROM = localStorage.getItem("ember.from") || new URLSearchParams(location.search).get("from") || IN_APP;
+  if (FROM) localStorage.setItem("ember.from", FROM);
+} catch (e) { FROM = new URLSearchParams(location.search).get("from") || IN_APP; }
 const toFront = document.documentElement.dataset.mode === "online" && !hasLogin() && !cameForLogin();
 if (toFront) { document.documentElement.classList.add("away"); location.replace("/home"); }
 // a login kept on this device (supabase-js keeps it as sb-<project>-auth-token), without loading supabase-js first
@@ -329,6 +339,16 @@ div.grow { cursor: default; }
 .cover h1 { margin: 6px 0 0; font-size: 28px; }
 .cover p { color: var(--dim); max-width: 340px; margin: 0; }
 .cover p.tagline { color: var(--text); font-size: 17px; font-weight: 600; margin-top: -6px; text-wrap: balance; }
+.inappbox { display: flex; flex-direction: column; gap: 10px; max-width: 340px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--edge); border-radius: 22px; padding: 18px; }
+.inappbox[hidden] { display: none; }
+.inappbox > b { font: 800 19px/1.2 var(--round); color: var(--text); }
+.inappbox > span { color: var(--dim); font-size: 15px; }
+.inappbox ol { margin: 0; padding-left: 1.3em; color: var(--text); font-size: 15px; display: grid; gap: 4px; }
+.inappbox .inapplink { color: var(--text); font-weight: 600; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
+.obtn { display: block; text-align: center; text-decoration: none; background: var(--btn); color: #2a1a0c; border: 0; border-radius: 999px; padding: 12px 18px; font: 700 16px var(--round); cursor: pointer; }
+.obtn.ghost { background: var(--raised); color: var(--text); border: 1px solid var(--edge); }
+.obtn[hidden] { display: none; }
+.gbtn[hidden] { display: none; }
 .gbtn { display: inline-flex; align-items: center; gap: 10px; background: #fff; color: #1f1f1f; border: 0; border-radius: 999px; padding: 12px 22px; font-weight: 600; font-size: 16px; cursor: pointer; }
 .cover small { color: var(--faint); max-width: 340px; }
 .cover small a { color: var(--dim); }
@@ -646,6 +666,14 @@ div.grow { cursor: default; }
   <p class="tagline">Your companion who checks up on you and grows with you.</p>
   <p>It helps you find your purpose, gets you there step by step, and remembers your story.</p>
   <button class="gbtn" id="googleBtn"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg>Continue with Google</button>
+  <div class="inappbox" id="inAppBox" hidden>
+    <b id="inAppTitle">Open Ember in Safari to sign in</b>
+    <span id="inAppWhy">TikTok opens links in its own browser, and Google sign-in doesn't work there.</span>
+    <ol><li>Tap <b>⋯</b> at the top of the screen</li><li>Tap <b id="inAppStep">Open in browser</b></li></ol>
+    <a class="obtn" id="inAppOpen" hidden>Open in Safari</a>
+    <span class="inapplink" id="inAppLink"></span>
+    <button class="obtn ghost" id="inAppCopy" type="button">Copy link</button>
+  </div>
   <small>By continuing you agree to the <a href="/terms">terms</a>, and that Ember keeps what you tell it, as described in the <a href="/privacy">privacy page</a>. 16+.</small>
   <a class="whatis" href="/home">What is Ember?</a>
 </div>
@@ -833,6 +861,7 @@ async function boot() {
     setSession(data.session);
     sb.auth.onAuthStateChange((_e, session) => setSession(session));
     if (!token) {
+      if (IN_APP) { history.replaceState(null, "", "/"); showCover("login"); return; }   // Google won't work here (inAppLogin)
       if (new URLSearchParams(location.search).get("login") === "google") {   // from the front page: straight to Google,
         history.replaceState(null, "", "/");                                  // with only the logo in between
         gate = "login";
@@ -859,6 +888,26 @@ function setSession(session) {
   if (session) $("#whoami").textContent = session.user.email;
   if (token && gate === "login") enter();
 }
+// inside TikTok's or Instagram's browser: the login screen shows how to open Ember in Safari or Chrome instead of Google
+(function inAppLogin() {
+  if (!IN_APP) return;
+  const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1), android = /Android/.test(ua);
+  const name = {ig: "Instagram", tt: "TikTok", fb: "Facebook", sc: "Snapchat", li: "LinkedIn"}[IN_APP], browser = ios ? "Safari" : "your browser";
+  const path = "/?login=google" + (FROM ? "&from=" + encodeURIComponent(FROM) : ""), link = location.origin + path;
+  $("#googleBtn").hidden = true; $("#inAppBox").hidden = false;
+  $("#inAppTitle").textContent = `Open Ember in ${browser} to sign in`;
+  $("#inAppWhy").textContent = `${name} opens links in its own browser, and Google sign-in doesn't work there.`;
+  $("#inAppStep").textContent = ios ? "Open in external browser" : "Open in browser";
+  $("#inAppLink").textContent = link.replace(/^https?:\/\//, "");
+  const open = ios ? "x-safari-" + link : android ? `intent://${location.host}${path}#Intent;scheme=https;end` : "";
+  if (open) { $("#inAppOpen").href = open; $("#inAppOpen").textContent = "Open in " + browser; $("#inAppOpen").hidden = false; }
+  $("#inAppCopy").onclick = async () => {
+    const b = $("#inAppCopy");
+    try { await navigator.clipboard.writeText(link); b.textContent = "Copied"; }
+    catch (e) { const r = document.createRange(); r.selectNodeContents($("#inAppLink")); getSelection().removeAllRanges(); getSelection().addRange(r); b.textContent = "Selected: copy it"; }
+    setTimeout(() => b.textContent = "Copy link", 2000);
+  };
+})();
 $("#googleBtn").onclick = () => sb && sb.auth.signInWithOAuth({provider: "google", options: {redirectTo: location.origin}});
 
 let started = false;
@@ -872,13 +921,16 @@ function start() {
 }
 
 // ------------------------------------------------------------------ polling
+let fromSent = false;
 async function poll() {
   if (gate) return;
   try {
     const r = await api("/state?v=" + (document.hidden ? 0 : 1) + "&chat=" + encodeURIComponent(chat)
-      + "&tz=" + (-new Date().getTimezoneOffset()));     // your clock, for Ember's sense of your day
+      + "&tz=" + (-new Date().getTimezoneOffset())       // your clock, for Ember's sense of your day
+      + (FROM && !fromSent ? "&src=" + encodeURIComponent(FROM) : ""));   // where you came from, once (kept only if you're new)
     if (!r.ok) throw new Error(r.status);
     S = await r.json();
+    fromSent = true;
     offline = false;
     render();
     $("#boot").classList.remove("on");
@@ -1049,6 +1101,11 @@ async function loadOwner() {
       <div class="ostat"><b>${O.today}</b><span>active today</span></div>
       <div class="ostat"><b>${O.week}</b><span>active this week</span></div>
       <div class="ostat"><b>${O.new_week}</b><span>new this week</span></div></div>`;
+  const SRC = {tt: "TikTok", ig: "Instagram", fb: "Facebook", sc: "Snapchat", li: "LinkedIn", rd: "Reddit", ph: "Product Hunt", "": "Not known"};
+  const srcs = Object.entries(O.sources || {}).sort((a, b) => (a[0] === "") - (b[0] === "") || b[1] - a[1]);
+  h += `<div class="gpcard"><h3>Where they came from</h3>` + srcs.map(([k, n]) =>
+    `<p class="oline">${esc(SRC[k] || k)}: <b>${n}</b></p>`).join("")
+    + `<p class="oline"><small>Counted from 10 November 2026, for people who open yourember.app inside TikTok or Instagram (it's carried along when they move to Safari or Chrome). "Not known" is everyone before, and everyone who came another way.</small></p></div>`;
   h += `<div class="gpcard"><h3>Do they come back?</h3>` + (R.joined_before
     ? `<p class="oline">Of the <b>${R.joined_before}</b> who started over a week ago: <b>${R.back_day2}</b>${pct(R.back_day2, R.joined_before)} came back on another day, and <b>${R.back_week2}</b>${pct(R.back_week2, R.joined_before)} were still coming after their first week.</p>`
     : `<p class="oline">Nobody started over a week ago yet, so it's too early to tell.</p>`) + `</div>`;
@@ -1059,7 +1116,7 @@ async function loadOwner() {
     : `<p class="oline">None yet. People send it from the Ember tab → Send feedback.</p>`) + `</div>`;
   h += `<div class="gpcard"><h3>People <small>last active first</small></h3>` + O.list.map(p =>
     `<div class="operson"><b>${esc(p.email || "(no email)")}</b>${plusTag[p.plus] ? `<span class="otag">${plusTag[p.plus]}</span>` : ""}
-      <div>Started ${esc(dateOf(p.joined))} · last ${esc(ago(p.last))} · ${p.days} day${p.days === 1 ? "" : "s"} · ${p.said} messages</div>
+      <div>Started ${esc(dateOf(p.joined))}${p.source ? ` from ${esc(SRC[p.source] || p.source)}` : ""} · last ${esc(ago(p.last))} · ${p.days} day${p.days === 1 ? "" : "s"} · ${p.said} messages</div>
       <div>Level ${p.level} · ${p.goals ? `${p.goals} goal${p.goals > 1 ? "s" : ""}, ${p.streak}-day streak` : "no goal"} · ${p.memories} ${p.memories === 1 ? "memory" : "memories"}${p.notify ? " · notifications on" : ""}</div></div>`).join("") + `</div>`;
   h += `<p class="oline" style="margin-top:12px">Numbers only: what people say to Ember stays private. Updated ${esc(ago(O.at))}.</p>`;
   $("#ownerBody").innerHTML = h;
